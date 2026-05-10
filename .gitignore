@@ -1,0 +1,36 @@
+   .deno/
+   deno.lock
+
+   # Environment
+   .env
+   .env.*
+   !.env.example
+
+   # Logs
+   *.log
+   npm-debug.log*
+   pnpm-debug.log*
+   yarn-debug.log*
+
+   # Coverage
+   coverage/
+   .nyc_output/
+
+   # Build output
+   dist/
+   build/
+   out/
+
+   # Editor/OS
+   .DS_Store
+   Thumbs.db
+   .vscode/
+   .idea/
+   *.swp
+   *.swo
+
+   # Node compatibility, if ever used
+   node_modules/
+
+.pi
+
