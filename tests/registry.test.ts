@@ -19,9 +19,6 @@ const addTool = defineTool({
   input: schema<{ a: number; b: number }>(),
   output: schema<{ value: number }>(),
   execution: "parallel",
-  execute({ input }) {
-    return { data: { value: input.a + input.b } };
-  },
 });
 
 const multiplyTool = defineTool({
@@ -30,9 +27,6 @@ const multiplyTool = defineTool({
   input: schema<{ a: number; b: number }>(),
   output: schema<{ value: number }>(),
   execution: "parallel",
-  execute({ input }) {
-    return { data: { value: input.a * input.b } };
-  },
 });
 
 Deno.test("createToolRegistry stores tools by name", () => {
@@ -50,17 +44,4 @@ Deno.test("createToolRegistry rejects duplicate tool names", () => {
     Error,
     'Tool "calculator.add" is already registered.',
   );
-});
-
-Deno.test("tool registry can be used to execute a named tool", async () => {
-  const registry = createToolRegistry([addTool]);
-  const tool = registry.get("calculator.add");
-
-  if (!tool) {
-    throw new Error("Expected calculator.add to be registered");
-  }
-
-  const result = await tool.execute({ input: { a: 2, b: 3 } });
-
-  assertEquals(result, { data: { value: 5 } });
 });

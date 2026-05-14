@@ -50,9 +50,8 @@ export type InferSchemaOutput<TSchema> = TSchema extends StandardSchemaV1<
 
 export type ToolExecutionMode = "sequential" | "parallel";
 
-export interface ToolExecutionContext<Input, Context = unknown> {
+export interface ToolHandlerContext<Input> {
   readonly input: Input;
-  readonly context?: Context;
   readonly signal?: AbortSignal;
 }
 
@@ -60,31 +59,63 @@ export interface ToolResult<Output> {
   readonly data: Output;
 }
 
-export type ToolExecute<Input, Output, Context = unknown> = (
-  context: ToolExecutionContext<Input, Context>,
+export type ToolHandler<Input, Output> = (
+  context: ToolHandlerContext<Input>,
 ) => MaybePromise<ToolResult<Output>>;
 
 export interface Tool<
+  Name extends string = string,
   InputSchema extends StandardSchemaV1 = StandardSchemaV1,
   OutputSchema extends StandardSchemaV1 = StandardSchemaV1,
-  Context = unknown,
 > {
-  readonly name: string;
+  readonly name: Name;
   readonly description: string;
   readonly input: InputSchema;
   readonly output: OutputSchema;
   readonly execution?: ToolExecutionMode;
-  readonly execute: ToolExecute<
-    InferSchemaOutput<InputSchema>,
-    InferSchemaOutput<OutputSchema>,
-    Context
-  >;
+}
+
+export type ToolHandlerFor<TTool extends Tool> = ToolHandler<
+  InferSchemaOutput<TTool["input"]>,
+  InferSchemaOutput<TTool["output"]>
+>;
+
+export type ToolHandlerMap<TTools extends readonly Tool[]> = ToolHandlerMapFor<TTools[number]>;
+
+type UnionToIntersection<T> = (T extends unknown ? (value: T) => void : never) extends
+  (value: infer Intersection) => void ? Intersection
+  : never;
+
+export type ToolHandlerMapFor<TTool extends Tool> = UnionToIntersection<
+  TTool extends Tool ? { readonly [Name in TTool["name"]]: ToolHandlerFor<TTool> } : never
+>;
+
+export interface StandardSchemaValidationError extends Error {
+  readonly issues: readonly StandardSchemaV1.Issue[];
 }
 
 export function defineTool<
+  const Name extends string,
   const InputSchema extends StandardSchemaV1,
   const OutputSchema extends StandardSchemaV1,
-  Context = unknown,
->(tool: Tool<InputSchema, OutputSchema, Context>): Tool<InputSchema, OutputSchema, Context> {
+>(tool: Tool<Name, InputSchema, OutputSchema>): Tool<Name, InputSchema, OutputSchema> {
   return tool;
+}
+
+export async function parseStandardSchema<TSchema extends StandardSchemaV1>(
+  schema: TSchema,
+  value: unknown,
+): Promise<InferSchemaOutput<TSchema>> {
+  const result = await schema["~standard"].validate(value);
+
+  if (result.issues) {
+    const error = new Error("Standard Schema validation failed.") as StandardSchemaValidationError;
+    Object.defineProperty(error, "issues", {
+      value: result.issues,
+      enumerable: true,
+    });
+    throw error;
+  }
+
+  return result.value as InferSchemaOutput<TSchema>;
 }

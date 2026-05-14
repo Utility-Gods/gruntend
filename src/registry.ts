@@ -5,10 +5,10 @@ export interface ToolRegistry<TTool extends Tool = Tool> {
   get(name: string): TTool | undefined;
 }
 
-export function createToolRegistry<const TTool extends Tool>(
-  tools: readonly TTool[] = [],
-): ToolRegistry<TTool> {
-  const byName = new Map<string, TTool>();
+export function createToolRegistry<const TTools extends readonly Tool[]>(
+  tools: TTools = [] as unknown as TTools,
+): ToolRegistry<TTools[number]> {
+  const byName = new Map<string, TTools[number]>();
 
   for (const tool of tools) {
     if (byName.has(tool.name)) {

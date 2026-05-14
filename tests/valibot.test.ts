@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import * as v from "valibot";
-import { defineTool } from "../mod.ts";
+import { defineTool, parseStandardSchema } from "../mod.ts";
 
 Deno.test("defineTool accepts Valibot standard schema contracts", async () => {
   const add = defineTool({
@@ -13,16 +13,10 @@ Deno.test("defineTool accepts Valibot standard schema contracts", async () => {
     output: v.object({
       value: v.number(),
     }),
-    execute({ input }) {
-      return {
-        data: {
-          value: input.a + input.b,
-        },
-      };
-    },
   });
 
-  const result = await add.execute({ input: { a: 2, b: 3 } });
+  const input = await parseStandardSchema(add.input, { a: 2, b: 3 });
+  const output = await parseStandardSchema(add.output, { value: input.a + input.b });
 
-  assertEquals(result, { data: { value: 5 } });
+  assertEquals(output, { value: 5 });
 });

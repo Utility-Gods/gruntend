@@ -1,6 +1,7 @@
 <script lang="ts">
   import { genopen } from "./client.ts";
   import { generateMenuWorkflow, type MenuRequestData } from "./mock-llm.ts";
+  import type { WorkflowMachineConfig, WorkflowStateConfig } from "../../../mod.ts";
 
   type RunState = "idle" | "running" | "done" | "error";
 
@@ -17,9 +18,16 @@
     null,
     2,
   );
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
   let message = "";
   let createdMenu = "";
   let createdItems: string[] = [];
+  let lastWorkflow: WorkflowMachineConfig | null = null;
+  let lastFinalState = "";
+
+  let authToken = "demo-auth-token";
+  let tenantId = "restaurant-demo";
 
   async function askAssistant() {
     state = "running";
@@ -30,7 +38,34 @@
     try {
       const data = JSON.parse(input) as MenuRequestData;
       const workflow = await generateMenuWorkflow(data);
-      const result = await genopen.runWorkflow(workflow);
+      lastWorkflow = workflow;
+      const result = await genopen.runWorkflow(workflow, {
+        handlers: {
+          "menu.create": async ({ input }) => {
+            if (!authToken) throw new Error("Missing app auth token.");
+            await wait(250);
+
+            return {
+              data: {
+                menuId: `${tenantId}:menu:${input.name.toLowerCase().replaceAll(" ", "-")}`,
+                name: input.name,
+              },
+            };
+          },
+          "menu.item.create": async ({ input }) => {
+            if (!authToken) throw new Error("Missing app auth token.");
+            await wait(200);
+
+            return {
+              data: {
+                itemId: `${tenantId}:item:${input.menuId}:${input.name.toLowerCase().replaceAll(" ", "-")}`,
+                menuId: input.menuId,
+                name: input.name,
+              },
+            };
+          },
+        },
+      });
 
       if (result.status !== "done") {
         throw new Error("The assistant workflow failed.");
@@ -42,12 +77,28 @@
         .filter(([stateName]) => stateName.startsWith("createItem"))
         .map(([, output]) => (output.data as { name: string }).name);
 
-      message = "Assistant completed the requested app actions.";
+      message = `Assistant completed the requested app actions using ${authToken}.`;
+      lastFinalState = result.finalState;
       state = "done";
     } catch (error) {
       message = error instanceof Error ? error.message : String(error);
       state = "error";
     }
+  }
+
+  function workflowSteps(workflow: WorkflowMachineConfig | null): string[] {
+    if (!workflow) return [];
+
+    return collectWorkflowSteps(workflow.states);
+  }
+
+  function collectWorkflowSteps(states: Record<string, WorkflowStateConfig>, prefix = ""): string[] {
+    return Object.entries(states).flatMap(([stateName, config]) => {
+      const path = prefix ? `${prefix}.${stateName}` : stateName;
+      const current = config.invoke ? [`${path} → ${config.invoke.input.tool}`] : [];
+      const children = config.states ? collectWorkflowSteps(config.states, path) : [];
+      return [...current, ...children];
+    });
   }
 </script>
 
@@ -68,6 +119,23 @@
       {state === "running" ? "Working..." : "Ask assistant to create menu"}
     </button>
   </section>
+
+  {#if lastWorkflow}
+    <details class="panel debug">
+      <summary>Developer workflow preview</summary>
+      <div class="machine">
+        {#each workflowSteps(lastWorkflow) as step, index}
+          <div class="state-node">{step}</div>
+          {#if index < workflowSteps(lastWorkflow).length - 1}
+            <div class="arrow">→</div>
+          {/if}
+        {/each}
+      </div>
+      {#if lastFinalState}
+        <p class="final-state">Final state: <strong>{lastFinalState}</strong></p>
+      {/if}
+    </details>
+  {/if}
 
   {#if message}
     <section class:error={state === "error"} class="panel result">
@@ -176,6 +244,37 @@
   button:disabled {
     cursor: not-allowed;
     opacity: 0.6;
+  }
+
+  .debug summary {
+    cursor: pointer;
+    font-weight: 800;
+  }
+
+  .machine {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .state-node {
+    padding: 10px 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font: 0.85rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  }
+
+  .arrow {
+    color: #2563eb;
+    font-weight: 900;
+  }
+
+  .final-state {
+    margin: 14px 0 0;
   }
 
   .result {

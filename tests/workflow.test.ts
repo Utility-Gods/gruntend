@@ -3,6 +3,7 @@ import {
   createToolRegistry,
   defineTool,
   runWorkflow,
+  type ToolHandlerMapFor,
   type WorkflowMachineConfig,
 } from "../mod.ts";
 import * as v from "valibot";
@@ -11,20 +12,8 @@ Deno.test("runWorkflow consumes XState-style JSON and executes a single tool inv
   const add = defineTool({
     name: "calculator.add",
     description: "Add two numbers.",
-    input: v.object({
-      a: v.number(),
-      b: v.number(),
-    }),
-    output: v.object({
-      value: v.number(),
-    }),
-    execute({ input }) {
-      return {
-        data: {
-          value: input.a + input.b,
-        },
-      };
-    },
+    input: v.object({ a: v.number(), b: v.number() }),
+    output: v.object({ value: v.number() }),
   });
 
   const registry = createToolRegistry([add]);
@@ -35,33 +24,30 @@ Deno.test("runWorkflow consumes XState-style JSON and executes a single tool inv
       add: {
         invoke: {
           src: "tool",
-          input: {
-            tool: "calculator.add",
-            params: {
-              a: 2,
-              b: 3,
-            },
-          },
+          input: { tool: "calculator.add", params: { a: 2, b: 3 } },
           onDone: "completed",
         },
       },
-      completed: {
-        type: "final",
-      },
+      completed: { type: "final" },
     },
   };
 
-  const result = await runWorkflow({ workflow, registry });
+  const handlers = {
+    "calculator.add": ({ input }) => ({
+      data: { value: input.a + input.b },
+    }),
+  } satisfies ToolHandlerMapFor<typeof add>;
+
+  const result = await runWorkflow({
+    workflow,
+    registry,
+    handlers,
+  });
 
   assertEquals(result, {
     status: "done",
-    outputs: {
-      add: {
-        data: {
-          value: 5,
-        },
-      },
-    },
+    outputs: { add: { data: { value: 5 } } },
+    errors: {},
     finalState: "completed",
   });
 });
@@ -70,45 +56,15 @@ Deno.test("runWorkflow resolves refs between deterministic dependent tool states
   const createMenu = defineTool({
     name: "menu.create",
     description: "Create a menu.",
-    input: v.object({
-      name: v.string(),
-    }),
-    output: v.object({
-      menuId: v.string(),
-      name: v.string(),
-    }),
-    execute({ input }) {
-      return {
-        data: {
-          menuId: `menu:${input.name}`,
-          name: input.name,
-        },
-      };
-    },
+    input: v.object({ name: v.string() }),
+    output: v.object({ menuId: v.string(), name: v.string() }),
   });
 
   const createMenuItem = defineTool({
     name: "menu.item.create",
     description: "Create a menu item.",
-    input: v.object({
-      menuId: v.string(),
-      name: v.string(),
-      price: v.number(),
-    }),
-    output: v.object({
-      itemId: v.string(),
-      menuId: v.string(),
-      name: v.string(),
-    }),
-    execute({ input }) {
-      return {
-        data: {
-          itemId: `item:${input.menuId}:${input.name}`,
-          menuId: input.menuId,
-          name: input.name,
-        },
-      };
-    },
+    input: v.object({ menuId: v.string(), name: v.string(), price: v.number() }),
+    output: v.object({ itemId: v.string(), menuId: v.string(), name: v.string() }),
   });
 
   const registry = createToolRegistry([createMenu, createMenuItem]);
@@ -119,12 +75,7 @@ Deno.test("runWorkflow resolves refs between deterministic dependent tool states
       createMenu: {
         invoke: {
           src: "tool",
-          input: {
-            tool: "menu.create",
-            params: {
-              name: "Dinner",
-            },
-          },
+          input: { tool: "menu.create", params: { name: "Dinner" } },
           onDone: "createBurger",
         },
       },
@@ -142,31 +93,38 @@ Deno.test("runWorkflow resolves refs between deterministic dependent tool states
           onDone: "completed",
         },
       },
-      completed: {
-        type: "final",
-      },
+      completed: { type: "final" },
     },
   };
 
-  const result = await runWorkflow({ workflow, registry });
+  const handlers = {
+    "menu.create": ({ input }) => ({
+      data: { menuId: `menu:${input.name}`, name: input.name },
+    }),
+    "menu.item.create": ({ input }) => ({
+      data: {
+        itemId: `item:${input.menuId}:${input.name}`,
+        menuId: input.menuId,
+        name: input.name,
+      },
+    }),
+  } satisfies ToolHandlerMapFor<typeof createMenu | typeof createMenuItem>;
+
+  const result = await runWorkflow({
+    workflow,
+    registry,
+    handlers,
+  });
 
   assertEquals(result, {
     status: "done",
     outputs: {
-      createMenu: {
-        data: {
-          menuId: "menu:Dinner",
-          name: "Dinner",
-        },
-      },
+      createMenu: { data: { menuId: "menu:Dinner", name: "Dinner" } },
       createBurger: {
-        data: {
-          itemId: "item:menu:Dinner:Burger",
-          menuId: "menu:Dinner",
-          name: "Burger",
-        },
+        data: { itemId: "item:menu:Dinner:Burger", menuId: "menu:Dinner", name: "Burger" },
       },
     },
+    errors: {},
     finalState: "completed",
   });
 });
@@ -175,15 +133,8 @@ Deno.test("runWorkflow follows onError when a tool fails", async () => {
   const failTool = defineTool({
     name: "menu.item.create",
     description: "Create a menu item.",
-    input: v.object({
-      name: v.string(),
-    }),
-    output: v.object({
-      itemId: v.string(),
-    }),
-    execute({ input }) {
-      throw new Error(`Cannot create item ${input.name}`);
-    },
+    input: v.object({ name: v.string() }),
+    output: v.object({ itemId: v.string() }),
   });
 
   const registry = createToolRegistry([failTool]);
@@ -194,31 +145,36 @@ Deno.test("runWorkflow follows onError when a tool fails", async () => {
       createItem: {
         invoke: {
           src: "tool",
-          input: {
-            tool: "menu.item.create",
-            params: {
-              name: "Broken Burger",
-            },
-          },
+          input: { tool: "menu.item.create", params: { name: "Broken Burger" } },
           onDone: "completed",
           onError: "failed",
         },
       },
-      completed: {
-        type: "final",
-      },
-      failed: {
-        type: "final",
-      },
+      completed: { type: "final" },
+      failed: { type: "final" },
     },
   };
 
-  const result = await runWorkflow({ workflow, registry });
+  const handlers = {
+    "menu.item.create": ({ input }) => {
+      throw new Error(`Cannot create item ${input.name}`);
+    },
+  } satisfies ToolHandlerMapFor<typeof failTool>;
 
-  assertEquals(result, {
-    status: "failed",
-    outputs: {},
-    finalState: "failed",
+  const result = await runWorkflow({
+    workflow,
+    registry,
+    handlers,
+  });
+
+  assertEquals(result.status, "failed");
+  assertEquals(result.outputs, {});
+  assertEquals(result.finalState, "failed");
+  assertEquals(result.errors.createItem, {
+    type: "handler_error",
+    state: "createItem",
+    tool: "menu.item.create",
+    message: "Cannot create item Broken Burger",
   });
 });
 
@@ -228,25 +184,8 @@ Deno.test("runWorkflow retries a failing tool invoke before following onError", 
   const flakyTool = defineTool({
     name: "menu.item.create",
     description: "Create a menu item with a transient failure.",
-    input: v.object({
-      name: v.string(),
-    }),
-    output: v.object({
-      itemId: v.string(),
-    }),
-    execute({ input }) {
-      attempts += 1;
-
-      if (attempts === 1) {
-        throw new Error("Transient failure");
-      }
-
-      return {
-        data: {
-          itemId: `item:${input.name}`,
-        },
-      };
-    },
+    input: v.object({ name: v.string() }),
+    output: v.object({ itemId: v.string() }),
   });
 
   const registry = createToolRegistry([flakyTool]);
@@ -259,38 +198,41 @@ Deno.test("runWorkflow retries a failing tool invoke before following onError", 
           src: "tool",
           input: {
             tool: "menu.item.create",
-            params: {
-              name: "Burger",
-            },
-            retry: {
-              maxAttempts: 2,
-            },
+            params: { name: "Burger" },
+            retry: { maxAttempts: 2 },
           },
           onDone: "completed",
           onError: "failed",
         },
       },
-      completed: {
-        type: "final",
-      },
-      failed: {
-        type: "final",
-      },
+      completed: { type: "final" },
+      failed: { type: "final" },
     },
   };
 
-  const result = await runWorkflow({ workflow, registry });
+  const handlers = {
+    "menu.item.create": ({ input }) => {
+      attempts += 1;
+
+      if (attempts === 1) {
+        throw new Error("Transient failure");
+      }
+
+      return { data: { itemId: `item:${input.name}` } };
+    },
+  } satisfies ToolHandlerMapFor<typeof flakyTool>;
+
+  const result = await runWorkflow({
+    workflow,
+    registry,
+    handlers,
+  });
 
   assertEquals(attempts, 2);
   assertEquals(result, {
     status: "done",
-    outputs: {
-      createItem: {
-        data: {
-          itemId: "item:Burger",
-        },
-      },
-    },
+    outputs: { createItem: { data: { itemId: "item:Burger" } } },
+    errors: {},
     finalState: "completed",
   });
 });

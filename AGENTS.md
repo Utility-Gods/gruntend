@@ -6,3 +6,4 @@
 - Use npm specifiers only when there is no suitable JSR package, and keep those versions exact too.
 - After dependency changes, update the relevant `deno.lock` and run the affected `deno test` / `deno check` commands.
 - Avoid broad `deno run -A` permissions unless the tool genuinely needs them; prefer least-permission flags where practical.
+- Keep the project todo list updated with `todo_manage` when deferring follow-up work or design improvements.

@@ -13,7 +13,7 @@ function schema<T>(): StandardSchemaV1<T> {
   };
 }
 
-Deno.test("defineTool preserves the tool contract and executes async handlers", async () => {
+Deno.test("defineTool preserves the tool contract", () => {
   const createMenuInput = schema<{ name: string }>();
   const createMenuOutput = schema<{ menuId: string; name: string }>();
 
@@ -23,22 +23,6 @@ Deno.test("defineTool preserves the tool contract and executes async handlers", 
     input: createMenuInput,
     output: createMenuOutput,
     execution: "sequential",
-    async execute({ input, signal }) {
-      assertEquals(signal?.aborted, false);
-
-      return {
-        data: {
-          menuId: `menu:${input.name}`,
-          name: input.name,
-        },
-      };
-    },
-  });
-
-  const controller = new AbortController();
-  const result = await createMenu.execute({
-    input: { name: "Dinner" },
-    signal: controller.signal,
   });
 
   assertEquals(createMenu.name, "menu.create");
@@ -46,12 +30,6 @@ Deno.test("defineTool preserves the tool contract and executes async handlers", 
   assertEquals(createMenu.input, createMenuInput);
   assertEquals(createMenu.output, createMenuOutput);
   assertEquals(createMenu.execution, "sequential");
-  assertEquals(result, {
-    data: {
-      menuId: "menu:Dinner",
-      name: "Dinner",
-    },
-  });
 });
 
 Deno.test("defineTool can mark a tool as parallelizable", () => {
@@ -61,14 +39,6 @@ Deno.test("defineTool can mark a tool as parallelizable", () => {
     input: schema<{ menuId: string; name: string }>(),
     output: schema<{ itemId: string; menuId: string }>(),
     execution: "parallel",
-    execute({ input }) {
-      return {
-        data: {
-          itemId: `item:${input.name}`,
-          menuId: input.menuId,
-        },
-      };
-    },
   });
 
   assertEquals(createMenuItem.execution, "parallel");

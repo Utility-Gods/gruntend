@@ -18,21 +18,32 @@ export async function generateMenuWorkflow(data: MenuRequestData): Promise<Workf
       return [
         stateName,
         {
-          invoke: {
-            src: "tool" as const,
-            input: {
-              tool: "menu.item.create",
-              params: {
-                menuId: { $ref: "createMenu.data.menuId" },
-                name: item.name,
-                price: item.price,
-              },
-              retry: {
-                maxAttempts: 2,
+          initial: "run",
+          states: {
+            run: {
+              invoke: {
+                src: "tool" as const,
+                input: {
+                  tool: "menu.item.create",
+                  params: {
+                    menuId: { $ref: "createMenu.data.menuId" },
+                    name: item.name,
+                    price: item.price,
+                  },
+                  retry: {
+                    maxAttempts: 2,
+                  },
+                },
+                onDone: "done",
+                onError: "failed",
               },
             },
-            onDone: "done",
-            onError: "failed",
+            done: {
+              type: "final" as const,
+            },
+            failed: {
+              type: "final" as const,
+            },
           },
         },
       ];

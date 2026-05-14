@@ -6,11 +6,7 @@ import {
 } from "../mod.ts";
 import * as v from "valibot";
 
-interface AppContext {
-  readonly authToken: string;
-}
-
-Deno.test("GenOpen client runs an LLM workflow response against registered tools with app context", async () => {
+Deno.test("GenOpen client runs an LLM workflow response with runtime closure handlers", async () => {
   let receivedAuthToken = "";
 
   const createMenu = defineTool({
@@ -22,24 +18,13 @@ Deno.test("GenOpen client runs an LLM workflow response against registered tools
     output: v.object({
       menuId: v.string(),
     }),
-    execute({ input, context }) {
-      receivedAuthToken = (context as AppContext).authToken;
-
-      return {
-        data: {
-          menuId: `menu:${input.name}`,
-        },
-      };
-    },
   });
 
   const client = createGenOpenClient({
     tools: [createMenu],
-    context: {
-      authToken: "secret-token",
-    } satisfies AppContext,
   });
 
+  const authToken = "secret-token";
   const llmResponse: WorkflowMachineConfig = {
     id: "create-menu",
     initial: "createMenu",
@@ -62,7 +47,19 @@ Deno.test("GenOpen client runs an LLM workflow response against registered tools
     },
   };
 
-  const result = await client.runWorkflow(llmResponse);
+  const result = await client.runWorkflow(llmResponse, {
+    handlers: {
+      "menu.create": ({ input }) => {
+        receivedAuthToken = authToken;
+
+        return {
+          data: {
+            menuId: `menu:${input.name}`,
+          },
+        };
+      },
+    },
+  });
 
   assertEquals(receivedAuthToken, "secret-token");
   assertEquals(result, {
@@ -74,6 +71,7 @@ Deno.test("GenOpen client runs an LLM workflow response against registered tools
         },
       },
     },
+    errors: {},
     finalState: "completed",
   });
 });
