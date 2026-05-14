@@ -1,7 +1,8 @@
 <script lang="ts">
   import { genopen } from "./client.ts";
   import { generateMenuWorkflow, type MenuRequestData } from "./mock-llm.ts";
-  import type { WorkflowMachineConfig, WorkflowStateConfig } from "../../../mod.ts";
+  import WorkflowPreview, { type WorkflowStepStatus } from "./WorkflowPreview.svelte";
+  import type { WorkflowMachineConfig } from "../../../mod.ts";
 
   type RunState = "idle" | "running" | "done" | "error";
 
@@ -25,6 +26,7 @@
   let createdItems: string[] = [];
   let lastWorkflow: WorkflowMachineConfig | null = null;
   let lastFinalState = "";
+  let runningStates: Record<string, WorkflowStepStatus> = {};
 
   let authToken = "demo-auth-token";
   let tenantId = "restaurant-demo";
@@ -34,16 +36,19 @@
     message = "";
     createdMenu = "";
     createdItems = [];
+    lastFinalState = "";
+    runningStates = {};
 
     try {
       const data = JSON.parse(input) as MenuRequestData;
       const workflow = await generateMenuWorkflow(data);
       lastWorkflow = workflow;
+      runningStates = {};
       const result = await genopen.runWorkflow(workflow, {
         handlers: {
           "menu.create": async ({ input }) => {
             if (!authToken) throw new Error("Missing app auth token.");
-            await wait(250);
+            await wait(3000);
 
             return {
               data: {
@@ -54,7 +59,7 @@
           },
           "menu.item.create": async ({ input }) => {
             if (!authToken) throw new Error("Missing app auth token.");
-            await wait(200);
+            await wait(3500);
 
             return {
               data: {
@@ -65,6 +70,15 @@
             };
           },
         },
+        onToolStart: ({ state }) => {
+          runningStates = { ...runningStates, [state]: "running" };
+        },
+        onToolDone: ({ state }) => {
+          runningStates = { ...runningStates, [state]: "done" };
+        },
+        onToolError: ({ state }) => {
+          runningStates = { ...runningStates, [state]: "error" };
+        },
       });
 
       if (result.status !== "done") {
@@ -74,7 +88,7 @@
       const menu = result.outputs.createMenu?.data as { name: string; menuId: string } | undefined;
       createdMenu = menu ? `${menu.name} (${menu.menuId})` : "Menu created";
       createdItems = Object.entries(result.outputs)
-        .filter(([stateName]) => stateName.startsWith("createItem"))
+        .filter(([stateName]) => stateName.includes("createItem"))
         .map(([, output]) => (output.data as { name: string }).name);
 
       message = `Assistant completed the requested app actions using ${authToken}.`;
@@ -86,20 +100,6 @@
     }
   }
 
-  function workflowSteps(workflow: WorkflowMachineConfig | null): string[] {
-    if (!workflow) return [];
-
-    return collectWorkflowSteps(workflow.states);
-  }
-
-  function collectWorkflowSteps(states: Record<string, WorkflowStateConfig>, prefix = ""): string[] {
-    return Object.entries(states).flatMap(([stateName, config]) => {
-      const path = prefix ? `${prefix}.${stateName}` : stateName;
-      const current = config.invoke ? [`${path} → ${config.invoke.input.tool}`] : [];
-      const children = config.states ? collectWorkflowSteps(config.states, path) : [];
-      return [...current, ...children];
-    });
-  }
 </script>
 
 <main>
@@ -121,19 +121,10 @@
   </section>
 
   {#if lastWorkflow}
-    <details class="panel debug">
+    <details class="panel debug" open>
       <summary>Developer workflow preview</summary>
-      <div class="machine">
-        {#each workflowSteps(lastWorkflow) as step, index}
-          <div class="state-node">{step}</div>
-          {#if index < workflowSteps(lastWorkflow).length - 1}
-            <div class="arrow">→</div>
-          {/if}
-        {/each}
-      </div>
-      {#if lastFinalState}
-        <p class="final-state">Final state: <strong>{lastFinalState}</strong></p>
-      {/if}
+
+      <WorkflowPreview workflow={lastWorkflow} statuses={runningStates} finalState={lastFinalState} />
     </details>
   {/if}
 
@@ -251,30 +242,174 @@
     font-weight: 800;
   }
 
-  .machine {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    margin-top: 16px;
+  .statechart {
+    overflow-x: auto;
+    margin-top: 18px;
+    padding: 24px;
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    background:
+      radial-gradient(circle at 24px 24px, #dbeafe 1px, transparent 1px),
+      #f8fbff;
+    background-size: 24px 24px;
   }
 
-  .state-node {
-    padding: 10px 12px;
-    border: 1px solid #bfdbfe;
-    border-radius: 12px;
+  .chart-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100%;
+  }
+
+  .terminal,
+  .fork,
+  .state-card {
+    flex: 0 0 auto;
+  }
+
+  .terminal {
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: #111827;
+    color: white;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .terminal.completed {
+    background: #16a34a;
+  }
+
+  .terminal.small {
+    padding: 8px 12px;
+    background: #e0f2fe;
+    color: #075985;
+    font-size: 0.75rem;
+  }
+
+  .state-card {
+    display: grid;
+    gap: 6px;
+    min-width: 220px;
+    padding: 16px;
+    border: 2px solid #93c5fd;
+    border-radius: 16px;
+    background: white;
+    box-shadow: 0 10px 24px rgb(37 99 235 / 12%);
+  }
+
+  .state-card.primary {
+    border-color: #2563eb;
+  }
+
+  .state-card.running {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  .state-card.done {
+    border-color: #22c55e;
+    background: #f0fdf4;
+  }
+
+  .state-card.error {
+    border-color: #ef4444;
+    background: #fef2f2;
+  }
+
+  .state-kind {
+    color: #2563eb;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .state-card strong {
+    color: #111827;
+  }
+
+  .state-card code {
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 8px;
     background: #eff6ff;
     color: #1e3a8a;
-    font: 0.85rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font: 0.82rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   }
 
-  .arrow {
-    color: #2563eb;
+  .connector {
+    position: relative;
+    background: #2563eb;
+  }
+
+  .connector.vertical {
+    width: 2px;
+    height: 38px;
+  }
+
+  .connector.vertical::after {
+    content: "";
+    position: absolute;
+    left: -5px;
+    bottom: -1px;
+    border-top: 8px solid #2563eb;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+  }
+
+  .small-line {
+    height: 24px;
+  }
+
+  .fork {
+    display: grid;
+    place-items: center;
+    width: 84px;
+    height: 84px;
+    transform: rotate(45deg);
+    border: 2px solid #f59e0b;
+    border-radius: 14px;
+    background: #fffbeb;
+    color: #92400e;
     font-weight: 900;
   }
 
-  .final-state {
-    margin: 14px 0 0;
+  .fork span {
+    transform: rotate(-45deg);
+  }
+
+  .fork.join {
+    border-color: #22c55e;
+    background: #f0fdf4;
+    color: #166534;
+  }
+
+  .parallel-region {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 2px dashed #93c5fd;
+    border-radius: 18px;
+    background: rgb(239 246 255 / 70%);
+  }
+
+  .lane {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(245 158 11 / 45%);
+    }
+    50% {
+      box-shadow: 0 0 0 10px rgb(245 158 11 / 0%);
+    }
   }
 
   .result {

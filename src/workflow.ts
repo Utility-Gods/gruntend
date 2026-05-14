@@ -65,6 +65,14 @@ export interface WorkflowRunOptions<TTool extends Tool = Tool> {
   readonly registry: ToolRegistry<TTool>;
   readonly handlers: ToolHandlerMapFor<TTool>;
   readonly signal?: AbortSignal;
+  readonly onToolStart?: (event: WorkflowToolEvent) => void;
+  readonly onToolDone?: (event: WorkflowToolEvent) => void;
+  readonly onToolError?: (event: WorkflowToolEvent & { readonly error: WorkflowError }) => void;
+}
+
+export interface WorkflowToolEvent {
+  readonly state: string;
+  readonly tool: string;
 }
 
 export type WorkflowErrorType = "unknown_tool" | "missing_handler" | "invalid_input" | "invalid_output" | "handler_error";
@@ -98,6 +106,7 @@ export async function runWorkflow<TTool extends Tool>(
     actors: {
       tool: fromPromise<unknown, CompiledToolInvokeInput>(async ({ input, signal }) => {
         try {
+          options.onToolStart?.({ state: input.state, tool: input.tool });
           const result = await executeToolInvoke({
             input,
             registry: options.registry,
@@ -107,9 +116,12 @@ export async function runWorkflow<TTool extends Tool>(
           });
 
           outputs[input.state] = result;
+          options.onToolDone?.({ state: input.state, tool: input.tool });
           return result;
         } catch (error) {
-          errors[input.state] = toWorkflowError(error, input.state, input.tool);
+          const workflowError = toWorkflowError(error, input.state, input.tool);
+          errors[input.state] = workflowError;
+          options.onToolError?.({ state: input.state, tool: input.tool, error: workflowError });
           throw error;
         }
       }),
@@ -259,22 +271,28 @@ function compileWorkflow(workflow: WorkflowMachineConfig): WorkflowMachineConfig
   };
 }
 
-function compileStates(states: Record<string, WorkflowStateConfig>): Record<string, WorkflowStateConfig> {
+function compileStates(
+  states: Record<string, WorkflowStateConfig>,
+  parentPath = "",
+): Record<string, WorkflowStateConfig> {
   return Object.fromEntries(
-    Object.entries(states).map(([stateName, state]) => [stateName, compileState(stateName, state)]),
+    Object.entries(states).map(([stateName, state]) => {
+      const path = parentPath ? `${parentPath}.${stateName}` : stateName;
+      return [stateName, compileState(path, state)];
+    }),
   );
 }
 
-function compileState(stateName: string, state: WorkflowStateConfig): WorkflowStateConfig {
+function compileState(statePath: string, state: WorkflowStateConfig): WorkflowStateConfig {
   return {
     ...state,
-    states: state.states ? compileStates(state.states) : undefined,
+    states: state.states ? compileStates(state.states, statePath) : undefined,
     invoke: state.invoke
       ? {
         ...state.invoke,
         input: {
           ...state.invoke.input,
-          state: stateName,
+          state: statePath,
         } as CompiledToolInvokeInput,
       }
       : undefined,

@@ -15,6 +15,9 @@ export interface GenOpenClient<TTools extends readonly Tool[] = readonly Tool[]>
 export interface GenOpenClientRunOptions<TTools extends readonly Tool[] = readonly Tool[]> {
   readonly handlers: ToolHandlerMap<TTools>;
   readonly signal?: AbortSignal;
+  readonly onToolStart?: (event: { readonly state: string; readonly tool: string }) => void;
+  readonly onToolDone?: (event: { readonly state: string; readonly tool: string }) => void;
+  readonly onToolError?: (event: { readonly state: string; readonly tool: string; readonly error: unknown }) => void;
 }
 
 export function createGenOpenClient<const TTools extends readonly Tool[]>(
@@ -30,6 +33,9 @@ export function createGenOpenClient<const TTools extends readonly Tool[]>(
         registry,
         handlers: runOptions.handlers,
         signal: runOptions.signal,
+        onToolStart: runOptions.onToolStart,
+        onToolDone: runOptions.onToolDone,
+        onToolError: runOptions.onToolError,
       });
     },
   };
