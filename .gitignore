@@ -1,36 +1,33 @@
-   .deno/
-   deno.lock
+.deno/
 
-   # Environment
-   .env
-   .env.*
-   !.env.example
+# Environment
+.env
+.env.*
+!.env.example
 
-   # Logs
-   *.log
-   npm-debug.log*
-   pnpm-debug.log*
-   yarn-debug.log*
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
 
-   # Coverage
-   coverage/
-   .nyc_output/
+# Coverage
+coverage/
+.nyc_output/
 
-   # Build output
-   dist/
-   build/
-   out/
+# Build output
+dist/
+build/
+out/
 
-   # Editor/OS
-   .DS_Store
-   Thumbs.db
-   .vscode/
-   .idea/
-   *.swp
-   *.swo
+# Editor/OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
 
-   # Node compatibility, if ever used
-   node_modules/
-
-.pi
-
+# Node compatibility / Deno npm cache
+node_modules/
+**/node_modules/
