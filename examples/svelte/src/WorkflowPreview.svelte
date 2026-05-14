@@ -79,16 +79,21 @@
         class:error={statuses[step.state] === "error"}
         class="state-card primary"
       >
-        <span class="state-kind">{statuses[step.state] || "pending"}</span>
+        <span class="state-kind">
+          {#if statuses[step.state] === "running"}<span class="spinner"></span>{/if}
+          {statuses[step.state] || "pending"}
+        </span>
         <strong>{step.state}</strong>
-        <code>{step.tool}</code>
-        <details>
-          <summary>input / output</summary>
-          <small>Input</small>
-          <pre>{previewJson(step.input)}</pre>
-          <small>Output ref</small>
-          <pre>{outputPath(step.state)}</pre>
-        </details>
+        <div class="io-grid">
+          <div>
+            <small>Input</small>
+            <pre>{previewJson(step.input)}</pre>
+          </div>
+          <div>
+            <small>Output</small>
+            <pre>{outputPath(step.state)}</pre>
+          </div>
+        </div>
       </div>
       <div class="connector vertical"></div>
     {/each}
@@ -106,16 +111,21 @@
               class:error={statuses[step.state] === "error"}
               class="state-card"
             >
-              <span class="state-kind">{statuses[step.state] || "pending"}</span>
+              <span class="state-kind">
+                {#if statuses[step.state] === "running"}<span class="spinner"></span>{/if}
+                {statuses[step.state] || "pending"}
+              </span>
               <strong>{step.state}</strong>
-              <code>{step.tool}</code>
-              <details>
-                <summary>input / output</summary>
-                <small>Input</small>
-                <pre>{previewJson(step.input)}</pre>
-                <small>Output ref</small>
-                <pre>{outputPath(step.state)}</pre>
-              </details>
+              <div class="io-grid">
+                <div>
+                  <small>Input</small>
+                  <pre>{previewJson(step.input)}</pre>
+                </div>
+                <div>
+                  <small>Output</small>
+                  <pre>{outputPath(step.state)}</pre>
+                </div>
+              </div>
             </div>
             <div class="connector vertical small-line"></div>
             <div class="terminal small">done</div>
@@ -182,7 +192,7 @@
   .state-card {
     display: grid;
     gap: 8px;
-    width: 280px;
+    width: 340px;
     padding: 16px;
     border: 2px solid #93c5fd;
     border-radius: 16px;
@@ -211,11 +221,23 @@
   }
 
   .state-kind {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     color: #2563eb;
     font-size: 0.72rem;
     font-weight: 900;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #fed7aa;
+    border-top-color: #f59e0b;
+    border-radius: 999px;
+    animation: spin 0.75s linear infinite;
   }
 
   .state-card strong {
@@ -231,11 +253,10 @@
     font: 0.82rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   }
 
-  details summary {
-    cursor: pointer;
-    color: #2563eb;
-    font-size: 0.82rem;
-    font-weight: 800;
+  .io-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
   }
 
   small {
@@ -309,7 +330,7 @@
     display: flex;
     gap: 18px;
     align-items: flex-start;
-    max-width: 100%;
+    max-width: calc(100vw - 96px);
     overflow-x: auto;
     padding: 18px;
     border: 2px dashed #93c5fd;
@@ -321,6 +342,12 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   @keyframes pulse {

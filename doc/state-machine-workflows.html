@@ -129,9 +129,9 @@
         <h1>XState Workflow Runtime Direction</h1>
         <p>
           This document captures the current direction for consuming LLM-generated workflows in GenOpen. The
-          application SDK for defining tools remains unchanged. The change is in the workflow response format and
-          runtime: the LLM should return an XState-compatible JSON machine, and GenOpen should bind that machine to
-          the registered tool registry.
+          application SDK separates tool contracts from runtime execution. The LLM should return an
+          XState-compatible JSON machine, and GenOpen should bind that machine to registered tool contracts plus
+          runtime handlers supplied by the application.
         </p>
       </header>
 
@@ -140,13 +140,14 @@
         <p>
           GenOpen should use <strong>XState as the workflow execution engine</strong>, not grow a custom workflow
           interpreter. The LLM response should be declarative machine JSON. GenOpen will validate the allowed
-          subset, create an XState machine from it, provide a small set of actors, and execute app-owned tools from
-          the registry.
+          subset, create an XState machine from it, provide a small set of actors, validate tool input/output with
+          Standard Schema, and execute app-owned runtime handlers.
         </p>
         <p>
-          We are not changing the tool-definition SDK. <code>defineTool()</code> and
-          <code>createToolRegistry()</code> remain the application-facing foundation. XState only affects the
-          consumer side: how GenOpen runs the JSON workflow returned by the LLM.
+          <code>defineTool()</code> is contract-only: name, description, input schema, output schema, and execution
+          metadata. Runtime work is supplied later through closure handlers when the app triggers
+          <code>runWorkflow()</code>. XState only affects the consumer side: how GenOpen runs the JSON workflow
+          returned by the LLM.
         </p>
       </section>
 
@@ -157,13 +158,14 @@
 ↓
 ToolRegistry
 ↓
-runWorkflow prototype</code></pre>
+runtime handlers
+↓
+runWorkflow</code></pre>
 
       <p>
-        The current <code>runWorkflow</code> is intentionally small and temporary. It proves the contract with TDD:
-        a machine-like JSON object can invoke tools from a registry, follow <code>onDone</code>, collect outputs,
-        and resolve <code>$ref</code> values. It should not become a full custom workflow engine. The next direction
-        is to replace that internal execution loop with XState integration.
+        The current <code>runWorkflow</code> consumes an XState-style JSON object, invokes handlers for registered
+        tools, follows <code>onDone</code>/<code>onError</code>, collects outputs, resolves <code>$ref</code> values,
+        validates Standard Schema input/output contracts, and emits tool lifecycle events for UI previews.
       </p>
 
       <h2>What Does Not Change</h2>
@@ -183,14 +185,22 @@ runWorkflow prototype</code></pre>
     menuId: v.string(),
     name: v.string()
   }),
-  execution: "sequential",
-  async execute({ input }) {
-    return {
-      data: {
-        menuId: `menu:${input.name}`,
-        name: input.name
-      }
-    };
+  execution: "sequential"
+});</code></pre>
+
+      <p>
+        Runtime execution is supplied later, where request state, cookies, session data, component state, or
+        database handles exist:
+      </p>
+
+      <pre><code>await genopen.runWorkflow(workflowFromLLM, {
+  handlers: {
+    "menu.create": async ({ input }) => ({
+      data: await api.createMenu(input, {
+        token: authToken,
+        tenantId
+      })
+    })
   }
 });</code></pre>
 
@@ -256,12 +266,15 @@ runWorkflow prototype</code></pre>
       <p>The system has three separate contracts:</p>
 
       <pre><code>1. Tool Definition Contract
-   App defines tools with input/output schemas and execute handlers.
+   App defines tools with input/output schemas.
 
-2. Tool Manifest Contract
+2. Runtime Handler Contract
+   App supplies closure handlers at workflow execution time.
+
+3. Tool Manifest Contract
    GenOpen sends model-facing tool descriptions to the LLM.
 
-3. Workflow Machine Contract
+4. Workflow Machine Contract
    LLM returns XState-compatible JSON that invokes registered tools.</code></pre>
 
       <p>
@@ -288,7 +301,7 @@ runWorkflow prototype</code></pre>
           </tr>
           <tr>
             <td>Invoke lifecycle</td>
-            <td>Binding an XState actor to <code>tool.execute()</code></td>
+            <td>Binding an XState actor to runtime handlers</td>
           </tr>
           <tr>
             <td><code>onDone</code> and <code>onError</code> routing</td>
@@ -415,7 +428,11 @@ GenOpen resolves params, including $ref values
 ↓
 registry.get(tool)
 ↓
-tool.execute({ input: params, signal })
+validate params with tool.input Standard Schema
+↓
+handler({ input: parsedInput, signal })
+↓
+validate result.data with tool.output Standard Schema
 ↓
 actor returns ToolResult
 ↓
@@ -431,7 +448,8 @@ GenOpen returns final status, final state, outputs</code></pre>
       <h2>Output and Reference Resolution</h2>
       <p>
         GenOpen must collect outputs by state id. Later states can reference prior outputs with <code>$ref</code>.
-        This is not provided by XState automatically because it is a GenOpen workflow convention.
+        This is not provided by XState automatically because it is a GenOpen workflow convention. Nested states use
+        full state paths, for example <code>createItems.createItem1.run.data.itemId</code>.
       </p>
 
       <pre><code>{ "$ref": "createMenu.data.menuId" }</code></pre>
@@ -614,7 +632,7 @@ GenOpen returns final status, final state, outputs</code></pre>
       <ul>
         <li>Should retry be explicit machine states or GenOpen retry metadata compiled into XState?</li>
         <li>Should output collection happen through actor wrappers or XState actions?</li>
-        <li>How do we name outputs for nested parallel states?</li>
+        <li>How rich should developer workflow preview events become: input resolved, output produced, duration?</li>
         <li>How much XState config should the LLM be allowed to emit?</li>
         <li>When do we introduce snapshot persistence for resume support?</li>
       </ul>
@@ -623,8 +641,8 @@ GenOpen returns final status, final state, outputs</code></pre>
       <p>
         The tool SDK remains thin and object-based. The workflow runtime should move toward XState. GenOpen’s job
         is not to invent a full workflow engine; it is to validate a safe LLM-generated machine, provide a
-        <code>tool</code> actor, resolve references, execute registered tools, collect outputs, and return a stable
-        result.
+        <code>tool</code> actor, resolve references, validate tool contracts, execute runtime handlers, collect
+        outputs, emit lifecycle events, and return a stable result.
       </p>
 
       <pre><code>App defines tools

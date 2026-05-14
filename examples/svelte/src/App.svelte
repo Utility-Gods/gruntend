@@ -121,7 +121,7 @@
   </section>
 
   {#if lastWorkflow}
-    <details class="panel debug" open>
+    <details class="panel debug workflow-panel" open>
       <summary>Developer workflow preview</summary>
 
       <WorkflowPreview workflow={lastWorkflow} statuses={runningStates} finalState={lastFinalState} />
@@ -161,6 +161,12 @@
     max-width: 760px;
     margin: 0 auto;
     padding: 64px 24px;
+  }
+
+  .workflow-panel {
+    width: min(calc(100vw - 48px), 1500px);
+    margin-left: 50%;
+    transform: translateX(-50%);
   }
 
   .hero {
