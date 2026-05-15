@@ -173,10 +173,11 @@ Deno.test("runWorkflow follows onError when a tool fails", async () => {
     state: "createItem",
     tool: "menu.item.create",
     message: "Cannot create item Broken Burger",
+    retryable: true,
   });
 });
 
-Deno.test("runWorkflow retries a failing tool invoke before following onError", async () => {
+Deno.test("runWorkflow retries a thrown handler exception before following onError", async () => {
   let attempts = 0;
 
   const flakyTool = defineTool({
@@ -232,5 +233,184 @@ Deno.test("runWorkflow retries a failing tool invoke before following onError", 
     outputs: { createItem: { ok: true, data: { itemId: "item:Burger" } } },
     errors: {},
     finalState: "completed",
+  });
+});
+
+Deno.test("runWorkflow retries a controlled retryable tool error", async () => {
+  let attempts = 0;
+  const seenAttempts: number[] = [];
+  const seenMaxAttempts: number[] = [];
+
+  const createItem = defineTool({
+    name: "menu.item.create",
+    description: "Create a menu item.",
+    input: v.object({ name: v.string() }),
+    output: v.object({ itemId: v.string() }),
+  });
+
+  const registry = createToolRegistry([createItem]);
+  const workflow: WorkflowMachineConfig = {
+    id: "controlled-retry",
+    initial: "createItem",
+    states: {
+      createItem: {
+        invoke: {
+          src: "tool",
+          input: {
+            tool: "menu.item.create",
+            params: { name: "Burger" },
+            retry: { maxAttempts: 3 },
+          },
+          onDone: "completed",
+          onError: "failed",
+        },
+      },
+      completed: { type: "final" },
+      failed: { type: "final" },
+    },
+  };
+
+  const handlers = {
+    "menu.item.create": ({ input, ok, err, attempt, maxAttempts }) => {
+      attempts += 1;
+      seenAttempts.push(attempt);
+      seenMaxAttempts.push(maxAttempts);
+
+      if (attempt < 3) {
+        return err({
+          code: "TEMPORARY_UPSTREAM_FAILURE",
+          message: "Kitchen API is temporarily unavailable.",
+          retryable: true,
+        });
+      }
+
+      return ok({ itemId: `item:${input.name}` });
+    },
+  } satisfies ToolHandlerMapFor<typeof createItem>;
+
+  const result = await runWorkflow({ workflow, registry, handlers });
+
+  assertEquals(attempts, 3);
+  assertEquals(seenAttempts, [1, 2, 3]);
+  assertEquals(seenMaxAttempts, [3, 3, 3]);
+  assertEquals(result, {
+    status: "done",
+    outputs: { createItem: { ok: true, data: { itemId: "item:Burger" } } },
+    errors: {},
+    finalState: "completed",
+  });
+});
+
+Deno.test("runWorkflow does not retry a controlled non-retryable tool error", async () => {
+  let attempts = 0;
+
+  const createItem = defineTool({
+    name: "menu.item.create",
+    description: "Create a menu item.",
+    input: v.object({ name: v.string() }),
+    output: v.object({ itemId: v.string() }),
+  });
+
+  const registry = createToolRegistry([createItem]);
+  const workflow: WorkflowMachineConfig = {
+    id: "controlled-no-retry",
+    initial: "createItem",
+    states: {
+      createItem: {
+        invoke: {
+          src: "tool",
+          input: {
+            tool: "menu.item.create",
+            params: { name: "Burger" },
+            retry: { maxAttempts: 3 },
+          },
+          onDone: "completed",
+          onError: "failed",
+        },
+      },
+      completed: { type: "final" },
+      failed: { type: "final" },
+    },
+  };
+
+  const handlers = {
+    "menu.item.create": ({ err }) => {
+      attempts += 1;
+
+      return err({
+        code: "VALIDATION_FAILED",
+        message: "The item cannot be created.",
+        retryable: false,
+        details: { reason: "duplicate" },
+      });
+    },
+  } satisfies ToolHandlerMapFor<typeof createItem>;
+
+  const result = await runWorkflow({ workflow, registry, handlers });
+
+  assertEquals(attempts, 1);
+  assertEquals(result.status, "failed");
+  assertEquals(result.outputs, {});
+  assertEquals(result.finalState, "failed");
+  assertEquals(result.errors.createItem, {
+    type: "handler_error",
+    state: "createItem",
+    tool: "menu.item.create",
+    message: "The item cannot be created.",
+    code: "VALIDATION_FAILED",
+    retryable: false,
+    details: { reason: "duplicate" },
+  });
+});
+
+Deno.test("runWorkflow does not retry invalid handler output", async () => {
+  let attempts = 0;
+
+  const createItem = defineTool({
+    name: "menu.item.create",
+    description: "Create a menu item.",
+    input: v.object({ name: v.string() }),
+    output: v.object({ itemId: v.string() }),
+  });
+
+  const registry = createToolRegistry([createItem]);
+  const workflow: WorkflowMachineConfig = {
+    id: "invalid-output-no-retry",
+    initial: "createItem",
+    states: {
+      createItem: {
+        invoke: {
+          src: "tool",
+          input: {
+            tool: "menu.item.create",
+            params: { name: "Burger" },
+            retry: { maxAttempts: 3 },
+          },
+          onDone: "completed",
+          onError: "failed",
+        },
+      },
+      completed: { type: "final" },
+      failed: { type: "final" },
+    },
+  };
+
+  const handlers = {
+    "menu.item.create": ({ ok }) => {
+      attempts += 1;
+      return ok({ id: "wrong" } as unknown as { itemId: string });
+    },
+  } satisfies ToolHandlerMapFor<typeof createItem>;
+
+  const result = await runWorkflow({ workflow, registry, handlers });
+
+  assertEquals(attempts, 1);
+  assertEquals(result.status, "failed");
+  assertEquals(result.errors.createItem, {
+    type: "invalid_output",
+    state: "createItem",
+    tool: "menu.item.create",
+    message: 'Tool "menu.item.create" returned invalid output.',
+    retryable: false,
   });
 });

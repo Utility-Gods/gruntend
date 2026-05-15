@@ -325,6 +325,43 @@ type WorkflowRunResult = {
   finalState: string;
 };</code></pre>
 
+      <h2>Retry semantics</h2>
+      <p>
+        Retry is controlled by workflow metadata and the handler result. A successful <code>ok(data)</code> never
+        retries. A controlled <code>err({ retryable: true, ... })</code> retries until <code>maxAttempts</code> is
+        reached. A controlled <code>err({ retryable: false, ... })</code> stops immediately and follows
+        <code>onError</code>. Contract failures such as invalid input/output are not retryable. Unexpected thrown
+        exceptions are caught by GenOpen and treated as retryable handler errors by default.
+      </p>
+
+      <pre><code>input: {
+  tool: "menu.item.create",
+  params: { name: "Burger" },
+  retry: { maxAttempts: 3, delayMs: 250 },
+}</code></pre>
+
+      <pre><code>"menu.item.create": async ({ input, ok, err, attempt, maxAttempts }) => {
+  const response = await api.createMenuItem(input);
+
+  if (response.temporaryFailure) {
+    return err({
+      code: "TEMPORARY_UPSTREAM_FAILURE",
+      message: `Attempt ${attempt} of ${maxAttempts} failed.`,
+      retryable: true,
+    });
+  }
+
+  if (response.validationFailure) {
+    return err({
+      code: "VALIDATION_FAILED",
+      message: "The item cannot be created.",
+      retryable: false,
+    });
+  }
+
+  return ok(response.item);
+}</code></pre>
+
       <h2>Lifecycle events</h2>
       <p>
         GenOpen currently emits <strong>six</strong> runtime events through one callback: <code>onEvent</code>.

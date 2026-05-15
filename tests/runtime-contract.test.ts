@@ -129,6 +129,7 @@ Deno.test("runtime rejects invalid LLM tool input before calling the handler", a
     state: "createMenu",
     tool: "menu.create",
     message: 'Tool "menu.create" received invalid input.',
+    retryable: false,
   });
 });
 
@@ -190,5 +191,6 @@ Deno.test("runtime rejects handler output that violates the tool output contract
     state: "createMenu",
     tool: "menu.create",
     message: 'Tool "menu.create" returned invalid output.',
+    retryable: false,
   });
 });

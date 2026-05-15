@@ -393,6 +393,7 @@ function toWorkflowError(
       tool,
       message: error.message,
       ...(error.code ? { code: error.code } : {}),
+      ...(typeof error.retryable === "boolean" ? { retryable: error.retryable } : {}),
       ...(error.details ? { details: error.details } : {}),
     };
   }
