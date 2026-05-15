@@ -36,31 +36,44 @@ export interface StandardSchemaV1<Input = unknown, Output = Input> {
   };
 }
 
-export type InferSchemaInput<TSchema> = TSchema extends StandardSchemaV1<
-  infer Input,
-  unknown
-> ? Input
-  : unknown;
+export type InferSchemaInput<TSchema> =
+  TSchema extends StandardSchemaV1<infer Input, unknown> ? Input : unknown;
 
-export type InferSchemaOutput<TSchema> = TSchema extends StandardSchemaV1<
-  unknown,
-  infer Output
-> ? Output
-  : unknown;
+export type InferSchemaOutput<TSchema> =
+  TSchema extends StandardSchemaV1<unknown, infer Output> ? Output : unknown;
 
 export type ToolExecutionMode = "sequential" | "parallel";
 
-export interface ToolHandlerContext<Input> {
-  readonly input: Input;
-  readonly signal?: AbortSignal;
+export interface ToolExecutionError {
+  readonly code: string;
+  readonly message: string;
+  readonly retryable?: boolean;
+  readonly details?: Record<string, unknown>;
 }
 
-export interface ToolResult<Output> {
+export interface ToolOk<Output> {
+  readonly ok: true;
   readonly data: Output;
 }
 
+export interface ToolErr {
+  readonly ok: false;
+  readonly error: ToolExecutionError;
+}
+
+export type ToolResult<Output> = ToolOk<Output> | ToolErr;
+
+export interface ToolHandlerContext<Input, Output> {
+  readonly input: Input;
+  readonly signal?: AbortSignal;
+  readonly ok: (data: Output) => ToolOk<Output>;
+  readonly err: (error: ToolExecutionError) => ToolErr;
+  readonly maxAttempts: number;
+  readonly attempt: number;
+}
+
 export type ToolHandler<Input, Output> = (
-  context: ToolHandlerContext<Input>,
+  context: ToolHandlerContext<Input, Output>,
 ) => MaybePromise<ToolResult<Output>>;
 
 export interface Tool<
@@ -80,14 +93,22 @@ export type ToolHandlerFor<TTool extends Tool> = ToolHandler<
   InferSchemaOutput<TTool["output"]>
 >;
 
-export type ToolHandlerMap<TTools extends readonly Tool[]> = ToolHandlerMapFor<TTools[number]>;
+export type ToolHandlerMap<TTools extends readonly Tool[]> = ToolHandlerMapFor<
+  TTools[number]
+>;
 
-type UnionToIntersection<T> = (T extends unknown ? (value: T) => void : never) extends
-  (value: infer Intersection) => void ? Intersection
+type UnionToIntersection<T> = (
+  T extends unknown
+    ? (value: T) => void
+    : never
+) extends (value: infer Intersection) => void
+  ? Intersection
   : never;
 
 export type ToolHandlerMapFor<TTool extends Tool> = UnionToIntersection<
-  TTool extends Tool ? { readonly [Name in TTool["name"]]: ToolHandlerFor<TTool> } : never
+  TTool extends Tool
+    ? { readonly [Name in TTool["name"]]: ToolHandlerFor<TTool> }
+    : never
 >;
 
 export interface StandardSchemaValidationError extends Error {
@@ -98,7 +119,9 @@ export function defineTool<
   const Name extends string,
   const InputSchema extends StandardSchemaV1,
   const OutputSchema extends StandardSchemaV1,
->(tool: Tool<Name, InputSchema, OutputSchema>): Tool<Name, InputSchema, OutputSchema> {
+>(
+  tool: Tool<Name, InputSchema, OutputSchema>,
+): Tool<Name, InputSchema, OutputSchema> {
   return tool;
 }
 
@@ -109,7 +132,9 @@ export async function parseStandardSchema<TSchema extends StandardSchemaV1>(
   const result = await schema["~standard"].validate(value);
 
   if (result.issues) {
-    const error = new Error("Standard Schema validation failed.") as StandardSchemaValidationError;
+    const error = new Error(
+      "Standard Schema validation failed.",
+    ) as StandardSchemaValidationError;
     Object.defineProperty(error, "issues", {
       value: result.issues,
       enumerable: true,
@@ -118,4 +143,12 @@ export async function parseStandardSchema<TSchema extends StandardSchemaV1>(
   }
 
   return result.value as InferSchemaOutput<TSchema>;
+}
+
+export function ok<Output>(data: Output): ToolOk<Output> {
+  return { ok: true, data };
+}
+
+export function err(error: ToolExecutionError): ToolErr {
+  return { ok: false, error: { retryable: false, ...error } };
 }

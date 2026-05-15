@@ -2,7 +2,10 @@ import { createActor, fromPromise, setup, toPromise } from "xstate";
 import type { ToolRegistry } from "./registry.ts";
 import {
   parseStandardSchema,
+  ok,
+  err,
   type Tool,
+  type ToolExecutionError,
   type ToolHandler,
   type ToolHandlerMapFor,
   type ToolResult,
@@ -65,23 +68,74 @@ export interface WorkflowRunOptions<TTool extends Tool = Tool> {
   readonly registry: ToolRegistry<TTool>;
   readonly handlers: ToolHandlerMapFor<TTool>;
   readonly signal?: AbortSignal;
-  readonly onToolStart?: (event: WorkflowToolEvent) => void;
-  readonly onToolDone?: (event: WorkflowToolEvent) => void;
-  readonly onToolError?: (event: WorkflowToolEvent & { readonly error: WorkflowError }) => void;
+  readonly onEvent?: (event: WorkflowRuntimeEvent) => void;
 }
 
-export interface WorkflowToolEvent {
+export type WorkflowRuntimeEvent =
+  | WorkflowStartedEvent
+  | WorkflowCompletedEvent
+  | WorkflowFailedEvent
+  | ToolStartedEvent
+  | ToolCompletedEvent
+  | ToolFailedEvent;
+
+export interface WorkflowStartedEvent {
+  readonly type: "workflow.started";
+  readonly workflowId: string;
+}
+
+export interface WorkflowCompletedEvent {
+  readonly type: "workflow.completed";
+  readonly workflowId: string;
+  readonly finalState: string;
+}
+
+export interface WorkflowFailedEvent {
+  readonly type: "workflow.failed";
+  readonly workflowId: string;
+  readonly finalState: string;
+  readonly errors: Record<string, WorkflowError>;
+}
+
+export interface ToolStartedEvent {
+  readonly type: "tool.started";
+  readonly workflowId: string;
   readonly state: string;
   readonly tool: string;
+  readonly input: unknown;
 }
 
-export type WorkflowErrorType = "unknown_tool" | "missing_handler" | "invalid_input" | "invalid_output" | "handler_error";
+export interface ToolCompletedEvent {
+  readonly type: "tool.completed";
+  readonly workflowId: string;
+  readonly state: string;
+  readonly tool: string;
+  readonly output: ToolResult<unknown>;
+}
+
+export interface ToolFailedEvent {
+  readonly type: "tool.failed";
+  readonly workflowId: string;
+  readonly state: string;
+  readonly tool: string;
+  readonly error: WorkflowError;
+}
+
+export type WorkflowErrorType =
+  | "unknown_tool"
+  | "missing_handler"
+  | "invalid_input"
+  | "invalid_output"
+  | "handler_error";
 
 export interface WorkflowError {
   readonly type: WorkflowErrorType;
   readonly state: string;
   readonly tool: string;
   readonly message: string;
+  readonly code?: string;
+  readonly retryable?: boolean;
+  readonly details?: Record<string, unknown>;
 }
 
 export interface WorkflowRunResult {
@@ -101,30 +155,49 @@ export async function runWorkflow<TTool extends Tool>(
   const outputs: Record<string, ToolResult<unknown>> = {};
   const errors: Record<string, WorkflowError> = {};
   const workflow = compileWorkflow(options.workflow);
+  options.onEvent?.({
+    type: "workflow.started",
+    workflowId: options.workflow.id,
+  });
 
   const machineSetup = setup({
     actors: {
-      tool: fromPromise<unknown, CompiledToolInvokeInput>(async ({ input, signal }) => {
-        try {
-          options.onToolStart?.({ state: input.state, tool: input.tool });
-          const result = await executeToolInvoke({
-            input,
-            registry: options.registry,
-            handlers: options.handlers as Record<string, ToolHandler<unknown, unknown>>,
-            outputs,
-            signal: options.signal ?? signal,
-          });
+      tool: fromPromise<unknown, CompiledToolInvokeInput>(
+        async ({ input, signal }) => {
+          try {
+            const result = await executeToolInvoke({
+              workflowId: options.workflow.id,
+              input,
+              registry: options.registry,
+              handlers: options.handlers as Record<
+                string,
+                ToolHandler<unknown, unknown>
+              >,
+              outputs,
+              signal: options.signal ?? signal,
+              onEvent: options.onEvent,
+            });
 
-          outputs[input.state] = result;
-          options.onToolDone?.({ state: input.state, tool: input.tool });
-          return result;
-        } catch (error) {
-          const workflowError = toWorkflowError(error, input.state, input.tool);
-          errors[input.state] = workflowError;
-          options.onToolError?.({ state: input.state, tool: input.tool, error: workflowError });
-          throw error;
-        }
-      }),
+            outputs[input.state] = result;
+            return result;
+          } catch (error) {
+            const workflowError = toWorkflowError(
+              error,
+              input.state,
+              input.tool,
+            );
+            errors[input.state] = workflowError;
+            options.onEvent?.({
+              type: "tool.failed",
+              workflowId: options.workflow.id,
+              state: input.state,
+              tool: input.tool,
+              error: workflowError,
+            });
+            throw error;
+          }
+        },
+      ),
     },
   });
   const machine = machineSetup.createMachine(
@@ -137,8 +210,25 @@ export async function runWorkflow<TTool extends Tool>(
 
   const finalState = finalStateName(actor.getSnapshot().value);
 
+  const status = finalState === "failed" ? "failed" : "done";
+
+  options.onEvent?.(
+    status === "failed"
+      ? {
+          type: "workflow.failed",
+          workflowId: options.workflow.id,
+          finalState,
+          errors,
+        }
+      : {
+          type: "workflow.completed",
+          workflowId: options.workflow.id,
+          finalState,
+        },
+  );
+
   return {
-    status: finalState === "failed" ? "failed" : "done",
+    status,
     outputs,
     errors,
     finalState,
@@ -146,34 +236,57 @@ export async function runWorkflow<TTool extends Tool>(
 }
 
 async function executeToolInvoke(options: {
+  readonly workflowId: string;
   readonly input: CompiledToolInvokeInput;
   readonly registry: ToolRegistry;
   readonly handlers: Record<string, ToolHandler<unknown, unknown>>;
   readonly outputs: Record<string, ToolResult<unknown>>;
   readonly signal?: AbortSignal;
+  readonly onEvent?: (event: WorkflowRuntimeEvent) => void;
 }): Promise<ToolResult<unknown>> {
   const tool = options.registry.get(options.input.tool);
 
   if (!tool) {
-    throw newToolContractError("unknown_tool", `Workflow references unknown tool "${options.input.tool}".`);
+    throw newToolContractError(
+      "unknown_tool",
+      `Workflow references unknown tool "${options.input.tool}".`,
+    );
   }
 
   const handler = options.handlers[options.input.tool];
 
   if (!handler) {
-    throw newToolContractError("missing_handler", `Tool "${options.input.tool}" does not have a runtime handler.`);
+    throw newToolContractError(
+      "missing_handler",
+      `Tool "${options.input.tool}" does not have a runtime handler.`,
+    );
   }
 
   return await executeWithRetry({
-    execute: async () => {
-      const rawInput = resolveWorkflowValue(options.input.params, options.outputs);
+    execute: async ({ attempt, maxAttempts }) => {
+      const rawInput = resolveWorkflowValue(
+        options.input.params,
+        options.outputs,
+      );
       let parsedInput: unknown;
 
       try {
         parsedInput = await parseStandardSchema(tool.input, rawInput);
       } catch {
-        throw newToolContractError("invalid_input", `Tool "${options.input.tool}" received invalid input.`);
+        throw newToolContractError(
+          "invalid_input",
+          `Tool "${options.input.tool}" received invalid input.`,
+          { retryable: false },
+        );
       }
+
+      options.onEvent?.({
+        type: "tool.started",
+        workflowId: options.workflowId,
+        state: options.input.state,
+        tool: options.input.tool,
+        input: parsedInput,
+      });
 
       let result: ToolResult<unknown>;
 
@@ -181,6 +294,10 @@ async function executeToolInvoke(options: {
         result = await handler({
           input: parsedInput,
           signal: options.signal,
+          ok,
+          err,
+          maxAttempts,
+          attempt,
         });
       } catch (error) {
         if (isToolContractError(error)) {
@@ -189,15 +306,45 @@ async function executeToolInvoke(options: {
 
         throw newToolContractError(
           "handler_error",
-          error instanceof Error ? error.message : `Tool "${options.input.tool}" handler failed.`,
+          error instanceof Error
+            ? error.message
+            : `Tool "${options.input.tool}" handler failed.`,
+          { retryable: true },
+        );
+      }
+
+      if (!result.ok) {
+        throw newToolContractError(
+          "handler_error",
+          result.error.message,
+          {
+            code: result.error.code,
+            retryable: result.error.retryable ?? false,
+            details: result.error.details,
+          },
         );
       }
 
       try {
-        const parsedOutput = await parseStandardSchema(tool.output, result.data);
-        return { data: parsedOutput };
+        const parsedOutput = await parseStandardSchema(
+          tool.output,
+          result.data,
+        );
+        const output = ok(parsedOutput);
+        options.onEvent?.({
+          type: "tool.completed",
+          workflowId: options.workflowId,
+          state: options.input.state,
+          tool: options.input.tool,
+          output,
+        });
+        return output;
       } catch {
-        throw newToolContractError("invalid_output", `Tool "${options.input.tool}" returned invalid output.`);
+        throw newToolContractError(
+          "invalid_output",
+          `Tool "${options.input.tool}" returned invalid output.`,
+          { retryable: false },
+        );
       }
     },
     retry: options.input.retry,
@@ -206,13 +353,26 @@ async function executeToolInvoke(options: {
 
 interface ToolContractError extends Error {
   readonly type: WorkflowErrorType;
+  readonly code?: string;
+  readonly retryable?: boolean;
+  readonly details?: Record<string, unknown>;
 }
 
-function newToolContractError(type: WorkflowErrorType, message: string): ToolContractError {
+function newToolContractError(
+  type: WorkflowErrorType,
+  message: string,
+  options: {
+    readonly code?: string;
+    readonly retryable?: boolean;
+    readonly details?: Record<string, unknown>;
+  } = {},
+): ToolContractError {
   const error = new Error(message) as ToolContractError;
-  Object.defineProperty(error, "type", {
-    value: type,
-    enumerable: true,
+  Object.defineProperties(error, {
+    type: { value: type, enumerable: true },
+    code: { value: options.code, enumerable: true },
+    retryable: { value: options.retryable, enumerable: true },
+    details: { value: options.details, enumerable: true },
   });
   return error;
 }
@@ -221,13 +381,19 @@ function isToolContractError(error: unknown): error is ToolContractError {
   return error instanceof Error && "type" in error;
 }
 
-function toWorkflowError(error: unknown, state: string, tool: string): WorkflowError {
+function toWorkflowError(
+  error: unknown,
+  state: string,
+  tool: string,
+): WorkflowError {
   if (isToolContractError(error)) {
     return {
       type: error.type,
       state,
       tool,
       message: error.message,
+      ...(error.code ? { code: error.code } : {}),
+      ...(error.details ? { details: error.details } : {}),
     };
   }
 
@@ -240,7 +406,7 @@ function toWorkflowError(error: unknown, state: string, tool: string): WorkflowE
 }
 
 async function executeWithRetry(options: {
-  readonly execute: () => Promise<ToolResult<unknown>> | ToolResult<unknown>;
+  readonly execute: (context: { readonly attempt: number; readonly maxAttempts: number }) => Promise<ToolResult<unknown>>;
   readonly retry?: WorkflowRetryPolicy;
 }): Promise<ToolResult<unknown>> {
   const maxAttempts = options.retry?.maxAttempts ?? 1;
@@ -251,9 +417,13 @@ async function executeWithRetry(options: {
     attempt += 1;
 
     try {
-      return await options.execute();
+      return await options.execute({ attempt, maxAttempts });
     } catch (error) {
       lastError = error;
+
+      if (isToolContractError(error) && error.retryable === false) {
+        break;
+      }
 
       if (attempt < maxAttempts && options.retry?.delayMs) {
         await delay(options.retry.delayMs);
@@ -264,7 +434,9 @@ async function executeWithRetry(options: {
   throw lastError;
 }
 
-function compileWorkflow(workflow: WorkflowMachineConfig): WorkflowMachineConfig {
+function compileWorkflow(
+  workflow: WorkflowMachineConfig,
+): WorkflowMachineConfig {
   return {
     ...workflow,
     states: compileStates(workflow.states),
@@ -283,18 +455,21 @@ function compileStates(
   );
 }
 
-function compileState(statePath: string, state: WorkflowStateConfig): WorkflowStateConfig {
+function compileState(
+  statePath: string,
+  state: WorkflowStateConfig,
+): WorkflowStateConfig {
   return {
     ...state,
     states: state.states ? compileStates(state.states, statePath) : undefined,
     invoke: state.invoke
       ? {
-        ...state.invoke,
-        input: {
-          ...state.invoke.input,
-          state: statePath,
-        } as CompiledToolInvokeInput,
-      }
+          ...state.invoke,
+          input: {
+            ...state.invoke.input,
+            state: statePath,
+          } as CompiledToolInvokeInput,
+        }
       : undefined,
   };
 }
@@ -311,7 +486,10 @@ function finalStateName(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function resolveWorkflowValue(value: WorkflowJsonValue, outputs: Record<string, ToolResult<unknown>>): unknown {
+function resolveWorkflowValue(
+  value: WorkflowJsonValue,
+  outputs: Record<string, ToolResult<unknown>>,
+): unknown {
   if (isWorkflowRef(value)) {
     return resolveWorkflowRef(value.$ref, outputs);
   }
@@ -322,7 +500,10 @@ function resolveWorkflowValue(value: WorkflowJsonValue, outputs: Record<string, 
 
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, resolveWorkflowValue(item, outputs)]),
+      Object.entries(value).map(([key, item]) => [
+        key,
+        resolveWorkflowValue(item, outputs),
+      ]),
     );
   }
 
@@ -330,10 +511,18 @@ function resolveWorkflowValue(value: WorkflowJsonValue, outputs: Record<string, 
 }
 
 function isWorkflowRef(value: WorkflowJsonValue): value is WorkflowRef {
-  return !!value && typeof value === "object" && !Array.isArray(value) && "$ref" in value;
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "$ref" in value
+  );
 }
 
-function resolveWorkflowRef(ref: string, outputs: Record<string, ToolResult<unknown>>): unknown {
+function resolveWorkflowRef(
+  ref: string,
+  outputs: Record<string, ToolResult<unknown>>,
+): unknown {
   const path = ref.split(".");
   let current: unknown = outputs;
 

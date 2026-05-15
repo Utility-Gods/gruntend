@@ -62,8 +62,43 @@
     return `${state}.data`;
   }
 
-  function previewJson(value: unknown): string {
-    return JSON.stringify(value, null, 2);
+  function humanizeState(state: string): string {
+    return state
+      .split(".")
+      .at(-2)
+      ?.replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase()) ?? state;
+  }
+
+  function isRefRecord(value: WorkflowJsonValue): value is { $ref: string } {
+    return typeof value === "object" && value !== null && !Array.isArray(value) && "$ref" in value;
+  }
+
+  function refLabel(ref: string): string {
+    return ref.replace(".data.", " → ");
+  }
+
+  function formatValue(value: WorkflowJsonValue): string {
+    if (isRefRecord(value)) return refLabel(value.$ref);
+    if (typeof value === "number") return `$${value}`;
+    if (typeof value === "string") return value;
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (value === null) return "None";
+    return "Provided by workflow";
+  }
+
+  function inputSummary(input: Record<string, WorkflowJsonValue>): Array<{ label: string; value: string; kind?: string }> {
+    return Object.entries(input).map(([key, value]) => ({
+      label: key.replace(/([a-z])([A-Z])/g, "$1 $2"),
+      value: formatValue(value),
+      kind: isRefRecord(value) ? "ref" : undefined,
+    }));
+  }
+
+  function outputSummary(step: DiagramStep): string {
+    if (step.tool === "menu.create") return "Menu id and menu name";
+    if (step.tool === "menu.item.create") return "Created item id";
+    return `Saved as ${outputPath(step.state)}`;
   }
 </script>
 
@@ -83,15 +118,18 @@
           {#if statuses[step.state] === "running"}<span class="spinner"></span>{/if}
           {statuses[step.state] || "pending"}
         </span>
-        <strong>{step.state}</strong>
-        <div class="io-grid">
-          <div>
-            <small>Input</small>
-            <pre>{previewJson(step.input)}</pre>
-          </div>
-          <div>
-            <small>Output</small>
-            <pre>{outputPath(step.state)}</pre>
+        <strong>{humanizeState(step.state)}</strong>
+        <span class="tool-name">{step.tool}</span>
+        <div class="step-details">
+          {#each inputSummary(step.input) as item}
+            <div class:ref={item.kind === "ref"} class="detail-pill">
+              <span>{item.label}</span>
+              <b>{item.value}</b>
+            </div>
+          {/each}
+          <div class="detail-pill output">
+            <span>Creates</span>
+            <b>{outputSummary(step)}</b>
           </div>
         </div>
       </div>
@@ -115,15 +153,18 @@
                 {#if statuses[step.state] === "running"}<span class="spinner"></span>{/if}
                 {statuses[step.state] || "pending"}
               </span>
-              <strong>{step.state}</strong>
-              <div class="io-grid">
-                <div>
-                  <small>Input</small>
-                  <pre>{previewJson(step.input)}</pre>
-                </div>
-                <div>
-                  <small>Output</small>
-                  <pre>{outputPath(step.state)}</pre>
+              <strong>{humanizeState(step.state)}</strong>
+              <span class="tool-name">{step.tool}</span>
+              <div class="step-details">
+                {#each inputSummary(step.input) as item}
+                  <div class:ref={item.kind === "ref"} class="detail-pill">
+                    <span>{item.label}</span>
+                    <b>{item.value}</b>
+                  </div>
+                {/each}
+                <div class="detail-pill output">
+                  <span>Creates</span>
+                  <b>{outputSummary(step)}</b>
                 </div>
               </div>
             </div>
@@ -242,39 +283,59 @@
 
   .state-card strong {
     color: #111827;
+    font-size: 1.05rem;
   }
 
-  .state-card code {
+  .tool-name {
     width: fit-content;
     padding: 4px 8px;
-    border-radius: 8px;
+    border-radius: 999px;
     background: #eff6ff;
     color: #1e3a8a;
-    font: 0.82rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.72rem;
+    font-weight: 800;
   }
 
-  .io-grid {
+  .step-details {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 10px;
+    gap: 8px;
+    margin-top: 4px;
   }
 
-  small {
-    display: block;
-    margin-top: 8px;
+  .detail-pill {
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 9px 10px;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    background: #f8fbff;
+  }
+
+  .detail-pill span {
     color: #64748b;
+    font-size: 0.72rem;
     font-weight: 900;
     text-transform: uppercase;
   }
 
-  pre {
-    overflow-x: auto;
-    margin: 4px 0 0;
-    padding: 8px;
-    border-radius: 8px;
-    background: #f1f5f9;
+  .detail-pill b {
+    overflow: hidden;
     color: #0f172a;
-    font: 0.72rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.9rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .detail-pill.ref {
+    background: #ecfeff;
+    border-color: #bae6fd;
+  }
+
+  .detail-pill.output {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
   }
 
   .connector {

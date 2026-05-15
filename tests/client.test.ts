@@ -49,14 +49,12 @@ Deno.test("GenOpen client runs an LLM workflow response with runtime closure han
 
   const result = await client.runWorkflow(llmResponse, {
     handlers: {
-      "menu.create": ({ input }) => {
+      "menu.create": ({ input, ok }) => {
         receivedAuthToken = authToken;
 
-        return {
-          data: {
-            menuId: `menu:${input.name}`,
-          },
-        };
+        return ok({
+          menuId: `menu:${input.name}`,
+        });
       },
     },
   });
@@ -66,6 +64,7 @@ Deno.test("GenOpen client runs an LLM workflow response with runtime closure han
     status: "done",
     outputs: {
       createMenu: {
+        ok: true,
         data: {
           menuId: "menu:Dinner",
         },

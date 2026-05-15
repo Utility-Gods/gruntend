@@ -33,9 +33,7 @@ Deno.test("runWorkflow consumes XState-style JSON and executes a single tool inv
   };
 
   const handlers = {
-    "calculator.add": ({ input }) => ({
-      data: { value: input.a + input.b },
-    }),
+    "calculator.add": ({ input, ok }) => ok({ value: input.a + input.b }),
   } satisfies ToolHandlerMapFor<typeof add>;
 
   const result = await runWorkflow({
@@ -46,7 +44,7 @@ Deno.test("runWorkflow consumes XState-style JSON and executes a single tool inv
 
   assertEquals(result, {
     status: "done",
-    outputs: { add: { data: { value: 5 } } },
+    outputs: { add: { ok: true, data: { value: 5 } } },
     errors: {},
     finalState: "completed",
   });
@@ -98,15 +96,14 @@ Deno.test("runWorkflow resolves refs between deterministic dependent tool states
   };
 
   const handlers = {
-    "menu.create": ({ input }) => ({
-      data: { menuId: `menu:${input.name}`, name: input.name },
+    "menu.create": ({ input, ok }) => ok({
+      menuId: `menu:${input.name}`,
+      name: input.name,
     }),
-    "menu.item.create": ({ input }) => ({
-      data: {
-        itemId: `item:${input.menuId}:${input.name}`,
-        menuId: input.menuId,
-        name: input.name,
-      },
+    "menu.item.create": ({ input, ok }) => ok({
+      itemId: `item:${input.menuId}:${input.name}`,
+      menuId: input.menuId,
+      name: input.name,
     }),
   } satisfies ToolHandlerMapFor<typeof createMenu | typeof createMenuItem>;
 
@@ -119,8 +116,9 @@ Deno.test("runWorkflow resolves refs between deterministic dependent tool states
   assertEquals(result, {
     status: "done",
     outputs: {
-      createMenu: { data: { menuId: "menu:Dinner", name: "Dinner" } },
+      createMenu: { ok: true, data: { menuId: "menu:Dinner", name: "Dinner" } },
       createBurger: {
+        ok: true,
         data: { itemId: "item:menu:Dinner:Burger", menuId: "menu:Dinner", name: "Burger" },
       },
     },
@@ -211,14 +209,14 @@ Deno.test("runWorkflow retries a failing tool invoke before following onError", 
   };
 
   const handlers = {
-    "menu.item.create": ({ input }) => {
+    "menu.item.create": ({ input, ok }) => {
       attempts += 1;
 
       if (attempts === 1) {
         throw new Error("Transient failure");
       }
 
-      return { data: { itemId: `item:${input.name}` } };
+      return ok({ itemId: `item:${input.name}` });
     },
   } satisfies ToolHandlerMapFor<typeof flakyTool>;
 
@@ -231,7 +229,7 @@ Deno.test("runWorkflow retries a failing tool invoke before following onError", 
   assertEquals(attempts, 2);
   assertEquals(result, {
     status: "done",
-    outputs: { createItem: { data: { itemId: "item:Burger" } } },
+    outputs: { createItem: { ok: true, data: { itemId: "item:Burger" } } },
     errors: {},
     finalState: "completed",
   });

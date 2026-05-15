@@ -51,16 +51,15 @@ Deno.test("runtime handlers are closures supplied when workflow is triggered", a
 
   const result = await client.runWorkflow(workflow, {
     handlers: {
-      "menu.create": async ({ input }) => ({
-        data: {
-          menuId: `${authToken}:${input.name}`,
-        },
+      "menu.create": async ({ input, ok }) => ok({
+        menuId: `${authToken}:${input.name}`,
       }),
     },
   });
 
   assertEquals(result.status, "done");
   assertEquals(result.outputs.createMenu, {
+    ok: true,
     data: {
       menuId: "runtime-token:Dinner",
     },
@@ -113,13 +112,11 @@ Deno.test("runtime rejects invalid LLM tool input before calling the handler", a
 
   const result = await client.runWorkflow(workflow, {
     handlers: {
-      "menu.create": () => {
+      "menu.create": ({ ok }) => {
         handlerCalls += 1;
-        return {
-          data: {
-            menuId: "should-not-run",
-          },
-        };
+        return ok({
+          menuId: "should-not-run",
+        });
       },
     },
   });
@@ -179,11 +176,9 @@ Deno.test("runtime rejects handler output that violates the tool output contract
 
   const result = await client.runWorkflow(workflow, {
     handlers: {
-      "menu.create": () => ({
-        data: {
-          id: "wrong-shape",
-        } as unknown as { menuId: string },
-      }),
+      "menu.create": ({ ok }) => ok({
+        id: "wrong-shape",
+      } as unknown as { menuId: string }),
     },
   });
 

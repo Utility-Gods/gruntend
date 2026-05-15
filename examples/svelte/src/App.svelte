@@ -46,38 +46,50 @@
       runningStates = {};
       const result = await genopen.runWorkflow(workflow, {
         handlers: {
-          "menu.create": async ({ input }) => {
-            if (!authToken) throw new Error("Missing app auth token.");
+          "menu.create": async ({ input, ok, err }) => {
+            if (!authToken) {
+              return err({
+                code: "MISSING_AUTH_TOKEN",
+                message: "Missing app auth token.",
+              });
+            }
+
             await wait(3000);
 
-            return {
-              data: {
-                menuId: `${tenantId}:menu:${input.name.toLowerCase().replaceAll(" ", "-")}`,
-                name: input.name,
-              },
-            };
+            return ok({
+              menuId: `${tenantId}:menu:${input.name.toLowerCase().replaceAll(" ", "-")}`,
+              name: input.name,
+            });
           },
-          "menu.item.create": async ({ input }) => {
-            if (!authToken) throw new Error("Missing app auth token.");
+          "menu.item.create": async ({ input, ok, err }) => {
+            if (!authToken) {
+              return err({
+                code: "MISSING_AUTH_TOKEN",
+                message: "Missing app auth token.",
+              });
+            }
+
             await wait(3500);
 
-            return {
-              data: {
-                itemId: `${tenantId}:item:${input.menuId}:${input.name.toLowerCase().replaceAll(" ", "-")}`,
-                menuId: input.menuId,
-                name: input.name,
-              },
-            };
+            return ok({
+              itemId: `${tenantId}:item:${input.menuId}:${input.name.toLowerCase().replaceAll(" ", "-")}`,
+              menuId: input.menuId,
+              name: input.name,
+            });
           },
         },
-        onToolStart: ({ state }) => {
-          runningStates = { ...runningStates, [state]: "running" };
-        },
-        onToolDone: ({ state }) => {
-          runningStates = { ...runningStates, [state]: "done" };
-        },
-        onToolError: ({ state }) => {
-          runningStates = { ...runningStates, [state]: "error" };
+        onEvent: (event) => {
+          if (event.type === "tool.started") {
+            runningStates = { ...runningStates, [event.state]: "running" };
+          }
+
+          if (event.type === "tool.completed") {
+            runningStates = { ...runningStates, [event.state]: "done" };
+          }
+
+          if (event.type === "tool.failed") {
+            runningStates = { ...runningStates, [event.state]: "error" };
+          }
         },
       });
 
@@ -246,176 +258,6 @@
   .debug summary {
     cursor: pointer;
     font-weight: 800;
-  }
-
-  .statechart {
-    overflow-x: auto;
-    margin-top: 18px;
-    padding: 24px;
-    border: 1px solid #dbeafe;
-    border-radius: 16px;
-    background:
-      radial-gradient(circle at 24px 24px, #dbeafe 1px, transparent 1px),
-      #f8fbff;
-    background-size: 24px 24px;
-  }
-
-  .chart-column {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 100%;
-  }
-
-  .terminal,
-  .fork,
-  .state-card {
-    flex: 0 0 auto;
-  }
-
-  .terminal {
-    padding: 10px 16px;
-    border-radius: 999px;
-    background: #111827;
-    color: white;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .terminal.completed {
-    background: #16a34a;
-  }
-
-  .terminal.small {
-    padding: 8px 12px;
-    background: #e0f2fe;
-    color: #075985;
-    font-size: 0.75rem;
-  }
-
-  .state-card {
-    display: grid;
-    gap: 6px;
-    min-width: 220px;
-    padding: 16px;
-    border: 2px solid #93c5fd;
-    border-radius: 16px;
-    background: white;
-    box-shadow: 0 10px 24px rgb(37 99 235 / 12%);
-  }
-
-  .state-card.primary {
-    border-color: #2563eb;
-  }
-
-  .state-card.running {
-    border-color: #f59e0b;
-    background: #fffbeb;
-    animation: pulse 1s ease-in-out infinite;
-  }
-
-  .state-card.done {
-    border-color: #22c55e;
-    background: #f0fdf4;
-  }
-
-  .state-card.error {
-    border-color: #ef4444;
-    background: #fef2f2;
-  }
-
-  .state-kind {
-    color: #2563eb;
-    font-size: 0.72rem;
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .state-card strong {
-    color: #111827;
-  }
-
-  .state-card code {
-    width: fit-content;
-    padding: 4px 8px;
-    border-radius: 8px;
-    background: #eff6ff;
-    color: #1e3a8a;
-    font: 0.82rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  }
-
-  .connector {
-    position: relative;
-    background: #2563eb;
-  }
-
-  .connector.vertical {
-    width: 2px;
-    height: 38px;
-  }
-
-  .connector.vertical::after {
-    content: "";
-    position: absolute;
-    left: -5px;
-    bottom: -1px;
-    border-top: 8px solid #2563eb;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-  }
-
-  .small-line {
-    height: 24px;
-  }
-
-  .fork {
-    display: grid;
-    place-items: center;
-    width: 84px;
-    height: 84px;
-    transform: rotate(45deg);
-    border: 2px solid #f59e0b;
-    border-radius: 14px;
-    background: #fffbeb;
-    color: #92400e;
-    font-weight: 900;
-  }
-
-  .fork span {
-    transform: rotate(-45deg);
-  }
-
-  .fork.join {
-    border-color: #22c55e;
-    background: #f0fdf4;
-    color: #166534;
-  }
-
-  .parallel-region {
-    display: grid;
-    gap: 14px;
-    padding: 18px;
-    border: 2px dashed #93c5fd;
-    border-radius: 18px;
-    background: rgb(239 246 255 / 70%);
-  }
-
-  .lane {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  @keyframes pulse {
-    0%,
-    100% {
-      box-shadow: 0 0 0 0 rgb(245 158 11 / 45%);
-    }
-    50% {
-      box-shadow: 0 0 0 10px rgb(245 158 11 / 0%);
-    }
   }
 
   .result {
