@@ -364,7 +364,7 @@ type WorkflowRunResult = {
 
       <h2>Lifecycle events</h2>
       <p>
-        GenOpen currently emits <strong>six</strong> runtime events through one callback: <code>onEvent</code>.
+        GenOpen currently emits <strong>seven</strong> runtime events through one callback: <code>onEvent</code>.
       </p>
 
       <table>
@@ -392,9 +392,15 @@ type WorkflowRunResult = {
             <td><code>{ workflowId, state, tool, output: { ok: true, data } }</code></td>
           </tr>
           <tr>
+            <td><code>tool.retrying</code></td>
+            <td>After a retryable failed attempt when another attempt will be made.</td>
+            <td><code>{ workflowId, state, tool, attempt, maxAttempts, nextAttempt, error }</code></td>
+          </tr>
+          <tr>
             <td><code>tool.failed</code></td>
             <td>
-              When input validation, handler execution, <code>err(...)</code>, output validation, or tool lookup fails.
+              When input validation, handler execution, <code>err(...)</code>, output validation, or tool lookup fails and
+              no retry remains.
             </td>
             <td><code>{ workflowId, state, tool, error }</code></td>
           </tr>
@@ -412,13 +418,18 @@ type WorkflowRunResult = {
       </table>
 
       <h3>Using events for UI progress</h3>
-      <pre><code>const statuses: Record&lt;string, "pending" | "running" | "done" | "error"&gt; = {};
+      <pre><code>const statuses: Record&lt;string, "pending" | "running" | "retrying" | "done" | "error"&gt; = {};
 
 await genopen.runWorkflow(workflow, {
   handlers,
   onEvent(event) {
     if (event.type === "tool.started") {
       statuses[event.state] = "running";
+    }
+
+    if (event.type === "tool.retrying") {
+      statuses[event.state] = "retrying";
+      console.log(`Retry ${event.nextAttempt}/${event.maxAttempts}`, event.error);
     }
 
     if (event.type === "tool.completed") {

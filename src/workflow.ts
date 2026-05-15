@@ -77,6 +77,7 @@ export type WorkflowRuntimeEvent =
   | WorkflowFailedEvent
   | ToolStartedEvent
   | ToolCompletedEvent
+  | ToolRetryingEvent
   | ToolFailedEvent;
 
 export interface WorkflowStartedEvent {
@@ -111,6 +112,17 @@ export interface ToolCompletedEvent {
   readonly state: string;
   readonly tool: string;
   readonly output: ToolResult<unknown>;
+}
+
+export interface ToolRetryingEvent {
+  readonly type: "tool.retrying";
+  readonly workflowId: string;
+  readonly state: string;
+  readonly tool: string;
+  readonly attempt: number;
+  readonly maxAttempts: number;
+  readonly nextAttempt: number;
+  readonly error: WorkflowError;
 }
 
 export interface ToolFailedEvent {
@@ -348,6 +360,18 @@ async function executeToolInvoke(options: {
       }
     },
     retry: options.input.retry,
+    onRetry: ({ error, attempt, maxAttempts }) => {
+      options.onEvent?.({
+        type: "tool.retrying",
+        workflowId: options.workflowId,
+        state: options.input.state,
+        tool: options.input.tool,
+        attempt,
+        maxAttempts,
+        nextAttempt: attempt + 1,
+        error: toWorkflowError(error, options.input.state, options.input.tool),
+      });
+    },
   });
 }
 
@@ -409,6 +433,11 @@ function toWorkflowError(
 async function executeWithRetry(options: {
   readonly execute: (context: { readonly attempt: number; readonly maxAttempts: number }) => Promise<ToolResult<unknown>>;
   readonly retry?: WorkflowRetryPolicy;
+  readonly onRetry?: (context: {
+    readonly error: unknown;
+    readonly attempt: number;
+    readonly maxAttempts: number;
+  }) => void;
 }): Promise<ToolResult<unknown>> {
   const maxAttempts = options.retry?.maxAttempts ?? 1;
   let attempt = 0;
@@ -426,8 +455,12 @@ async function executeWithRetry(options: {
         break;
       }
 
-      if (attempt < maxAttempts && options.retry?.delayMs) {
-        await delay(options.retry.delayMs);
+      if (attempt < maxAttempts) {
+        options.onRetry?.({ error, attempt, maxAttempts });
+
+        if (options.retry?.delayMs) {
+          await delay(options.retry.delayMs);
+        }
       }
     }
   }

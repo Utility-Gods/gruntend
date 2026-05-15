@@ -1,12 +1,13 @@
 <script lang="ts">
   import type { WorkflowJsonValue, WorkflowMachineConfig, WorkflowStateConfig } from "../../../mod.ts";
 
-  export type WorkflowStepStatus = "pending" | "running" | "done" | "error";
+  export type WorkflowStepStatus = "pending" | "running" | "retrying" | "done" | "error";
 
   interface Props {
     workflow: WorkflowMachineConfig;
     statuses?: Record<string, WorkflowStepStatus>;
     finalState?: string;
+    retryMessages?: Record<string, string>;
   }
 
   interface DiagramStep {
@@ -15,7 +16,7 @@
     readonly input: Record<string, WorkflowJsonValue>;
   }
 
-  let { workflow, statuses = {}, finalState = "" }: Props = $props();
+  let { workflow, statuses = {}, finalState = "", retryMessages = {} }: Props = $props();
 
   const topLevelSteps = $derived(topLevelInvokeSteps(workflow));
   const parallelRegions = $derived(topLevelParallelRegions(workflow));
@@ -110,14 +111,18 @@
     {#each topLevelSteps as step}
       <div
         class:running={statuses[step.state] === "running"}
+        class:retrying={statuses[step.state] === "retrying"}
         class:done={statuses[step.state] === "done"}
         class:error={statuses[step.state] === "error"}
         class="state-card primary"
       >
         <span class="state-kind">
-          {#if statuses[step.state] === "running"}<span class="spinner"></span>{/if}
+          {#if statuses[step.state] === "running" || statuses[step.state] === "retrying"}<span class="spinner"></span>{/if}
           {statuses[step.state] || "pending"}
         </span>
+        {#if retryMessages[step.state]}
+          <span class="retry-note">{retryMessages[step.state]}</span>
+        {/if}
         <strong>{humanizeState(step.state)}</strong>
         <span class="tool-name">{step.tool}</span>
         <div class="step-details">
@@ -145,14 +150,18 @@
           <div class="lane">
             <div
               class:running={statuses[step.state] === "running"}
+              class:retrying={statuses[step.state] === "retrying"}
               class:done={statuses[step.state] === "done"}
               class:error={statuses[step.state] === "error"}
               class="state-card"
             >
               <span class="state-kind">
-                {#if statuses[step.state] === "running"}<span class="spinner"></span>{/if}
+                {#if statuses[step.state] === "running" || statuses[step.state] === "retrying"}<span class="spinner"></span>{/if}
                 {statuses[step.state] || "pending"}
               </span>
+              {#if retryMessages[step.state]}
+                <span class="retry-note">{retryMessages[step.state]}</span>
+              {/if}
               <strong>{humanizeState(step.state)}</strong>
               <span class="tool-name">{step.tool}</span>
               <div class="step-details">
@@ -245,10 +254,15 @@
     border-color: #2563eb;
   }
 
-  .state-card.running {
+  .state-card.running,
+  .state-card.retrying {
     border-color: #f59e0b;
     background: #fffbeb;
     animation: pulse 1s ease-in-out infinite;
+  }
+
+  .state-card.retrying {
+    border-style: dashed;
   }
 
   .state-card.done {
@@ -270,6 +284,16 @@
     font-weight: 900;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+
+  .retry-note {
+    width: fit-content;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.76rem;
+    font-weight: 900;
   }
 
   .spinner {
