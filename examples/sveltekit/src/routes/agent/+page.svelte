@@ -1,10 +1,18 @@
 <script lang="ts">
   import { gruntend } from "$lib/agent/client";
   import { createBrowserHandlers } from "$lib/agent/handlers";
-  import { generateMockCodePlan } from "$lib/agent/mock-llm";
+  import type { GeneratedCodePlan } from "gruntend/generate";
   import type { RuntimeEvent } from "gruntend/runtime";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
+  type AgentGenerationEnvelope = {
+    readonly generator: "pi-ai";
+    readonly model?: string;
+    readonly plan: GeneratedCodePlan;
+    readonly stopReason?: string;
+    readonly usage?: unknown;
+    readonly responseId?: string;
+  };
 
   const examples = [
     'Copy "Dinner Menu" to "Lunch Menu"',
@@ -19,6 +27,7 @@
   let summary = "";
   let code = "";
   let planInput = "";
+  let generationJson = "";
   let resultJson = "";
   let eventLog: string[] = [];
   let toolCalls: Record<string, string> = {};
@@ -29,12 +38,13 @@
     summary = "";
     code = "";
     planInput = "";
+    generationJson = "";
     resultJson = "";
     eventLog = [];
     toolCalls = {};
 
     try {
-      const plan = await generateMockCodePlan({ prompt });
+      const plan = await generateWithLlm();
       summary = plan.summary;
       code = plan.code;
       planInput = JSON.stringify(plan.input, null, 2);
@@ -60,6 +70,38 @@
       message = caught instanceof Error ? caught.message : String(caught);
       state = "error";
     }
+  }
+
+  async function generateWithLlm(): Promise<GeneratedCodePlan> {
+    const response = await fetch("/api/agent/plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    const payload = (await response.json()) as AgentGenerationEnvelope | { readonly message?: string };
+
+    if (!response.ok) {
+      throw new Error(
+        "message" in payload && typeof payload.message === "string" && payload.message.length > 0
+          ? payload.message
+          : "Code plan generation failed.",
+      );
+    }
+
+    const envelope = payload as AgentGenerationEnvelope;
+    generationJson = JSON.stringify(
+      {
+        generator: envelope.generator,
+        model: envelope.model,
+        stopReason: envelope.stopReason,
+        usage: envelope.usage,
+        responseId: envelope.responseId,
+        summary: envelope.plan.summary,
+      },
+      null,
+      2,
+    );
+    return envelope.plan;
   }
 
   function recordEvent(event: RuntimeEvent) {
@@ -96,10 +138,10 @@
 
 <section class="page-heading">
   <p class="eyebrow">Agent</p>
-  <h1>Mock LLM → code plan → real app API.</h1>
+  <h1>OpenAI via pi-ai → code plan → real app API.</h1>
   <p>
-    The planner is mocked for now. The execution path is real: generated code calls registered Gruntend tools, and
-    handlers call this SvelteKit app's API routes.
+    Type what you want. The server calls Gruntend's SDK generation boundary with pi-ai/OpenAI, then execution goes
+    through registered tools and app API handlers.
   </p>
 </section>
 
@@ -114,14 +156,21 @@
   </div>
 
   <button class="button" type="button" disabled={state === "planning" || state === "running"} on:click={runAgent}>
-    {state === "planning" ? "Planning..." : state === "running" ? "Running..." : "Run agent"}
+    {state === "planning" ? "Calling OpenAI..." : state === "running" ? "Running plan..." : "Ask OpenAI"}
   </button>
 </section>
 
 {#if summary}
   <section class="panel">
-    <p class="eyebrow">Mock planner summary</p>
+    <p class="eyebrow">Generation summary</p>
     <h2>{summary}</h2>
+  </section>
+{/if}
+
+{#if generationJson}
+  <section class="panel result">
+    <h2>LLM call metadata</h2>
+    <pre>{generationJson}</pre>
   </section>
 {/if}
 
@@ -199,12 +248,15 @@
   textarea {
     width: 100%;
     box-sizing: border-box;
-    resize: vertical;
     border: 1px solid rgba(148, 163, 184, 0.25);
     border-radius: 18px;
     background: #020617;
     color: #e5e7eb;
     padding: 14px;
+  }
+
+  textarea {
+    resize: vertical;
   }
 
   .examples {

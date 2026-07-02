@@ -50,6 +50,33 @@ test("defineTools flattens a namespace into dot-named tool contracts", () => {
   expect(tools[1].output).toBe(createOutput);
 });
 
+test("defineTools preserves explicit model-facing parameter metadata", () => {
+  const parameters = {
+    type: "object",
+    properties: { name: { type: "string" } },
+    required: ["name"],
+  };
+  const returns = {
+    type: "object",
+    properties: { itemId: { type: "string" } },
+  };
+
+  const [tool] = defineTools({
+    menu: {
+      create: {
+        description: "Create a menu.",
+        input: schema<{ name: string }>(),
+        output: schema<{ itemId: string }>(),
+        parameters,
+        returns,
+      },
+    },
+  });
+
+  expect(tool.parameters).toBe(parameters);
+  expect(tool.returns).toBe(returns);
+});
+
 test("defineTools preserves the namespace declaration order", () => {
   const tools = defineTools({
     math: {

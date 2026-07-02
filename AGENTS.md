@@ -6,7 +6,7 @@
 - After dependency changes, update `pnpm-lock.yaml` and run the affected checks:
   - `pnpm test`
   - `pnpm check`
-  - `pnpm --filter gruntend-svelte-example build` when the example changes
+  - `pnpm --filter gruntend-sveltekit-example build` when the example changes
 - Keep the public SDK thin, object-based, and explicit.
 - Do not add barrel files. Prefer explicit subpath imports such as `gruntend/tool`, `gruntend/client`, and local `../src/tool.ts` imports in tests.
 - Keep `defineTools()` contract-only.

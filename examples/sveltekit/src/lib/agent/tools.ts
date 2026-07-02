@@ -26,17 +26,68 @@ const menuItemSchema = v.object({
   tags: v.array(v.string()),
 });
 
+const roleModel = { enum: ["owner", "chef", "manager"] };
+const userModel = {
+  type: "object",
+  properties: {
+    userId: { type: "string" },
+    name: { type: "string" },
+    role: roleModel,
+    createdAt: { type: "string" },
+  },
+  required: ["userId", "name", "role", "createdAt"],
+};
+const menuModel = {
+  type: "object",
+  properties: {
+    menuId: { type: "string" },
+    name: { type: "string" },
+    description: { type: "string" },
+    ownerUserId: { type: "string" },
+    createdAt: { type: "string" },
+  },
+  required: ["menuId", "name", "description", "ownerUserId", "createdAt"],
+};
+const menuItemModel = {
+  type: "object",
+  properties: {
+    itemId: { type: "string" },
+    menuId: { type: "string" },
+    name: { type: "string" },
+    price: { type: "number" },
+    tags: { type: "array", items: { type: "string" } },
+  },
+  required: ["itemId", "menuId", "name", "price", "tags"],
+};
+const emptyParameters = { type: "object", properties: {}, required: [] };
+
 export const appTools = defineTools({
   menus: {
     list: {
       description: "List all restaurant menus.",
       input: v.object({}),
       output: v.object({ menus: v.array(menuSchema) }),
+      parameters: emptyParameters,
+      returns: {
+        type: "object",
+        properties: { menus: { type: "array", items: menuModel } },
+        required: ["menus"],
+      },
     },
     get: {
       description: "Get one restaurant menu by id.",
       input: v.object({ menuId: v.string() }),
       output: v.object({ menu: menuSchema }),
+      parameters: {
+        type: "object",
+        properties: { menuId: { type: "string" } },
+        required: ["menuId"],
+      },
+      returns: {
+        type: "object",
+        properties: { menu: menuModel },
+        required: ["menu"],
+      },
     },
     create: {
       description: "Find or create a restaurant menu by name.",
@@ -46,6 +97,20 @@ export const appTools = defineTools({
         ownerUserId: v.optional(v.string()),
       }),
       output: v.object({ menu: menuSchema }),
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          description: { type: "string" },
+          ownerUserId: { type: "string" },
+        },
+        required: ["name"],
+      },
+      returns: {
+        type: "object",
+        properties: { menu: menuModel },
+        required: ["menu"],
+      },
     },
   },
   menu: {
@@ -54,6 +119,16 @@ export const appTools = defineTools({
         description: "List items for a menu.",
         input: v.object({ menuId: v.string() }),
         output: v.object({ items: v.array(menuItemSchema) }),
+        parameters: {
+          type: "object",
+          properties: { menuId: { type: "string" } },
+          required: ["menuId"],
+        },
+        returns: {
+          type: "object",
+          properties: { items: { type: "array", items: menuItemModel } },
+          required: ["items"],
+        },
       },
     },
     item: {
@@ -66,6 +141,21 @@ export const appTools = defineTools({
           tags: v.optional(v.array(v.string())),
         }),
         output: v.object({ item: menuItemSchema }),
+        parameters: {
+          type: "object",
+          properties: {
+            menuId: { type: "string" },
+            name: { type: "string" },
+            price: { type: "number" },
+            tags: { type: "array", items: { type: "string" } },
+          },
+          required: ["menuId", "name", "price"],
+        },
+        returns: {
+          type: "object",
+          properties: { item: menuItemModel },
+          required: ["item"],
+        },
       },
     },
   },
@@ -74,6 +164,12 @@ export const appTools = defineTools({
       description: "List restaurant team users.",
       input: v.object({}),
       output: v.object({ users: v.array(userSchema) }),
+      parameters: emptyParameters,
+      returns: {
+        type: "object",
+        properties: { users: { type: "array", items: userModel } },
+        required: ["users"],
+      },
     },
     create: {
       description: "Find or create a restaurant team user.",
@@ -82,6 +178,19 @@ export const appTools = defineTools({
         role: roleSchema,
       }),
       output: v.object({ user: userSchema }),
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          role: roleModel,
+        },
+        required: ["name", "role"],
+      },
+      returns: {
+        type: "object",
+        properties: { user: userModel },
+        required: ["user"],
+      },
     },
   },
 });

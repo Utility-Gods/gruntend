@@ -10,8 +10,8 @@
   <p class="eyebrow">Example app</p>
   <h1>A real-ish app for Gruntend agents.</h1>
   <p>
-    This SvelteKit app has seeded restaurant data, API routes, normal pages, and an agent route that asks a mock LLM
-    for Gruntend code plans.
+    This SvelteKit app has seeded restaurant data, API routes, normal pages, and an agent route that asks an LLM for
+    Gruntend code plans through the SDK boundary.
   </p>
   <div class="actions">
     <a class="button" href="/agent">Open agent</a>
@@ -31,9 +31,9 @@
     <p>Seeded users are available through <code>/api/users</code> and Gruntend tools.</p>
   </article>
   <article class="panel">
-    <span>mock</span>
-    <h2>LLM seam</h2>
-    <p>The agent route currently uses a mock planner, but the interface is shaped for a real LLM provider.</p>
+    <span>LLM</span>
+    <h2>Generation seam</h2>
+    <p>The agent route calls pi-ai/OpenAI on the server, then executes the generated plan through Gruntend tools.</p>
   </article>
 </section>
 

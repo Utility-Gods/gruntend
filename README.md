@@ -35,6 +35,23 @@ const tools = defineTools({
         output: v.object({
           items: v.array(v.object({ name: v.string(), price: v.number() })),
         }),
+        parameters: {
+          type: "object",
+          properties: { menuId: { type: "string" } },
+          required: ["menuId"],
+        },
+        returns: {
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: { name: { type: "string" }, price: { type: "number" } },
+              },
+            },
+          },
+        },
       },
     },
     item: {
@@ -58,10 +75,57 @@ A tool contract is only:
 
 - namespace/name
 - description
-- input schema
-- output schema
+- input schema for runtime validation
+- output schema for runtime validation
+- optional `parameters` / `returns` model-facing data for code-plan generation
+
+`parameters` and `returns` are plain model-facing data; Gruntend does not inspect validation schema internals.
 
 Ordering, branching, loops, and parallelism live in the generated code plan.
+
+## Generate a code plan
+
+For real LLM calls, Gruntend owns the prompt contract and JSON parsing. App code passes a typed request: tools, the user's task, optional app data, a pi-ai model, and pi-ai options.
+
+```ts
+import { generateCodePlan, getModel } from "gruntend/generate";
+
+const generated = await generateCodePlan({
+  tools,
+  task: "Copy the dinner menu into a lunch menu",
+  input: {
+    menus: await listMenus(),
+  },
+  model: getModel("openai", "gpt-5.1"),
+  options: {
+    apiKey: process.env.OPENAI_API_KEY,
+    reasoning: "low",
+    maxTokens: 5000,
+  },
+});
+
+// typed Gruntend plan
+const { summary, input, code } = generated.plan;
+
+// pi-ai-compatible raw response for inspection/logging
+console.log(generated.message.usage);
+```
+
+`generateCodePlan()` returns:
+
+```ts
+{
+  plan: {
+    summary: string;
+    input: Record<string, unknown>;
+    code: string;
+  };
+  text: string;
+  message: AssistantMessage;
+}
+```
+
+Prompts are backend details of Gruntend. The application chooses the model/options and provides user/app input; Gruntend builds the LLM request, validates the response, and returns a code plan that can be executed with `runCodePlan()`.
 
 ## Run a code plan
 
@@ -183,7 +247,7 @@ await gruntend.runCodePlan(code, {
 
 ### SvelteKit app
 
-`examples/sveltekit` is the main application example. It uses pinned latest SvelteKit, seeded in-memory API data, normal app routes, and an agent route powered by a mock LLM planner.
+`examples/sveltekit` is the main application example. It uses pinned latest SvelteKit, seeded in-memory API data, normal app routes, and an agent route powered by `gruntend/generate` + pi-ai/OpenAI.
 
 Routes:
 
@@ -191,7 +255,9 @@ Routes:
 - `/menus` — menus from `/api/menus`
 - `/menus/[menuId]` — nested menu items from `/api/menus/[menuId]/items`
 - `/users` — seeded users from `/api/users`
-- `/agent` — mock LLM → Gruntend code plan → app API handlers
+- `/agent` — pi-ai/OpenAI generation → Gruntend code plan → app API handlers
+
+For real LLM mode, copy `examples/sveltekit/.env.example` to `examples/sveltekit/.env` and set `OPENAI_API_KEY`. The key stays server-only.
 
 Run it:
 
@@ -206,14 +272,6 @@ pnpm --filter gruntend-sveltekit-example check
 pnpm --filter gruntend-sveltekit-example build
 ```
 
-### Svelte app
-
-`examples/svelte` is a smaller Vite/Svelte-only demo.
-
-```bash
-pnpm --filter gruntend-svelte-example dev
-pnpm --filter gruntend-svelte-example build
-```
 
 ## Development
 

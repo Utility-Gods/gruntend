@@ -8,7 +8,7 @@ This example has:
 - API routes for menus, nested menu items, and users
 - normal app routes for browsing that data
 - a Gruntend tool namespace over the app API
-- an agent route with a mock LLM planner that returns code plans
+- an agent route with a real pi-ai/OpenAI generator powered by `gruntend/generate`
 
 ## Run
 
@@ -34,7 +34,24 @@ Create user "Sam Rivera" as manager
 Summarize the restaurant data
 ```
 
-The mock planner returns code. Gruntend executes that code against registered tools, and the handlers call this app's API routes.
+The agent route calls the SDK boundary on the SvelteKit server: Gruntend builds the prompt, calls pi-ai/OpenAI, parses the response, and returns a code plan. Gruntend then executes that code against registered tools, and the handlers call this app's API routes.
+
+## Real LLM mode
+
+Copy `.env.example` to `.env` inside `examples/sveltekit`:
+
+```bash
+cp examples/sveltekit/.env.example examples/sveltekit/.env
+```
+
+Set:
+
+```env
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-5.1
+```
+
+Then open `/agent` and submit a task.
 
 ## Validate
 

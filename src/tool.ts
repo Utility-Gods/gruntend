@@ -83,6 +83,8 @@ export interface Tool<
   readonly description: string;
   readonly input: InputSchema;
   readonly output: OutputSchema;
+  readonly parameters?: unknown;
+  readonly returns?: unknown;
 }
 
 export interface ToolSpec<
@@ -92,6 +94,8 @@ export interface ToolSpec<
   readonly description: string;
   readonly input: InputSchema;
   readonly output: OutputSchema;
+  readonly parameters?: unknown;
+  readonly returns?: unknown;
 }
 
 type JoinToolName<Prefix extends string, Segment extends string> =
@@ -160,6 +164,8 @@ function collectNamespaceTools(
         description: value.description,
         input: value.input,
         output: value.output,
+        parameters: value.parameters,
+        returns: value.returns,
       });
       continue;
     }

@@ -66,10 +66,49 @@ A tool contract only needs:
 
 - namespace/name
 - description
-- input schema
-- output schema
+- input schema for runtime validation
+- output schema for runtime validation
+- optional `parameters` / `returns` plain model-facing data for code-plan generation
+
+Gruntend does not inspect validation schema internals. If the LLM needs parameter/return shapes, pass them explicitly as plain data.
 
 It does not declare ordering or concurrency behavior. The plan code decides that.
+
+## Generate a code plan
+
+`gruntend/generate` is the LLM boundary. The app passes typed data and pi-ai configuration; Gruntend owns prompt construction, the LLM call, response parsing, and response validation.
+
+```ts
+import { generateCodePlan, getModel } from "gruntend/generate";
+
+const generated = await generateCodePlan({
+  tools,
+  task: "Copy Dinner Menu into Lunch Menu",
+  input: { menus: await listMenus() },
+  model: getModel("openai", "gpt-5.1"),
+  options: {
+    apiKey: process.env.OPENAI_API_KEY,
+    reasoning: "low",
+    maxTokens: 5000,
+  },
+});
+
+const { summary, input, code } = generated.plan;
+```
+
+The response is:
+
+```ts
+{
+  plan: {
+    summary: string;
+    input: Record<string, unknown>;
+    code: string;
+  };
+  text: string;
+  message: AssistantMessage;
+}
+```
 
 ## Create a client
 
