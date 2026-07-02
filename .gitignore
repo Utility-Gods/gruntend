@@ -19,6 +19,8 @@ coverage/
 dist/
 build/
 out/
+.svelte-kit/
+**/.svelte-kit/
 
 # Editor/OS
 .DS_Store

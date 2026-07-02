@@ -179,22 +179,46 @@ await gruntend.runCodePlan(code, {
 });
 ```
 
+## Examples
+
+### SvelteKit app
+
+`examples/sveltekit` is the main application example. It uses pinned latest SvelteKit, seeded in-memory API data, normal app routes, and an agent route powered by a mock LLM planner.
+
+Routes:
+
+- `/` — app dashboard
+- `/menus` — menus from `/api/menus`
+- `/menus/[menuId]` — nested menu items from `/api/menus/[menuId]/items`
+- `/users` — seeded users from `/api/users`
+- `/agent` — mock LLM → Gruntend code plan → app API handlers
+
+Run it:
+
+```bash
+pnpm --filter gruntend-sveltekit-example dev
+```
+
+Check/build it:
+
+```bash
+pnpm --filter gruntend-sveltekit-example check
+pnpm --filter gruntend-sveltekit-example build
+```
+
+### Svelte app
+
+`examples/svelte` is a smaller Vite/Svelte-only demo.
+
+```bash
+pnpm --filter gruntend-svelte-example dev
+pnpm --filter gruntend-svelte-example build
+```
+
 ## Development
 
 ```bash
 pnpm install
 pnpm test
 pnpm check
-```
-
-Run the Svelte example:
-
-```bash
-pnpm --filter gruntend-svelte-example dev
-```
-
-Build the example:
-
-```bash
-pnpm --filter gruntend-svelte-example build
 ```
