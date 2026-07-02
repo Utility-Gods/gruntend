@@ -103,6 +103,83 @@ test("runCodePlan executes LLM-generated code against registered tool handlers",
   });
 });
 
+test("runCodePlan branches on prior tool output", async () => {
+  const menuTools = defineTools({
+    menu: {
+      find: {
+        description: "Find a menu by name.",
+        input: v.object({ name: v.string() }),
+        output: v.object({ exists: v.boolean(), menuId: v.string() }),
+      },
+      create: {
+        description: "Create a menu.",
+        input: v.object({ name: v.string() }),
+        output: v.object({ menuId: v.string() }),
+      },
+    },
+  });
+
+  const registry = createToolRegistry(menuTools);
+  let createCalls = 0;
+
+  const handlers = {
+    "menu.find": ({ input, ok }) =>
+      ok({
+        exists: input.name === "Dinner",
+        menuId: input.name === "Dinner" ? "menu:dinner" : "",
+      }),
+    "menu.create": ({ input, ok }) => {
+      createCalls += 1;
+      return ok({ menuId: `menu:${input.name.toLowerCase()}` });
+    },
+  } satisfies ToolHandlerMap<typeof menuTools>;
+
+  const code = `
+    const existing = await tools.menu.find({ name: input.name });
+
+    if (existing.exists) {
+      return {
+        action: "reused",
+        menuId: existing.menuId,
+      };
+    }
+
+    const created = await tools.menu.create({ name: input.name });
+    return {
+      action: "created",
+      menuId: created.menuId,
+    };
+  `;
+
+  const reused = await runCodePlan({
+    code,
+    input: { name: "Dinner" },
+    registry,
+    handlers,
+  });
+
+  expect(reused).toEqual({
+    status: "done",
+    result: { action: "reused", menuId: "menu:dinner" },
+    errors: {},
+  });
+  expect(createCalls).toBe(0);
+
+  const created = await runCodePlan({
+    code,
+    input: { name: "Lunch" },
+    registry,
+    handlers,
+  });
+
+  expect(created).toEqual({
+    status: "done",
+    result: { action: "created", menuId: "menu:lunch" },
+    errors: {},
+  });
+  expect(createCalls).toBe(1);
+});
+
 test("Gruntend client runs a code plan with the registered tool handlers", async () => {
   const tools = defineTools({
     math: {
