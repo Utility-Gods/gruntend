@@ -42,8 +42,6 @@ export type InferSchemaInput<TSchema> =
 export type InferSchemaOutput<TSchema> =
   TSchema extends StandardSchemaV1<unknown, infer Output> ? Output : unknown;
 
-export type ToolExecutionMode = "sequential" | "parallel";
-
 export interface ToolExecutionError {
   readonly code: string;
   readonly message: string;
@@ -85,8 +83,33 @@ export interface Tool<
   readonly description: string;
   readonly input: InputSchema;
   readonly output: OutputSchema;
-  readonly execution?: ToolExecutionMode;
 }
+
+export interface ToolSpec<
+  InputSchema extends StandardSchemaV1 = StandardSchemaV1,
+  OutputSchema extends StandardSchemaV1 = StandardSchemaV1,
+> {
+  readonly description: string;
+  readonly input: InputSchema;
+  readonly output: OutputSchema;
+}
+
+type JoinToolName<Prefix extends string, Segment extends string> =
+  Prefix extends "" ? Segment : `${Prefix}.${Segment}`;
+
+export type ToolsFromNamespace<
+  TNamespace,
+  Prefix extends string = "",
+> = TNamespace extends ToolSpec<infer InputSchema, infer OutputSchema>
+  ? Prefix extends "" ? never : Tool<Prefix, InputSchema, OutputSchema>
+  : TNamespace extends object
+    ? {
+      readonly [Key in keyof TNamespace & string]: ToolsFromNamespace<
+        TNamespace[Key],
+        JoinToolName<Prefix, Key>
+      >;
+    }[keyof TNamespace & string]
+  : never;
 
 export type ToolHandlerFor<TTool extends Tool> = ToolHandler<
   InferSchemaOutput<TTool["input"]>,
@@ -115,14 +138,49 @@ export interface StandardSchemaValidationError extends Error {
   readonly issues: readonly StandardSchemaV1.Issue[];
 }
 
-export function defineTool<
-  const Name extends string,
-  const InputSchema extends StandardSchemaV1,
-  const OutputSchema extends StandardSchemaV1,
->(
-  tool: Tool<Name, InputSchema, OutputSchema>,
-): Tool<Name, InputSchema, OutputSchema> {
-  return tool;
+export function defineTools<const TNamespace extends Record<string, unknown>>(
+  namespace: TNamespace,
+): readonly ToolsFromNamespace<TNamespace>[] {
+  const tools: Tool[] = [];
+  collectNamespaceTools([], namespace, tools);
+  return tools as unknown as readonly ToolsFromNamespace<TNamespace>[];
+}
+
+function collectNamespaceTools(
+  path: readonly string[],
+  namespace: Record<string, unknown>,
+  tools: Tool[],
+): void {
+  for (const [key, value] of Object.entries(namespace)) {
+    const nextPath = [...path, key];
+
+    if (isToolSpec(value)) {
+      tools.push({
+        name: nextPath.join("."),
+        description: value.description,
+        input: value.input,
+        output: value.output,
+      });
+      continue;
+    }
+
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      collectNamespaceTools(nextPath, value as Record<string, unknown>, tools);
+      continue;
+    }
+
+    throw new Error(
+      `Tool namespace "${nextPath.join(".")}" must be a tool definition or nested namespace.`,
+    );
+  }
+}
+
+function isToolSpec(value: unknown): value is ToolSpec {
+  return !!value &&
+    typeof value === "object" &&
+    "description" in value &&
+    "input" in value &&
+    "output" in value;
 }
 
 export async function parseStandardSchema<TSchema extends StandardSchemaV1>(

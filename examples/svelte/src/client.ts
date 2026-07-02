@@ -1,6 +1,6 @@
-import { createGenOpenClient } from "../../../mod.ts";
+import { createGruntendClient } from "gruntend/client";
 import { exampleTools } from "./tools.ts";
 
-export const genopen = createGenOpenClient({
+export const gruntend = createGruntendClient({
   tools: exampleTools,
 });

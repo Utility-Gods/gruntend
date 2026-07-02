@@ -1,13 +1,30 @@
 {
-  "name": "genopen",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "name": "gruntend",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Typed tool namespaces and code-plan execution for application-owned capabilities.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.18.1",
+  "exports": {
+    "./client": "./src/client.ts",
+    "./code-plan": "./src/code-plan.ts",
+    "./registry": "./src/registry.ts",
+    "./runtime": "./src/runtime.ts",
+    "./tool": "./src/tool.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "packageManager": "pnpm@10.18.1"
+  "scripts": {
+    "test": "vitest run",
+    "check": "tsc --noEmit",
+    "fmt": "prettier --write ."
+  },
+  "dependencies": {
+    "@mariozechner/jailjs": "0.1.1",
+    "valibot": "1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.8",
+    "prettier": "3.6.2",
+    "typescript": "5.8.3",
+    "vitest": "3.2.4"
+  }
 }

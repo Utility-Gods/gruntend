@@ -1,9 +1,15 @@
 # Agent Instructions
 
 - Prefer concise shell commands that the user can copy and run manually.
-- For Deno dependencies, prefer JSR packages over npm packages when an equivalent exists.
-- Pin Deno dependency versions exactly in `deno.json` / example `deno.json` files; avoid `@latest` and broad ranges for supply-chain safety.
-- Use npm specifiers only when there is no suitable JSR package, and keep those versions exact too.
-- After dependency changes, update the relevant `deno.lock` and run the affected `deno test` / `deno check` commands.
-- Avoid broad `deno run -A` permissions unless the tool genuinely needs them; prefer least-permission flags where practical.
-- Keep the project todo list updated with `todo_manage` when deferring follow-up work or design improvements.
+- This project targets Node/TypeScript with pnpm workspaces.
+- Pin dependency versions exactly in `package.json` files; avoid `latest`, caret ranges, and broad ranges for supply-chain safety.
+- After dependency changes, update `pnpm-lock.yaml` and run the affected checks:
+  - `pnpm test`
+  - `pnpm check`
+  - `pnpm --filter gruntend-svelte-example build` when the example changes
+- Keep the public SDK thin, object-based, and explicit.
+- Do not add barrel files. Prefer explicit subpath imports such as `gruntend/tool`, `gruntend/client`, and local `../src/tool.ts` imports in tests.
+- Keep `defineTools()` contract-only.
+- Handlers are async runtime closures owned by the app.
+- Expected failures use `err(...)`, not throwing. Throwing remains fallback for unexpected failures.
+- Use a single `onEvent(event)` lifecycle stream.

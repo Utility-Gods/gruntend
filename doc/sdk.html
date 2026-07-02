@@ -3,490 +3,238 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GenOpen SDK Usage</title>
+    <title>Gruntend SDK Usage</title>
     <style>
       :root {
-        color-scheme: light dark;
-        --bg: #0f172a;
-        --panel: #111827;
-        --text: #e5e7eb;
-        --muted: #9ca3af;
-        --line: #334155;
-        --accent: #93c5fd;
-        --code: #020617;
-      }
-
-      body {
-        margin: 0;
+        color-scheme: dark;
         font-family:
           Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        line-height: 1.65;
+        background: #0f172a;
+        color: #e5e7eb;
       }
-
+      body {
+        margin: 0;
+      }
       main {
-        max-width: 980px;
+        width: min(960px, calc(100vw - 32px));
         margin: 0 auto;
-        padding: 56px 24px 80px;
+        padding: 48px 0 72px;
       }
-
-      .eyebrow {
-        margin: 0 0 8px;
-        color: var(--accent);
-        font-size: 0.8rem;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+      section {
+        background: rgba(15, 23, 42, 0.82);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 24px;
+        padding: 24px;
+        margin: 18px 0;
       }
-
-      h1,
-      h2,
-      h3 {
-        line-height: 1.15;
-      }
-
       h1 {
+        font-size: clamp(2.2rem, 6vw, 4rem);
+        line-height: 1;
         margin: 0 0 16px;
-        font-size: clamp(2.4rem, 7vw, 5rem);
       }
-
       h2 {
-        margin-top: 48px;
-        padding-top: 24px;
-        border-top: 1px solid var(--line);
-        font-size: 2rem;
+        margin-top: 0;
       }
-
       p,
       li {
-        color: var(--muted);
+        color: #cbd5e1;
+        line-height: 1.65;
       }
-
-      strong {
-        color: var(--text);
+      .eyebrow {
+        margin: 0 0 8px;
+        color: #38bdf8;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
       }
-
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
       code {
-        color: #bfdbfe;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        color: #bae6fd;
       }
-
       pre {
         overflow-x: auto;
+        background: #020617;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 18px;
         padding: 18px;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: var(--code);
+        color: #e0f2fe;
       }
-
-      pre code {
-        color: #dbeafe;
-      }
-
       table {
         width: 100%;
         border-collapse: collapse;
-        margin: 20px 0;
       }
-
       th,
       td {
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
         padding: 12px;
-        border: 1px solid var(--line);
         text-align: left;
         vertical-align: top;
       }
-
       th {
-        background: var(--panel);
-        color: var(--text);
-      }
-
-      .note {
-        margin: 24px 0;
-        padding: 20px;
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        background: var(--panel);
+        color: #f8fafc;
       }
     </style>
   </head>
   <body>
     <main>
       <header>
-        <p class="eyebrow">GenOpen SDK</p>
-        <h1>Usage Guide</h1>
+        <p class="eyebrow">Gruntend 0.1</p>
+        <h1>Typed tool namespaces for LLM code plans.</h1>
         <p>
-          GenOpen lets an app define tool contracts, expose those contracts to an LLM, receive an
-          XState-style workflow JSON response, and execute that workflow with runtime handlers owned by the app.
+          Gruntend lets an app define typed capabilities, expose those capabilities as a tool namespace, and
+          execute LLM-generated code plans through app-owned runtime handlers.
         </p>
       </header>
 
-      <section class="note">
-        <strong>Core idea:</strong>
-        <code>defineTool()</code> is contract-only. Runtime execution happens later through closure handlers passed
-        to <code>runWorkflow()</code>.
+      <section>
+        <h2>Install</h2>
+        <pre><code>pnpm add gruntend valibot</code></pre>
       </section>
 
-      <h2>Install / import</h2>
-      <pre><code>import {
-  createGenOpenClient,
-  defineTool,
-  type WorkflowMachineConfig,
-} from "genopen";
-import * as v from "valibot";</code></pre>
+      <section>
+        <h2>Define a tool namespace</h2>
+        <p>Use explicit subpath imports. Gruntend intentionally does not expose a barrel module.</p>
+        <pre><code>import { createGruntendClient } from "gruntend/client";
+import { defineTools } from "gruntend/tool";
+import * as v from "valibot";
 
-      <h2>1. Define tool contracts</h2>
-      <p>
-        A tool contract describes what the LLM is allowed to call. It includes a stable name, description,
-        Standard Schema-compatible input schema, and Standard Schema-compatible output schema.
-      </p>
-
-      <pre><code>const createMenu = defineTool({
-  name: "menu.create",
-  description: "Create a menu and return the created menu id.",
-  input: v.object({
-    name: v.string(),
-  }),
-  output: v.object({
-    menuId: v.string(),
-    name: v.string(),
-  }),
-  execution: "sequential",
-});
-
-const createMenuItem = defineTool({
-  name: "menu.item.create",
-  description: "Create one menu item inside an existing menu.",
-  input: v.object({
-    menuId: v.string(),
-    name: v.string(),
-    price: v.number(),
-  }),
-  output: v.object({
-    itemId: v.string(),
-    menuId: v.string(),
-    name: v.string(),
-  }),
-  execution: "parallel",
-});
-
-const tools = [createMenu, createMenuItem] as const;</code></pre>
-
-      <h2>2. Create a client</h2>
-      <pre><code>const genopen = createGenOpenClient({
-  tools,
-});</code></pre>
-
-      <p>
-        The client owns the tool registry. It does not own app runtime state like cookies, auth tokens, database
-        handles, or component state.
-      </p>
-
-      <h2>3. Receive workflow JSON from the LLM</h2>
-      <p>
-        The LLM returns declarative XState-style JSON. It does not return executable JavaScript.
-      </p>
-
-      <pre><code>const workflow: WorkflowMachineConfig = {
-  id: "create-menu",
-  initial: "createMenu",
-  states: {
-    createMenu: {
-      invoke: {
-        src: "tool",
-        input: {
-          tool: "menu.create",
-          params: { name: "Dinner" },
-        },
-        onDone: "createBurger",
-        onError: "failed",
+const tools = defineTools({
+  menu: {
+    items: {
+      list: {
+        description: "List menu items from a menu.",
+        input: v.object({ menuId: v.string() }),
+        output: v.object({
+          items: v.array(v.object({ name: v.string(), price: v.number() })),
+        }),
       },
     },
-    createBurger: {
-      invoke: {
-        src: "tool",
-        input: {
-          tool: "menu.item.create",
-          params: {
-            menuId: { $ref: "createMenu.data.menuId" },
-            name: "Burger",
-            price: 12,
-          },
-        },
-        onDone: "completed",
-        onError: "failed",
+    findOrCreate: {
+      description: "Find or create a menu by name.",
+      input: v.object({ name: v.string() }),
+      output: v.object({ menuId: v.string(), name: v.string() }),
+    },
+    item: {
+      create: {
+        description: "Create one menu item.",
+        input: v.object({
+          menuId: v.string(),
+          name: v.string(),
+          price: v.number(),
+        }),
+        output: v.object({ itemId: v.string(), name: v.string() }),
       },
     },
-    completed: { type: "final" },
-    failed: { type: "final" },
   },
-};</code></pre>
+});
 
-      <h2>4. Run the workflow with closure handlers</h2>
-      <p>
-        Handlers are supplied at runtime, so they can close over request state, auth tokens, cookies, Svelte/React
-        state, database clients, or any app-owned variables.
-      </p>
+const gruntend = createGruntendClient({ tools });</code></pre>
+        <p>
+          This creates the callable plan namespace <code>tools.menu.items.list</code>,
+          <code>tools.menu.findOrCreate</code>, and <code>tools.menu.item.create</code>. Tools only describe contracts:
+          description, input schema, and output schema.
+        </p>
+      </section>
 
-      <pre><code>const authToken = getAuthToken();
-const tenantId = getTenantId();
+      <section>
+        <h2>Execute a code plan</h2>
+        <pre><code>const code = `
+const source = await tools.menu.items.list({
+  menuId: input.sourceMenuId,
+});
 
-const result = await genopen.runWorkflow(workflow, {
+const target = await tools.menu.findOrCreate({
+  name: input.targetMenuName,
+});
+
+const created = await parallel(
+  source.items.map((item) =&gt;
+    tools.menu.item.create({
+      menuId: target.menuId,
+      name: item.name,
+      price: item.price,
+    })
+  )
+);
+
+return {
+  targetMenuId: target.menuId,
+  copiedItems: created.map((item) =&gt; item.name),
+};
+`;
+
+const result = await gruntend.runCodePlan(code, {
+  input: {
+    sourceMenuId: "menu:source",
+    targetMenuName: "Lunch Menu",
+  },
   handlers: {
-    "menu.create": async ({ input, ok, err, signal, attempt, maxAttempts }) => {
-      if (!authToken) {
-        return err({
-          code: "MISSING_AUTH_TOKEN",
-          message: "Missing app auth token.",
-        });
-      }
+    "menu.items.list": async ({ ok }) =&gt;
+      ok({ items: [{ name: "Burger", price: 12 }] }),
 
-      const menu = await api.createMenu(input, { authToken, tenantId, signal });
+    "menu.findOrCreate": async ({ input, ok }) =&gt;
+      ok({ menuId: `menu:${input.name}`, name: input.name }),
 
-      return ok({
-        menuId: menu.menuId,
-        name: menu.name,
-      });
-    },
-
-    "menu.item.create": async ({ input, ok, err, signal }) => {
-      const item = await api.createMenuItem(input, { authToken, tenantId, signal });
-
-      if (!item.ok) {
-        return err({
-          code: "MENU_ITEM_CREATE_FAILED",
-          message: item.error.message,
-          retryable: true,
-        });
-      }
-
-      return ok({
-        itemId: item.value.itemId,
-        menuId: input.menuId,
-        name: input.name,
-      });
-    },
+    "menu.item.create": async ({ input, ok }) =&gt;
+      ok({ itemId: `item:${input.name}`, name: input.name }),
   },
 });</code></pre>
+      </section>
 
-      <p>
-        The handler receives a runtime context. <code>input</code> is already parsed by the tool input schema.
-        <code>ok(data)</code> marks the invocation successful. <code>err(reason)</code> marks it as a controlled
-        failure without throwing. <code>attempt</code> and <code>maxAttempts</code> describe the current retry state.
-      </p>
+      <section>
+        <h2>What generated code can access</h2>
+        <pre><code>input
+console
+tools
+parallel(promises)</code></pre>
+        <p>
+          App APIs, auth, stores, cookies, fetch clients, and database clients stay inside handlers. Code plans only
+          receive plain validated DTOs from registered tools.
+        </p>
+      </section>
 
-      <h2>Schema-driven handler types</h2>
-      <p>
-        Handler input and output types come from the tool schemas. If the handler output does not match the
-        declared output schema, TypeScript can catch it before runtime.
-      </p>
+      <section>
+        <h2>Runtime guarantees</h2>
+        <ol>
+          <li>Check the referenced tool exists.</li>
+          <li>Validate generated tool input.</li>
+          <li>Call the app-owned handler.</li>
+          <li>Respect <code>ok(...)</code> and <code>err(...)</code>.</li>
+          <li>Retry retryable failures when configured.</li>
+          <li>Validate successful output.</li>
+          <li>Return validated data back into the code plan.</li>
+        </ol>
+      </section>
 
-      <pre><code>// createMenuItem.output requires itemId, menuId, and name.
-"menu.item.create": async ({ input, ok }) => {
-  return ok({
-    itemId: "item_1",
-    menuId: input.menuId,
-    // TypeScript error: name is missing
-  });
-}</code></pre>
+      <section>
+        <h2>Events</h2>
+        <table>
+          <thead>
+            <tr><th>Event</th><th>Meaning</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>plan.started</code></td><td>The code plan started.</td></tr>
+            <tr><td><code>tool.started</code></td><td>A registered tool call started.</td></tr>
+            <tr><td><code>tool.retrying</code></td><td>A retryable tool failure will be retried.</td></tr>
+            <tr><td><code>tool.completed</code></td><td>A tool returned validated output.</td></tr>
+            <tr><td><code>tool.failed</code></td><td>A tool call failed and will not continue.</td></tr>
+            <tr><td><code>plan.completed</code></td><td>The code plan returned successfully.</td></tr>
+            <tr><td><code>plan.failed</code></td><td>The code plan failed.</td></tr>
+          </tbody>
+        </table>
+      </section>
 
-      <p>
-        Runtime also validates values with Standard Schema. This catches invalid LLM params and invalid handler
-        output even if TypeScript is bypassed.
-      </p>
-
-      <h2>Runtime validation flow</h2>
-      <pre><code>resolve workflow params, including $ref
-↓
-validate params with tool.input schema
-↓
-call runtime handler with parsed input, ok, err, signal, attempt, maxAttempts
-↓
-if handler returns err(...), fail/retry/onError without storing output
-↓
-if handler returns ok(data), validate data with tool.output schema
-↓
-store successful output by state path
-↓
-continue workflow</code></pre>
-
-      <h2>Workflow result</h2>
-      <pre><code>type ToolResult&lt;Output&gt; =
-  | { ok: true; data: Output }
-  | { ok: false; error: ToolExecutionError };
-
-type WorkflowRunResult = {
-  status: "done" | "failed";
-  // Only successful tool results are stored here by normal execution.
-  outputs: Record&lt;string, ToolResult&lt;unknown&gt;&gt;;
-  errors: Record&lt;string, WorkflowError&gt;;
-  finalState: string;
-};</code></pre>
-
-      <h2>Retry semantics</h2>
-      <p>
-        Retry is controlled by workflow metadata and the handler result. A successful <code>ok(data)</code> never
-        retries. A controlled <code>err({ retryable: true, ... })</code> retries until <code>maxAttempts</code> is
-        reached. A controlled <code>err({ retryable: false, ... })</code> stops immediately and follows
-        <code>onError</code>. Contract failures such as invalid input/output are not retryable. Unexpected thrown
-        exceptions are caught by GenOpen and treated as retryable handler errors by default.
-      </p>
-
-      <pre><code>input: {
-  tool: "menu.item.create",
-  params: { name: "Burger" },
-  retry: { maxAttempts: 3, delayMs: 250 },
-}</code></pre>
-
-      <pre><code>"menu.item.create": async ({ input, ok, err, attempt, maxAttempts }) => {
-  const response = await api.createMenuItem(input);
-
-  if (response.temporaryFailure) {
-    return err({
-      code: "TEMPORARY_UPSTREAM_FAILURE",
-      message: `Attempt ${attempt} of ${maxAttempts} failed.`,
-      retryable: true,
-    });
-  }
-
-  if (response.validationFailure) {
-    return err({
-      code: "VALIDATION_FAILED",
-      message: "The item cannot be created.",
-      retryable: false,
-    });
-  }
-
-  return ok(response.item);
-}</code></pre>
-
-      <h2>Lifecycle events</h2>
-      <p>
-        GenOpen currently emits <strong>seven</strong> runtime events through one callback: <code>onEvent</code>.
-      </p>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Event</th>
-            <th>When it fires</th>
-            <th>Payload</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>workflow.started</code></td>
-            <td>Before the XState actor starts running.</td>
-            <td><code>{ workflowId }</code></td>
-          </tr>
-          <tr>
-            <td><code>tool.started</code></td>
-            <td>After params are resolved and input schema validation passes, immediately before the handler runs.</td>
-            <td><code>{ workflowId, state, tool, input }</code></td>
-          </tr>
-          <tr>
-            <td><code>tool.completed</code></td>
-            <td>After the handler returns <code>ok(data)</code> and output schema validation passes.</td>
-            <td><code>{ workflowId, state, tool, output: { ok: true, data } }</code></td>
-          </tr>
-          <tr>
-            <td><code>tool.retrying</code></td>
-            <td>After a retryable failed attempt when another attempt will be made.</td>
-            <td><code>{ workflowId, state, tool, attempt, maxAttempts, nextAttempt, error }</code></td>
-          </tr>
-          <tr>
-            <td><code>tool.failed</code></td>
-            <td>
-              When input validation, handler execution, <code>err(...)</code>, output validation, or tool lookup fails and
-              no retry remains.
-            </td>
-            <td><code>{ workflowId, state, tool, error }</code></td>
-          </tr>
-          <tr>
-            <td><code>workflow.completed</code></td>
-            <td>When the workflow reaches a successful final state.</td>
-            <td><code>{ workflowId, finalState }</code></td>
-          </tr>
-          <tr>
-            <td><code>workflow.failed</code></td>
-            <td>When the workflow reaches the failed final state.</td>
-            <td><code>{ workflowId, finalState, errors }</code></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>Using events for UI progress</h3>
-      <pre><code>const statuses: Record&lt;string, "pending" | "running" | "retrying" | "done" | "error"&gt; = {};
-
-await genopen.runWorkflow(workflow, {
-  handlers,
-  onEvent(event) {
-    if (event.type === "tool.started") {
-      statuses[event.state] = "running";
-    }
-
-    if (event.type === "tool.retrying") {
-      statuses[event.state] = "retrying";
-      console.log(`Retry ${event.nextAttempt}/${event.maxAttempts}`, event.error);
-    }
-
-    if (event.type === "tool.completed") {
-      statuses[event.state] = "done";
-    }
-
-    if (event.type === "tool.failed") {
-      statuses[event.state] = "error";
-    }
-  },
-});</code></pre>
-
-      <h2>Parallel workflows</h2>
-      <p>
-        XState parallel states run child regions concurrently. GenOpen records nested outputs by full state path.
-      </p>
-
-      <pre><code>{
-  "createItems": {
-    "type": "parallel",
-    "states": {
-      "createItem1": {
-        "initial": "run",
-        "states": {
-          "run": {
-            "invoke": {
-              "src": "tool",
-              "input": {
-                "tool": "menu.item.create",
-                "params": {
-                  "menuId": { "$ref": "createMenu.data.menuId" },
-                  "name": "Burger",
-                  "price": 12
-                }
-              },
-              "onDone": "done",
-              "onError": "failed"
-            }
-          },
-          "done": { "type": "final" },
-          "failed": { "type": "final" }
-        }
-      }
-    },
-    "onDone": "completed"
-  }
-}</code></pre>
-
-      <p>Output key example:</p>
-      <pre><code>outputs["createItems.createItem1.run"].data.itemId</code></pre>
-
-      <h2>Mental model</h2>
-      <pre><code>defineTool = contract
-createGenOpenClient = registry/client
-LLM workflow JSON = declarative state machine
-handlers = runtime closures returning ok(data) or err(reason)
-runWorkflow = validation + retry + XState execution + events</code></pre>
+      <section>
+        <h2>Mental model</h2>
+        <pre><code>defineTools = app capability surface
+code plan = orchestration
+handlers = real app effects
+runtime events = execution trace</code></pre>
+      </section>
     </main>
   </body>
 </html>

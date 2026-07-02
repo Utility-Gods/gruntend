@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Project TDD workflow for GenOpen SDK development. Use before implementing any SDK feature: define the smallest contract, write failing tests first, implement the minimum, then refactor.
+description: "Project TDD workflow for GenOpen SDK development. Use before implementing any SDK feature: define the smallest contract, write failing tests first, implement the minimum, then refactor."
 ---
 
 # Test Driven Development

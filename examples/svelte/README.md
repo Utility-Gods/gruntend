@@ -1,27 +1,33 @@
-# GenOpen Svelte Example
+# Gruntend Svelte Example
 
-Reference frontend app that imports the SDK and defines a small set of async tools.
+Reference frontend app that imports Gruntend, defines a small tool namespace, asks a mock LLM for a code plan, and executes that plan through app-owned handlers.
 
-Run:
-
-```bash
-cd examples/svelte
-deno task dev
-```
-
-Check the tool definitions:
+Run from the repository root:
 
 ```bash
-cd examples/svelte
-deno task check:tools
+pnpm --filter gruntend-svelte-example dev
 ```
 
-The example manually composes:
+Build:
 
-```text
-menu.create
-↓
-menu.item.create × 3 in parallel
+```bash
+pnpm --filter gruntend-svelte-example build
 ```
 
-Later, this same tool contract will feed the manifest/workflow side of the SDK.
+The example composes tools in generated code:
+
+```ts
+const menu = await tools.menu.create({ name: "Dinner Menu" });
+
+const createdItems = await parallel(
+  items.map((item) =>
+    tools.menu.item.create({
+      menuId: menu.menuId,
+      name: item.name,
+      price: item.price,
+    })
+  )
+);
+```
+
+The generated code can branch, loop, and fan out dynamically, but it can only call registered tools.

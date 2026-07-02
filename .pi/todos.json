@@ -1,17 +1,4 @@
 {
-  "todos": [
-    {
-      "id": "todo-1",
-      "text": "Improve TypeScript handler contract errors so users see clearer messages when runtime handler output does not satisfy the tool output schema. Explore defineHandlers/client helper or branded helper types to hide ToolHandlerFor/UnionToIntersection internals.",
-      "completed": false,
-      "priority": "medium",
-      "created": 1778772723996,
-      "tags": [
-        "typescript",
-        "dx",
-        "sdk-api"
-      ]
-    }
-  ],
-  "nextId": 2
+  "todos": [],
+  "nextId": 3
 }

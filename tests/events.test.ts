@@ -1,132 +1,115 @@
-import { assertEquals } from "@std/assert";
-import { createGenOpenClient, defineTool, type WorkflowMachineConfig, type WorkflowRuntimeEvent } from "../mod.ts";
+import { expect, test } from "vitest";
+import { createGruntendClient } from "../src/client.ts";
+import type { RuntimeEvent } from "../src/runtime.ts";
+import { defineTools } from "../src/tool.ts";
 import * as v from "valibot";
 
-Deno.test("runWorkflow emits workflow and tool lifecycle events through onEvent", async () => {
-  const events: WorkflowRuntimeEvent[] = [];
-  const createMenu = defineTool({
-    name: "menu.create",
-    description: "Create a menu.",
-    input: v.object({ name: v.string() }),
-    output: v.object({ menuId: v.string() }),
-  });
-  const client = createGenOpenClient({ tools: [createMenu] });
-  const workflow: WorkflowMachineConfig = {
-    id: "create-menu",
-    initial: "createMenu",
-    states: {
-      createMenu: {
-        invoke: {
-          src: "tool",
-          input: { tool: "menu.create", params: { name: "Dinner" } },
-          onDone: "completed",
-        },
+test("runCodePlan emits plan and tool lifecycle events through onEvent", async () => {
+  const events: RuntimeEvent[] = [];
+  const tools = defineTools({
+    menu: {
+      create: {
+        description: "Create a menu.",
+        input: v.object({ name: v.string() }),
+        output: v.object({ menuId: v.string() }),
       },
-      completed: { type: "final" },
     },
-  };
-
-  await client.runWorkflow(workflow, {
-    handlers: {
-      "menu.create": ({ input, ok }) => ok({ menuId: `menu:${input.name}` }),
-    },
-    onEvent: (event) => events.push(event),
   });
+  const client = createGruntendClient({ tools });
 
-  assertEquals(events.map((event) => event.type), [
-    "workflow.started",
+  await client.runCodePlan(
+    `return await tools.menu.create({ name: "Dinner" });`,
+    {
+      id: "create-menu",
+      handlers: {
+        "menu.create": ({ input, ok }) => ok({ menuId: `menu:${input.name}` }),
+      },
+      onEvent: (event) => events.push(event),
+    },
+  );
+
+  expect(events.map((event) => event.type)).toEqual([
+    "plan.started",
     "tool.started",
     "tool.completed",
-    "workflow.completed",
+    "plan.completed",
   ]);
-  assertEquals(events[0], { type: "workflow.started", workflowId: "create-menu" });
-  assertEquals(events[1], {
+  expect(events[0]).toEqual({ type: "plan.started", planId: "create-menu" });
+  expect(events[1]).toEqual({
     type: "tool.started",
-    workflowId: "create-menu",
-    state: "createMenu",
+    planId: "create-menu",
+    callId: "call1",
     tool: "menu.create",
     input: { name: "Dinner" },
   });
-  assertEquals(events[2], {
+  expect(events[2]).toEqual({
     type: "tool.completed",
-    workflowId: "create-menu",
-    state: "createMenu",
+    planId: "create-menu",
+    callId: "call1",
     tool: "menu.create",
     output: { ok: true, data: { menuId: "menu:Dinner" } },
   });
-  assertEquals(events[3], {
-    type: "workflow.completed",
-    workflowId: "create-menu",
-    finalState: "completed",
+  expect(events[3]).toEqual({
+    type: "plan.completed",
+    planId: "create-menu",
+    result: { menuId: "menu:Dinner" },
   });
 });
 
-Deno.test("runWorkflow emits retry events when a retryable tool error will be retried", async () => {
-  const events: WorkflowRuntimeEvent[] = [];
-  const createMenu = defineTool({
-    name: "menu.create",
-    description: "Create a menu.",
-    input: v.object({ name: v.string() }),
-    output: v.object({ menuId: v.string() }),
+test("runCodePlan emits retry events when a retryable tool error will be retried", async () => {
+  const events: RuntimeEvent[] = [];
+  const tools = defineTools({
+    menu: {
+      create: {
+        description: "Create a menu.",
+        input: v.object({ name: v.string() }),
+        output: v.object({ menuId: v.string() }),
+      },
+    },
   });
-  const client = createGenOpenClient({ tools: [createMenu] });
-  const workflow: WorkflowMachineConfig = {
-    id: "create-menu-retry",
-    initial: "createMenu",
-    states: {
-      createMenu: {
-        invoke: {
-          src: "tool",
-          input: {
-            tool: "menu.create",
-            params: { name: "Dinner" },
-            retry: { maxAttempts: 2 },
-          },
-          onDone: "completed",
-          onError: "failed",
+  const client = createGruntendClient({ tools });
+
+  await client.runCodePlan(
+    `return await tools.menu.create({ name: "Dinner" });`,
+    {
+      id: "create-menu-retry",
+      retry: { maxAttempts: 2 },
+      handlers: {
+        "menu.create": ({ input, ok, err, attempt }) => {
+          if (attempt === 1) {
+            return err({
+              code: "TEMPORARY_FAILURE",
+              message: "Temporary menu API failure.",
+              retryable: true,
+            });
+          }
+
+          return ok({ menuId: `menu:${input.name}` });
         },
       },
-      completed: { type: "final" },
-      failed: { type: "final" },
+      onEvent: (event) => events.push(event),
     },
-  };
+  );
 
-  await client.runWorkflow(workflow, {
-    handlers: {
-      "menu.create": ({ input, ok, err, attempt }) => {
-        if (attempt === 1) {
-          return err({
-            code: "TEMPORARY_FAILURE",
-            message: "Temporary menu API failure.",
-            retryable: true,
-          });
-        }
-
-        return ok({ menuId: `menu:${input.name}` });
-      },
-    },
-    onEvent: (event) => events.push(event),
-  });
-
-  assertEquals(events.map((event) => event.type), [
-    "workflow.started",
+  expect(events.map((event) => event.type)).toEqual([
+    "plan.started",
     "tool.started",
     "tool.retrying",
     "tool.started",
     "tool.completed",
-    "workflow.completed",
+    "plan.completed",
   ]);
-  assertEquals(events[2], {
+  expect(events[2]).toEqual({
     type: "tool.retrying",
-    workflowId: "create-menu-retry",
-    state: "createMenu",
+    planId: "create-menu-retry",
+    callId: "call1",
     tool: "menu.create",
     attempt: 1,
     maxAttempts: 2,
     nextAttempt: 2,
     error: {
       type: "handler_error",
-      state: "createMenu",
+      callId: "call1",
       tool: "menu.create",
       message: "Temporary menu API failure.",
       code: "TEMPORARY_FAILURE",

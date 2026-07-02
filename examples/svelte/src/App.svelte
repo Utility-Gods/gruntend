@@ -1,12 +1,23 @@
 <script lang="ts">
-  import { genopen } from "./client.ts";
-  import { generateMenuWorkflow, type MenuRequestData } from "./mock-llm.ts";
-  import WorkflowPreview, { type WorkflowStepStatus } from "./WorkflowPreview.svelte";
-  import type { WorkflowMachineConfig, WorkflowRuntimeEvent } from "../../../mod.ts";
+  import { gruntend } from "./client.ts";
+  import { generateMenuCodePlan, type MenuRequestData } from "./mock-llm.ts";
+  import type { RuntimeEvent } from "gruntend/runtime";
 
   type RunState = "idle" | "running" | "done" | "error";
   type Page = "demo" | "options";
   type RetryDemoMode = "off" | "first-item-once" | "random-item-once";
+
+  interface CodePlanResult {
+    readonly menu: {
+      readonly menuId: string;
+      readonly name: string;
+    };
+    readonly items: readonly {
+      readonly itemId: string;
+      readonly menuId: string;
+      readonly name: string;
+    }[];
+  }
 
   let page: Page = "demo";
   let state: RunState = "idle";
@@ -22,34 +33,47 @@
     null,
     2,
   );
-  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   let message = "";
   let createdMenu = "";
   let createdItems: string[] = [];
-  let lastWorkflow: WorkflowMachineConfig | null = null;
-  let lastFinalState = "";
-  let runningStates: Record<string, WorkflowStepStatus> = {};
-  let retryMessages: Record<string, string> = {};
+  let lastCodePlan = "";
   let eventLog: string[] = [];
+  let callStatuses: Record<string, string> = {};
 
   let authToken = "demo-auth-token";
   let tenantId = "restaurant-demo";
   let retryMode: RetryDemoMode = "first-item-once";
-  let menuDelayMs = 900;
-  let itemDelayMs = 1100;
+  let menuDelayMs = 600;
+  let itemDelayMs = 800;
 
-  function logEvent(event: WorkflowRuntimeEvent) {
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  function logEvent(event: RuntimeEvent) {
+    if (event.type === "tool.started") {
+      callStatuses = { ...callStatuses, [event.callId]: `running ${event.tool}` };
+      eventLog = [`${event.callId}: started ${event.tool}`, ...eventLog];
+      return;
+    }
+
     if (event.type === "tool.retrying") {
+      callStatuses = { ...callStatuses, [event.callId]: `retrying ${event.tool}` };
       eventLog = [
-        `Retrying ${event.state}: attempt ${event.nextAttempt}/${event.maxAttempts} after ${event.error.message}`,
+        `${event.callId}: retry ${event.nextAttempt}/${event.maxAttempts} after ${event.error.message}`,
         ...eventLog,
       ];
       return;
     }
 
-    if (event.type.startsWith("tool.")) {
-      eventLog = [`${event.type} ${event.state}`, ...eventLog];
+    if (event.type === "tool.completed") {
+      callStatuses = { ...callStatuses, [event.callId]: `done ${event.tool}` };
+      eventLog = [`${event.callId}: completed ${event.tool}`, ...eventLog];
+      return;
+    }
+
+    if (event.type === "tool.failed") {
+      callStatuses = { ...callStatuses, [event.callId]: `failed ${event.tool}` };
+      eventLog = [`${event.callId}: failed ${event.error.message}`, ...eventLog];
       return;
     }
 
@@ -58,9 +82,7 @@
 
   function shouldRetryItem(itemName: string, attempt: number, retryItemName: string | null): boolean {
     if (attempt !== 1 || retryMode === "off") return false;
-    if (retryMode === "first-item-once") return itemName === retryItemName;
-    if (retryMode === "random-item-once") return itemName === retryItemName;
-    return false;
+    return itemName === retryItemName;
   }
 
   async function askAssistant() {
@@ -68,23 +90,24 @@
     message = "";
     createdMenu = "";
     createdItems = [];
-    lastFinalState = "";
-    runningStates = {};
-    retryMessages = {};
+    lastCodePlan = "";
     eventLog = [];
+    callStatuses = {};
 
     try {
       const data = JSON.parse(input) as MenuRequestData;
-      const workflow = await generateMenuWorkflow(data);
+      const code = await generateMenuCodePlan(data);
       const retryItemName = retryMode === "off"
         ? null
         : retryMode === "first-item-once"
         ? data.items[0]?.name ?? null
         : data.items[Math.floor(Math.random() * data.items.length)]?.name ?? null;
 
-      lastWorkflow = workflow;
-      runningStates = {};
-      const result = await genopen.runWorkflow(workflow, {
+      lastCodePlan = code;
+
+      const result = await gruntend.runCodePlan(code, {
+        id: "create-menu-from-data",
+        retry: { maxAttempts: 2 },
         handlers: {
           "menu.create": async ({ input, ok, err }) => {
             if (!authToken) {
@@ -129,43 +152,17 @@
             });
           },
         },
-        onEvent: (event) => {
-          logEvent(event);
-
-          if (event.type === "tool.started") {
-            runningStates = { ...runningStates, [event.state]: "running" };
-          }
-
-          if (event.type === "tool.retrying") {
-            runningStates = { ...runningStates, [event.state]: "retrying" };
-            retryMessages = {
-              ...retryMessages,
-              [event.state]: `retry ${event.nextAttempt}/${event.maxAttempts}`,
-            };
-          }
-
-          if (event.type === "tool.completed") {
-            runningStates = { ...runningStates, [event.state]: "done" };
-          }
-
-          if (event.type === "tool.failed") {
-            runningStates = { ...runningStates, [event.state]: "error" };
-          }
-        },
+        onEvent: logEvent,
       });
 
       if (result.status !== "done") {
-        throw new Error("The assistant workflow failed.");
+        throw new Error(result.error ?? "The assistant code plan failed.");
       }
 
-      const menu = result.outputs.createMenu?.data as { name: string; menuId: string } | undefined;
-      createdMenu = menu ? `${menu.name} (${menu.menuId})` : "Menu created";
-      createdItems = Object.entries(result.outputs)
-        .filter(([stateName]) => stateName.includes("createItem"))
-        .map(([, output]) => (output.data as { name: string }).name);
-
+      const planResult = result.result as CodePlanResult;
+      createdMenu = `${planResult.menu.name} (${planResult.menu.menuId})`;
+      createdItems = planResult.items.map((item) => item.name);
       message = `Assistant completed the requested app actions using ${authToken}.`;
-      lastFinalState = result.finalState;
       state = "done";
     } catch (error) {
       message = error instanceof Error ? error.message : String(error);
@@ -176,11 +173,11 @@
 
 <main>
   <section class="hero">
-    <p class="eyebrow">GenOpen reference app</p>
+    <p class="eyebrow">Gruntend reference app</p>
     <h1>Restaurant menu assistant</h1>
     <p>
-      Paste structured menu data. The app sends it to a mock LLM, receives an XState workflow, and
-      lets GenOpen execute registered app tools with local app context.
+      Paste structured menu data. A mock LLM returns a small code plan, and Gruntend executes only the registered
+      app tools behind that plan.
     </p>
 
     <nav class="tabs" aria-label="Demo pages">
@@ -224,11 +221,6 @@
           <input type="number" min="0" bind:value={itemDelayMs} />
         </label>
       </div>
-
-      <p class="hint">
-        Retry works through handler results: the demo handler returns <code>err(&#123; retryable: true &#125;)</code> once,
-        GenOpen emits <code>tool.retrying</code>, then the next attempt returns <code>ok(...)</code>.
-      </p>
     </section>
   {:else}
     <section class="panel">
@@ -239,46 +231,50 @@
       </button>
     </section>
 
-    {#if lastWorkflow}
-      <details class="panel debug workflow-panel" open>
-        <summary>Developer workflow preview</summary>
+    {#if lastCodePlan}
+      <section class="panel code-plan">
+        <h2>Generated code plan</h2>
+        <pre>{lastCodePlan}</pre>
+      </section>
+    {/if}
 
-        <WorkflowPreview
-          workflow={lastWorkflow}
-          statuses={runningStates}
-          retryMessages={retryMessages}
-          finalState={lastFinalState}
-        />
-      </details>
+    {#if Object.keys(callStatuses).length > 0}
+      <section class="panel trace">
+        <h2>Tool calls</h2>
+        <ul>
+          {#each Object.entries(callStatuses) as [callId, status]}
+            <li><span>{callId}</span>{status}</li>
+          {/each}
+        </ul>
+      </section>
     {/if}
 
     {#if eventLog.length > 0}
       <section class="panel event-log">
         <h2>Runtime event stream</h2>
         <ul>
-          {#each eventLog.slice(0, 8) as entry}
+          {#each eventLog.slice(0, 10) as entry}
             <li>{entry}</li>
           {/each}
         </ul>
       </section>
     {/if}
 
+    {#if state === "done"}
+      <section class="panel success">
+        <h2>Created menu</h2>
+        <p>{createdMenu}</p>
+        <ul>
+          {#each createdItems as item}
+            <li>{item}</li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
     {#if message}
-      <section class:error={state === "error"} class="panel result">
-        <h2>{state === "error" ? "Could not complete request" : "Created in app"}</h2>
+      <section class="panel" class:error={state === "error"}>
         <p>{message}</p>
-
-        {#if createdMenu}
-          <h3>{createdMenu}</h3>
-        {/if}
-
-        {#if createdItems.length > 0}
-          <ul>
-            {#each createdItems as item}
-              <li>{item}</li>
-            {/each}
-          </ul>
-        {/if}
       </section>
     {/if}
   {/if}
@@ -287,178 +283,161 @@
 <style>
   :global(body) {
     margin: 0;
+    min-height: 100vh;
+    background: #0f172a;
+    color: #e5e7eb;
     font-family:
       Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #f8fafc;
-    color: #111827;
   }
 
   main {
-    max-width: 760px;
+    width: min(980px, calc(100vw - 32px));
     margin: 0 auto;
-    padding: 64px 24px;
-  }
-
-  .workflow-panel {
-    width: min(calc(100vw - 48px), 1500px);
-    margin-left: 50%;
-    transform: translateX(-50%);
+    padding: 48px 0;
   }
 
   .hero {
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
 
   .eyebrow {
     margin: 0 0 8px;
-    color: #2563eb;
-    font-size: 0.8rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
+    color: #38bdf8;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 
   h1,
   h2,
-  h3,
   p {
     margin-top: 0;
   }
 
   h1 {
-    margin-bottom: 12px;
-    font-size: clamp(2.25rem, 7vw, 4.5rem);
+    font-size: clamp(2rem, 6vw, 4rem);
     line-height: 1;
+    margin-bottom: 16px;
   }
 
-  p {
-    color: #4b5563;
+  .hero p:not(.eyebrow) {
+    color: #cbd5e1;
+    max-width: 720px;
+    font-size: 1.1rem;
   }
 
   .tabs {
     display: flex;
-    gap: 10px;
-    margin-top: 22px;
+    gap: 8px;
+    margin-top: 24px;
   }
 
-  .tabs button {
-    margin-top: 0;
-    background: #e0e7ff;
-    color: #1e3a8a;
-  }
-
-  .tabs button.active {
-    background: #2563eb;
-    color: white;
-  }
-
-  .panel {
-    margin-top: 20px;
-    padding: 24px;
-    border: 1px solid #e5e7eb;
-    border-radius: 18px;
-    background: white;
-    box-shadow: 0 16px 40px rgb(15 23 42 / 8%);
-  }
-
-  label {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: 800;
-  }
-
-  textarea,
+  button,
   input,
-  select {
-    box-sizing: border-box;
-    width: 100%;
-    padding: 12px 14px;
-    border: 1px solid #d1d5db;
-    border-radius: 14px;
-    color: #111827;
-    background: #f9fafb;
-  }
-
+  select,
   textarea {
-    min-height: 220px;
-    resize: vertical;
-    padding: 16px;
-    font: 0.95rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  }
-
-  input,
-  select {
-    margin-top: 8px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
     font: inherit;
   }
 
   button {
-    margin-top: 16px;
-    padding: 12px 16px;
-    border: 0;
-    border-radius: 12px;
-    background: #2563eb;
-    color: white;
-    font-weight: 800;
     cursor: pointer;
+    background: #38bdf8;
+    color: #082f49;
+    border: 0;
+    padding: 12px 18px;
+    font-weight: 800;
   }
 
   button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
+    cursor: wait;
+    opacity: 0.65;
+  }
+
+  .tabs button {
+    background: rgba(15, 23, 42, 0.65);
+    color: #e5e7eb;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+  }
+
+  .tabs button.active {
+    background: #e0f2fe;
+    color: #075985;
+  }
+
+  .panel {
+    background: rgba(15, 23, 42, 0.82);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 24px;
+    padding: 22px;
+    margin: 16px 0;
+    box-shadow: 0 24px 80px rgba(2, 6, 23, 0.35);
+  }
+
+  label {
+    display: grid;
+    gap: 8px;
+    color: #cbd5e1;
+    font-weight: 700;
+  }
+
+  textarea {
+    min-height: 180px;
+    resize: vertical;
+    margin: 8px 0 14px;
+    padding: 14px;
+    width: 100%;
+    box-sizing: border-box;
+    background: #020617;
+    color: #e5e7eb;
+  }
+
+  input,
+  select {
+    padding: 10px 12px;
+    background: #020617;
+    color: #e5e7eb;
   }
 
   .field-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 16px;
   }
 
-  .hint {
-    margin: 14px 0 0;
-    padding: 14px;
-    border-radius: 14px;
-    background: #eff6ff;
-  }
-
-  .debug summary {
-    cursor: pointer;
-    font-weight: 800;
-  }
-
-  .event-log ul {
-    display: grid;
-    gap: 8px;
-    padding-left: 0;
-    list-style: none;
-  }
-
-  .event-log li {
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: #f1f5f9;
-    color: #334155;
-    font-weight: 700;
-  }
-
-  .result {
-    border-color: #bbf7d0;
-    background: #f0fdf4;
-  }
-
-  .result.error {
-    border-color: #fecaca;
-    background: #fef2f2;
+  pre {
+    overflow-x: auto;
+    margin: 0;
+    background: #020617;
+    border-radius: 18px;
+    padding: 18px;
+    color: #bae6fd;
   }
 
   ul {
-    margin-bottom: 0;
+    margin: 0;
     padding-left: 20px;
   }
 
-  @media (max-width: 720px) {
-    .field-grid {
-      grid-template-columns: 1fr;
-    }
+  .trace li {
+    margin-bottom: 8px;
+  }
+
+  .trace span {
+    display: inline-block;
+    min-width: 56px;
+    color: #38bdf8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .success {
+    border-color: rgba(34, 197, 94, 0.45);
+  }
+
+  .error {
+    border-color: rgba(248, 113, 113, 0.5);
+    color: #fecaca;
   }
 </style>

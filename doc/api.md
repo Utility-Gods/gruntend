@@ -1,257 +1,199 @@
-# Proposed API Structure
+# Gruntend 0.1 API
 
-## Core Idea
+Gruntend lets an app expose a typed namespace of capabilities, ask an LLM for a small code plan, and execute that plan through app-owned handlers.
 
-Applications expose **semantic capabilities**.
-
-LLMs do not generate arbitrary UI or backend code.
-
-Instead:
-
-```txt
-Application Capabilities
+```text
+Tool namespace
 ↓
-Capability Manifest
+LLM code plan
 ↓
-LLM generates orchestration logic
+Gruntend runtime
 ↓
-Runtime validates + executes
-↓
-UI projects workflow state
+validated app handlers
 ```
 
----
+There is no workflow JSON in the 0.1 API. Composition lives in code: `await`, `if`, `for`, `map`, and `parallel(...)`.
 
-# 1. Developer Defines Capabilities
+## Define tools
 
-Developer uses a fluent API to define atomic application capabilities.
+Import concrete modules directly. Gruntend does not use barrel files.
 
 ```ts
-const createMenu = capability("menu.create")
-  .does("Create a restaurant menu")
-  .input(CreateMenuSchema)
-  .output(CreateMenuResultSchema)
-  .mutation()
-  .serial()
-  .handle(...)
+import { createGruntendClient } from "gruntend/client";
+import { defineTools } from "gruntend/tool";
+import * as v from "valibot";
 
-const createMenuItem = capability("menu.item.create")
-  .does("Create one menu item")
-  .input(CreateMenuItemSchema)
-  .output(CreateMenuItemResultSchema)
-  .mutation()
-  .parallelizable()
-  .handle(...)
+const tools = defineTools({
+  menu: {
+    items: {
+      list: {
+        description: "List menu items from a menu.",
+        input: v.object({ menuId: v.string() }),
+        output: v.object({
+          items: v.array(v.object({ name: v.string(), price: v.number() })),
+        }),
+      },
+    },
+    findOrCreate: {
+      description: "Find or create a menu by name.",
+      input: v.object({ name: v.string() }),
+      output: v.object({ menuId: v.string(), name: v.string() }),
+    },
+    item: {
+      create: {
+        description: "Create one menu item.",
+        input: v.object({
+          menuId: v.string(),
+          name: v.string(),
+          price: v.number(),
+        }),
+        output: v.object({ itemId: v.string(), name: v.string() }),
+      },
+    },
+  },
+});
 ```
 
-Capabilities define:
+`defineTools()` flattens that namespace into dot-named tool contracts:
 
-* semantic meaning
-* input/output schema
-* execution semantics
-* safety semantics
-* runtime handler
-
-NOT workflows.
-
----
-
-# 2. SDK Compiles Capabilities Into Manifest
-
-The fluent API is compiled into a model-readable manifest.
-
-```json
-{
-  "id": "menu.item.create",
-  "description": "Create one menu item",
-  "inputSchema": {...},
-  "outputSchema": {...},
-  "execution": {
-    "mode": "parallel"
-  }
-}
-```
-
-This manifest is sent to the LLM.
-
----
-
-# 3. Runtime Sends Context To LLM
-
-Runtime sends:
-
-* user request
-* current app state
-* selected entities
-* uploaded files
-* capability manifest
-
-Example:
-
-```txt
-"Create a menu from this uploaded PDF"
-```
-
----
-
-# 4. LLM Generates Workflow Program
-
-LLM infers orchestration from schemas and capability semantics.
-
-Example JS-like workflow:
-
-```js
-const items = await capabilities.pdf.extractItems({
-  fileId: context.file.id
-})
-
-const menu = await capabilities.menu.create({
-  restaurantId: context.restaurant.id,
-  name: "Dinner Menu"
-})
-
-await parallel(items, async item => {
-  await capabilities.menu.item.create({
-    menuId: menu.menuId,
-    ...item
-  })
-})
-```
-
-LLM automatically infers:
-
-```txt
-menu.create.output.menuId
-→
-menu.item.create.input.menuId
-```
-
-No manual dependency graph needed.
-
----
-
-# 5. Runtime Executes Deterministically
-
-Runtime validates and executes only safe primitives.
-
-Allowed:
-
-```txt
-capability()
-parallel()
-waitForUser()
-stream()
-```
-
-Not arbitrary JS APIs.
-
-Runtime handles:
-
-* validation
-* retries
-* parallel execution
-* checkpoints
-* approvals
-* resumability
-* observability
-
----
-
-# 6. UI Is Projection Layer
-
-UI is not freely generated.
-
-Capabilities may expose UI projections:
-
-```ts
-.ui(MenuEditorComponent)
-```
-
-Runtime projects workflow state into structured UI.
-
----
-
-# Core Concepts
-
-## Atomic Capability
-
-One application action.
-
-Examples:
-
-```txt
-menu.create
+```text
+menu.items.list
+menu.findOrCreate
 menu.item.create
-pdf.extractItems
 ```
 
----
+A tool contract only needs:
 
-## Composite Capability
+- namespace/name
+- description
+- input schema
+- output schema
 
-Reusable orchestration abstraction.
+It does not declare ordering or concurrency behavior. The plan code decides that.
+
+## Create a client
+
+```ts
+const gruntend = createGruntendClient({ tools });
+```
+
+## Execute a code plan
+
+```ts
+const code = `
+const source = await tools.menu.items.list({
+  menuId: input.sourceMenuId,
+});
+
+const target = await tools.menu.findOrCreate({
+  name: input.targetMenuName,
+});
+
+const created = await parallel(
+  source.items.map((item) =>
+    tools.menu.item.create({
+      menuId: target.menuId,
+      name: item.name,
+      price: item.price,
+    })
+  )
+);
+
+return {
+  targetMenuId: target.menuId,
+  copiedItems: created.map((item) => item.name),
+};
+`;
+
+const result = await gruntend.runCodePlan(code, {
+  input: {
+    sourceMenuId: "menu:source",
+    targetMenuName: "Lunch Menu",
+  },
+  handlers: {
+    "menu.items.list": async ({ ok }) => ok({ items: [] }),
+    "menu.findOrCreate": async ({ input, ok }) =>
+      ok({ menuId: `menu:${input.name}`, name: input.name }),
+    "menu.item.create": async ({ input, ok }) =>
+      ok({ itemId: `item:${input.name}`, name: input.name }),
+  },
+});
+```
+
+The generated code receives only:
+
+```ts
+declare const input: unknown;
+declare const tools: ToolNamespace;
+declare function parallel<T>(values: readonly Promise<T>[]): Promise<T[]>;
+declare const console: Console;
+```
+
+App internals stay inside handlers.
+
+## Handler result protocol
+
+Expected success:
+
+```ts
+return ok({ menuId: "menu_1" });
+```
+
+Expected failure:
+
+```ts
+return err({
+  code: "MISSING_AUTH",
+  message: "Missing auth token.",
+  retryable: false,
+});
+```
+
+Unexpected failures can still throw. Thrown handler errors are retryable by default.
+
+## Runtime guarantees
+
+For every tool call Gruntend:
+
+1. checks the tool exists
+2. validates generated input
+3. calls the app-owned handler
+4. honors `ok(...)` / `err(...)`
+5. retries when configured and retryable
+6. validates successful output
+7. emits runtime events
+8. returns plain validated data back to the code plan
+
+## Events
+
+`runCodePlan()` emits one event stream:
+
+```text
+plan.started
+tool.started
+tool.retrying
+tool.completed
+tool.failed
+plan.completed
+plan.failed
+```
 
 Example:
 
-```txt
-menu.createFromPdf
+```ts
+await gruntend.runCodePlan(code, {
+  handlers,
+  onEvent(event) {
+    console.log(event.type);
+  },
+});
 ```
 
-Built from atomic capabilities.
+## Mental model
 
----
-
-## Capability Manifest
-
-LLM-readable representation of application abilities.
-
-Contains:
-
-* id
-* description
-* input schema
-* output schema
-* execution semantics
-* safety semantics
-
----
-
-## Workflow IR
-
-Structured execution program generated by the LLM.
-
-Possible forms:
-
-* JSON DAG
-* JS-like DSL
-* AST
-* workflow graph
-
----
-
-# Key Insight
-
-The system is NOT:
-
-```txt
-AI generates frontend
+```text
+defineTools = app capability surface
+code plan = orchestration
+handlers = real app effects
+runtime events = execution trace
 ```
-
-The system is:
-
-```txt
-Applications expose semantic capabilities
-↓
-LLM generates orchestration logic
-↓
-Runtime executes safely
-↓
-UI projects workflow state
-```
-
-So the real product is:
-
-```txt
-Semantic application runtime for agents
-```
-

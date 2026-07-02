@@ -1,76 +1,43 @@
-import { assertEquals } from "@std/assert";
-import {
-  createGenOpenClient,
-  defineTool,
-  type WorkflowMachineConfig,
-} from "../mod.ts";
+import { expect, test } from "vitest";
+import { createGruntendClient } from "../src/client.ts";
+import { defineTools } from "../src/tool.ts";
 import * as v from "valibot";
 
-Deno.test("GenOpen client runs an LLM workflow response with runtime closure handlers", async () => {
+test("Gruntend client runs an LLM code plan with app-owned closure handlers", async () => {
   let receivedAuthToken = "";
 
-  const createMenu = defineTool({
-    name: "menu.create",
-    description: "Create a menu.",
-    input: v.object({
-      name: v.string(),
-    }),
-    output: v.object({
-      menuId: v.string(),
-    }),
+  const tools = defineTools({
+    menu: {
+      create: {
+        description: "Create a menu.",
+        input: v.object({ name: v.string() }),
+        output: v.object({ menuId: v.string() }),
+      },
+    },
   });
 
-  const client = createGenOpenClient({
-    tools: [createMenu],
-  });
-
+  const client = createGruntendClient({ tools });
   const authToken = "secret-token";
-  const llmResponse: WorkflowMachineConfig = {
-    id: "create-menu",
-    initial: "createMenu",
-    states: {
-      createMenu: {
-        invoke: {
-          src: "tool",
-          input: {
-            tool: "menu.create",
-            params: {
-              name: "Dinner",
-            },
-          },
-          onDone: "completed",
+
+  const result = await client.runCodePlan(
+    `
+      const menu = await tools.menu.create({ name: "Dinner" });
+      return menu;
+    `,
+    {
+      handlers: {
+        "menu.create": ({ input, ok }) => {
+          receivedAuthToken = authToken;
+          return ok({ menuId: `menu:${input.name}` });
         },
       },
-      completed: {
-        type: "final",
-      },
     },
-  };
+  );
 
-  const result = await client.runWorkflow(llmResponse, {
-    handlers: {
-      "menu.create": ({ input, ok }) => {
-        receivedAuthToken = authToken;
-
-        return ok({
-          menuId: `menu:${input.name}`,
-        });
-      },
-    },
-  });
-
-  assertEquals(receivedAuthToken, "secret-token");
-  assertEquals(result, {
+  expect(receivedAuthToken).toBe("secret-token");
+  expect(result).toEqual({
     status: "done",
-    outputs: {
-      createMenu: {
-        ok: true,
-        data: {
-          menuId: "menu:Dinner",
-        },
-      },
-    },
+    result: { menuId: "menu:Dinner" },
     errors: {},
-    finalState: "completed",
   });
 });
