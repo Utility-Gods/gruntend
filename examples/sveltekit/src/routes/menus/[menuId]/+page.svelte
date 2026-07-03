@@ -39,46 +39,48 @@
 <style>
   .back {
     display: inline-flex;
-    color: #bae6fd;
-    margin-bottom: 18px;
+    color: var(--color-primary-700);
+    margin-bottom: 1.25rem;
+    font-weight: 800;
     text-decoration: none;
   }
 
   .page-heading {
-    margin-bottom: 24px;
+    margin-bottom: 2rem;
   }
 
   .items {
     display: grid;
-    gap: 12px;
+    gap: 0.9rem;
   }
 
   article {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 18px;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 18px;
-    padding: 14px 16px;
-    background: rgba(2, 6, 23, 0.45);
+    gap: 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.9rem;
+    padding: 1rem 1.15rem;
+    background: var(--color-surface-soft);
   }
 
   h3 {
-    margin: 0 0 4px;
+    margin: 0 0 0.35rem;
   }
 
   article p {
     margin: 0;
-    color: #94a3b8;
+    color: var(--color-text-tertiary);
+    line-height: 1.55;
   }
 
   strong {
-    color: #e0f2fe;
+    color: var(--color-primary-700);
     white-space: nowrap;
   }
 
   .agent-hint {
-    margin-top: 16px;
+    margin-top: 1.25rem;
   }
 </style>

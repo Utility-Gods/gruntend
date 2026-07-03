@@ -22,15 +22,20 @@
 
 <style>
   .page-heading {
-    margin-bottom: 24px;
+    margin-bottom: 2rem;
+  }
+
+  .user-card h2 {
+    margin-bottom: 0.75rem;
   }
 
   .user-card span {
     display: inline-flex;
     border-radius: 999px;
-    background: rgba(56, 189, 248, 0.12);
-    color: #bae6fd;
-    padding: 5px 10px;
+    background: var(--color-primary-50);
+    color: var(--color-primary-700);
+    padding: 0.35rem 0.7rem;
+    line-height: 1.2;
     text-transform: capitalize;
   }
 </style>

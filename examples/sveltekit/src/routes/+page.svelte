@@ -38,37 +38,10 @@
 </section>
 
 <style>
-  .hero {
-    margin-bottom: 28px;
-    max-width: 780px;
-  }
-
   .actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 22px;
-  }
-
-  .secondary {
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    border-radius: 14px;
-    color: #e5e7eb;
-    padding: 11px 16px;
-    text-decoration: none;
-    font-weight: 800;
-  }
-
-  .stats span {
-    display: block;
-    color: #38bdf8;
-    font-size: 2.4rem;
-    font-weight: 900;
-    line-height: 1;
-    margin-bottom: 12px;
-  }
-
-  code {
-    color: #bae6fd;
+    gap: 0.85rem;
+    margin-top: 1.5rem;
   }
 </style>

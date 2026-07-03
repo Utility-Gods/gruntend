@@ -23,18 +23,18 @@
 
 <style>
   .page-heading {
-    margin-bottom: 24px;
-  }
-
-  code {
-    color: #bae6fd;
+    margin-bottom: 2rem;
   }
 
   .menu-card h2 {
-    margin-bottom: 8px;
+    margin-bottom: 0.45rem;
+  }
+
+  .menu-card p {
+    line-height: 1.68;
   }
 
   .menu-card .button {
-    margin-top: 10px;
+    margin-top: 1rem;
   }
 </style>
