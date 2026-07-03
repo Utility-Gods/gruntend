@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gruntend UI Protocol Research & Hypermedia Plan</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f172a;
+        --panel: #111827;
+        --panel-2: #1f2937;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --accent: #38bdf8;
+        --accent-2: #a78bfa;
+        --ok: #34d399;
+        --warn: #fbbf24;
+        --danger: #fb7185;
+        --border: rgba(255, 255, 255, 0.12);
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f8fafc;
+          --panel: #ffffff;
+          --panel-2: #f1f5f9;
+          --text: #0f172a;
+          --muted: #475569;
+          --border: rgba(15, 23, 42, 0.12);
+        }
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 32rem), var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      main {
+        width: min(1080px, calc(100vw - 2rem));
+        margin: 0 auto;
+        padding: 4rem 0;
+      }
+
+      header {
+        margin-bottom: 2rem;
+      }
+
+      h1, h2, h3 {
+        line-height: 1.15;
+        margin: 0 0 1rem;
+      }
+
+      h1 {
+        font-size: clamp(2.25rem, 6vw, 4.25rem);
+        letter-spacing: -0.05em;
+      }
+
+      h2 {
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        letter-spacing: -0.03em;
+        margin-top: 2.25rem;
+      }
+
+      h3 {
+        font-size: 1.1rem;
+        color: var(--accent);
+      }
+
+      p { margin: 0 0 1rem; }
+
+      code, pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      }
+
+      code {
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.35rem;
+        background: var(--panel-2);
+      }
+
+      pre {
+        overflow-x: auto;
+        padding: 1rem;
+        border-radius: 0.9rem;
+        border: 1px solid var(--border);
+        background: #020617;
+        color: #e5e7eb;
+      }
+
+      ul, ol { padding-left: 1.4rem; }
+
+      .lede {
+        max-width: 780px;
+        font-size: 1.25rem;
+        color: var(--muted);
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 1.5rem;
+      }
+
+      .badge {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 999px;
+        padding: 0.35rem 0.75rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 1.25rem;
+        padding: 1.25rem;
+        background: color-mix(in srgb, var(--panel) 92%, transparent);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1rem;
+      }
+
+      .flow {
+        display: grid;
+        gap: 0.6rem;
+        margin: 1rem 0;
+      }
+
+      .step {
+        border-left: 4px solid var(--accent);
+        background: var(--panel-2);
+        border-radius: 0.75rem;
+        padding: 0.8rem 1rem;
+      }
+
+      .callout {
+        border-left: 4px solid var(--ok);
+        background: color-mix(in srgb, var(--ok) 12%, var(--panel));
+        border-radius: 0.9rem;
+        padding: 1rem 1.25rem;
+        margin: 1rem 0;
+      }
+
+      .warning {
+        border-left-color: var(--warn);
+        background: color-mix(in srgb, var(--warn) 12%, var(--panel));
+      }
+
+      .danger {
+        border-left-color: var(--danger);
+        background: color-mix(in srgb, var(--danger) 12%, var(--panel));
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 1rem;
+        border: 1px solid var(--border);
+      }
+
+      th, td {
+        padding: 0.85rem;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+        text-align: left;
+      }
+
+      th { background: var(--panel-2); }
+      tr:last-child td { border-bottom: 0; }
+
+      .muted { color: var(--muted); }
+      .accent { color: var(--accent); }
+      .accent-2 { color: var(--accent-2); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="muted">Gruntend planning note · UI protocol research · 2026-07-03</p>
+        <h1>Agentic Hypermedia over Application Capabilities</h1>
+        <p class="lede">
+          The frontend primitive should not be a chat window, Solid app, React component tree, or raw JSON UI DSL.
+          The primitive should be a hypermedia representation of application state plus allowed next actions,
+          backed by runtime-owned capabilities and opaque continuation handles.
+        </p>
+        <div class="badge-row">
+          <span class="badge">semantic runtime</span>
+          <span class="badge">hypermedia controls</span>
+          <span class="badge">runtime authority boundary</span>
+          <span class="badge">design-system friendly</span>
+          <span class="badge">extension intercepts</span>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>Core thesis</h2>
+        <p>
+          Other projects are mostly trying to solve <strong>AI-generated UI</strong>.
+          Gruntend should solve a slightly different problem:
+        </p>
+        <pre><code>Applications expose semantic capabilities
+↓
+Runtime/agent produces hypermedia projections
+↓
+User follows safe controls
+↓
+Runtime validates and executes through app-owned tools</code></pre>
+        <p>
+          So the frontend does not receive raw tool authority. It receives a representation of state and
+          allowed transitions. The UI may trigger capabilities, but only by submitting runtime-minted controls.
+        </p>
+      </section>
+
+      <section>
+        <h2>What people are trying in the ecosystem</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>1. Controlled generative UI</h3>
+            <p class="muted">Examples: Vercel AI SDK, CopilotKit frontend tools, assistant-ui tool renderers.</p>
+            <pre><code>model calls tool
+↓
+tool returns data
+↓
+developer maps result to known component</code></pre>
+            <p><strong>Strength:</strong> safest and easiest to reason about.</p>
+            <p><strong>Weakness:</strong> app must prebuild every renderer; mostly chat/tool-result oriented.</p>
+          </article>
+
+          <article class="card">
+            <h3>2. Declarative component protocols</h3>
+            <p class="muted">Examples: A2UI, json-render, LangChain generative UI with json-render.</p>
+            <pre><code>developer defines catalog
+↓
+LLM generates JSON UI tree
+↓
+renderer maps to design system</code></pre>
+            <p><strong>Strength:</strong> framework-agnostic, streamable, design-system friendly.</p>
+            <p><strong>Weakness:</strong> primarily component-centered, not application-capability-centered.</p>
+          </article>
+
+          <article class="card">
+            <h3>3. Sandboxed HTML / app iframe</h3>
+            <p class="muted">Examples: MCP Apps, mcp-ui, OpenAI Apps SDK, OpenGenerativeUI.</p>
+            <pre><code>tool links/returns HTML app
+↓
+host renders iframe
+↓
+iframe talks through bridge</code></pre>
+            <p><strong>Strength:</strong> extremely flexible for charts, editors, dashboards, maps, simulations.</p>
+            <p><strong>Weakness:</strong> heavy security boundary: iframe sandbox, CSP, postMessage bridge, permissions.</p>
+          </article>
+
+          <article class="card">
+            <h3>4. Agent/user event protocols</h3>
+            <p class="muted">Example: AG-UI.</p>
+            <pre><code>run started
+text chunks
+tool call events
+state deltas
+interrupts
+run finished</code></pre>
+            <p><strong>Strength:</strong> strong session/event/lifecycle layer.</p>
+            <p><strong>Weakness:</strong> not itself the semantic hypermedia projection format.</p>
+          </article>
+
+          <article class="card">
+            <h3>5. Markdown/custom block renderers</h3>
+            <p class="muted">Example: llm-ui.</p>
+            <pre><code>LLM streams markdown
+↓
+parser detects custom blocks
+↓
+React renders matched blocks</code></pre>
+            <p><strong>Strength:</strong> good chat polish and progressive content handling.</p>
+            <p><strong>Weakness:</strong> too presentation-oriented for Gruntend's semantic runtime.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Trust levels</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Level</th>
+              <th>What the model/runtime produces</th>
+              <th>Security posture</th>
+              <th>Fit for Gruntend</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Controlled</strong></td>
+              <td>Known tool/component selection and data</td>
+              <td>Safest, least flexible</td>
+              <td>Good adapter pattern</td>
+            </tr>
+            <tr>
+              <td><strong>Declarative</strong></td>
+              <td>Constrained component tree or semantic projection</td>
+              <td>Validated data, no arbitrary code</td>
+              <td>Best v0 direction if tied to capabilities</td>
+            </tr>
+            <tr>
+              <td><strong>Open-ended</strong></td>
+              <td>HTML/CSS/JS or full widget app</td>
+              <td>Requires iframe sandbox and bridge</td>
+              <td>Extension surface, not core v0</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Recommended Gruntend primitives</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Session</h3>
+            <p>The active runtime context. Owns lifecycle, event stream, action registry, pending requests, and projection state.</p>
+          </article>
+          <article class="card">
+            <h3>Surface</h3>
+            <p>A renderable hypermedia region: state representation plus allowed next controls. A chat message, drawer, modal, card, table, or command palette can all render the same surface.</p>
+          </article>
+          <article class="card">
+            <h3>Projection</h3>
+            <p>The semantic view of app/runtime state: entity lists, forms, approvals, trace, results, errors, and choices.</p>
+          </article>
+          <article class="card">
+            <h3>Control</h3>
+            <p>A user-facing transition such as a button, choice, form submit, approval, or item action. It should be opaque to the renderer.</p>
+          </article>
+          <article class="card">
+            <h3>ActionRegistry</h3>
+            <p>Session-local mapping from opaque action IDs to trusted operations or continuations. It lives wherever the runtime authority lives.</p>
+          </article>
+          <article class="card">
+            <h3>Renderer</h3>
+            <p>Presentation layer only. It maps surfaces/controls to the host app's design system and calls <code>submitAction(actionId)</code>.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>How action mapping works without assuming a server</h2>
+        <p>
+          Do not say “server stores <code>a_123</code>.” Say “the runtime authority boundary stores <code>a_123</code>.”
+          That boundary may be browser-local, server-backed, edge-backed, desktop-process-backed, worker-backed, or hybrid.
+        </p>
+
+        <div class="flow">
+          <div class="step"><strong>1. Draft affordance:</strong> runtime, model, or extension proposes “delete this menu item”.</div>
+          <div class="step"><strong>2. Materialization:</strong> runtime validates the proposal against tool registry, entity state, permissions, and policy.</div>
+          <div class="step"><strong>3. Mint handle:</strong> runtime creates <code>a_123</code> in the current session action registry.</div>
+          <div class="step"><strong>4. Emit surface:</strong> renderer receives only an opaque control, not the underlying tool name or privileged input.</div>
+          <div class="step"><strong>5. Submit:</strong> user clicks; renderer calls <code>session.submitAction("a_123")</code>.</div>
+          <div class="step"><strong>6. Resolve:</strong> runtime revalidates and executes the mapped operation or resumes the plan.</div>
+        </div>
+
+        <pre><code>ActionRegistry
+  a_123 → {
+    kind: "toolCall",
+    tool: "menu.delete",
+    input: { itemId: "item_1" },
+    risk: "destructive",
+    requiresApproval: true
+  }</code></pre>
+
+        <div class="callout warning">
+          <strong>Rule:</strong> the UI should normally call <code>submitAction(actionId)</code>, not <code>tools.menu.delete(...)</code>.
+          If tools are intentionally exposed in the browser, they are public client capabilities, not protected authority.
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Hypermedia shape</h2>
+        <p>
+          Hypermedia means a representation includes the allowed next transitions. In Gruntend terms:
+        </p>
+        <pre><code>Surface = representation of semantic application state
+        + controls the user is allowed to follow
+        + opaque continuation handles minted by runtime</code></pre>
+        <p>
+          The canonical protocol can later be serialized as semantic HTML, JSON AST, A2UI, json-render, or an MCP Apps iframe.
+          The important part is that the authority mapping remains in the runtime session.
+        </p>
+      </section>
+
+      <section>
+        <h2>Possible wire/render formats</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Semantic HTML fragment</h3>
+            <p>Web-native and LLM-friendly. Can use native forms, buttons, lists, and tables. Needs sanitization and canonicalization.</p>
+            <pre><code>&lt;button data-gr-action="a_123" data-gr-risk="destructive"&gt;
+  Delete
+&lt;/button&gt;</code></pre>
+          </article>
+
+          <article class="card">
+            <h3>JSON/AST surface</h3>
+            <p>Easier to validate, transform, and map to non-web renderers. Less web-native than HTML.</p>
+            <pre><code>{
+  "kind": "entityList",
+  "entityType": "menuItem",
+  "controls": [{ "actionId": "a_123", "label": "Delete" }]
+}</code></pre>
+          </article>
+
+          <article class="card">
+            <h3>Adapter formats</h3>
+            <p>Could emit A2UI/json-render/MCP Apps later from the same semantic surface model.</p>
+            <pre><code>Gruntend Surface
+↓
+A2UI adapter | json-render adapter | HTML adapter | iframe adapter</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Extension intercept model</h2>
+        <p>Extensions should be able to participate, but only at explicit boundaries.</p>
+        <pre><code>tool result
+↓ projection intercept
+validated/canonical surface
+↓ render intercept
+user action
+↓ action/policy intercept
+tool call / plan continuation
+↓ tool-call intercept
+new projection</code></pre>
+        <table>
+          <thead>
+            <tr>
+              <th>Intercept</th>
+              <th>Purpose</th>
+              <th>Authority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Projection intercept</td>
+              <td>Convert tool results into surfaces, remove unsupported controls, add metadata</td>
+              <td>Must be revalidated</td>
+            </tr>
+            <tr>
+              <td>Render intercept</td>
+              <td>Map semantic controls to host design system</td>
+              <td>Presentation only</td>
+            </tr>
+            <tr>
+              <td>Action intercept</td>
+              <td>Allow/deny, require approval, apply UI policy</td>
+              <td>Runtime-side</td>
+            </tr>
+            <tr>
+              <td>Tool-call intercept</td>
+              <td>Audit, permission checks, destructive-action confirmation</td>
+              <td>Runtime-side authority</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>v0 recommendation</h2>
+        <ol>
+          <li>Do not start with a drop-in Solid app as the core API.</li>
+          <li>Define a framework-agnostic <strong>Session + Surface + Control</strong> contract.</li>
+          <li>Keep tool handlers owned by the app/runtime, not the renderer.</li>
+          <li>Materialize all user-facing actions into opaque session action IDs.</li>
+          <li>Provide a simple renderer adapter for the example app.</li>
+          <li>Add richer HTML/iframe extension support later, behind explicit sandbox/bridge boundaries.</li>
+        </ol>
+        <div class="callout">
+          <strong>Positioning:</strong> Gruntend is not “LLM generates frontend.”
+          It is “applications expose capabilities, runtime projects hypermedia, user follows safe controls.”
+        </div>
+      </section>
+
+      <section class="card danger">
+        <h2>Things to avoid early</h2>
+        <ul>
+          <li>Giving frontend renderers raw access to protected tool handlers.</li>
+          <li>Treating server as mandatory in the protocol vocabulary.</li>
+          <li>Making Solid/React/Vue the core abstraction.</li>
+          <li>Letting LLM-generated HTML mint executable authority directly.</li>
+          <li>Inventing a large layout DSL before the semantic action model is stable.</li>
+          <li>Mixing component generation concerns with the core tool contract.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Research notes</h2>
+        <ul>
+          <li><strong>A2UI:</strong> JSON streaming UI protocol with surfaces, component catalog, data model, binding, actions, and renderer capability exchange.</li>
+          <li><strong>json-render:</strong> catalog + registry model; AI generates flat JSON specs constrained to developer-defined components/actions; supports React/Vue/Svelte/Solid and more.</li>
+          <li><strong>AG-UI:</strong> event protocol for agent/frontend interaction; useful lifecycle/event layer.</li>
+          <li><strong>MCP Apps / mcp-ui / OpenAI Apps SDK:</strong> iframe app model where tools link to UI resources and widgets communicate through a host bridge.</li>
+          <li><strong>Vercel AI SDK / assistant-ui / CopilotKit controlled UI:</strong> tool-call results rendered by known components; safe but less dynamic.</li>
+          <li><strong>OpenGenerativeUI:</strong> high-flexibility generated HTML/SVG/JS inside sandboxed iframe; good extension pattern but not ideal as Gruntend core.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
