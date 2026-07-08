@@ -247,13 +247,12 @@ await gruntend.runCodePlan(code, {
 
 ### SvelteKit app
 
-`examples/sveltekit` is the main application example. It uses pinned latest SvelteKit, seeded in-memory API data, normal app routes, and an agent route powered by `gruntend/generate` + pi-ai/OpenAI.
+`examples/sveltekit` is the main application example. It uses pinned latest SvelteKit, seeded Bun SQLite API data, normal app routes, and an agent route powered by `gruntend/generate` + pi-ai/OpenAI.
 
 Routes:
 
 - `/` — app dashboard
 - `/menus` — menus from `/api/menus`
-- `/menus/[menuId]` — nested menu items from `/api/menus/[menuId]/items`
 - `/users` — seeded users from `/api/users`
 - `/agent` — pi-ai/OpenAI generation → Gruntend code plan → app API handlers
 

@@ -11,6 +11,10 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 
+# Local example data
+.gruntend/
+**/.gruntend/
+
 # Coverage
 coverage/
 .nyc_output/

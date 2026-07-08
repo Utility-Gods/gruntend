@@ -47,7 +47,7 @@ test("runCodePlan emits plan and tool lifecycle events through onEvent", async (
     planId: "create-menu",
     callId: "call1",
     tool: "menu.create",
-    output: { ok: true, data: { menuId: "menu:Dinner" } },
+    output: expect.objectContaining({ status: "ok", value: { menuId: "menu:Dinner" } }),
   });
   expect(events[3]).toEqual({
     type: "plan.completed",

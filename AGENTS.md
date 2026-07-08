@@ -1,6 +1,7 @@
 # Agent Instructions
 
 - Prefer concise shell commands that the user can copy and run manually.
+- Do not run tests, package-manager commands, npm scripts, or pnpm scripts yourself. If validation is needed, tell the user the exact command to run manually.
 - This project targets Node/TypeScript with pnpm workspaces.
 - Pin dependency versions exactly in `package.json` files; avoid `latest`, caret ranges, and broad ranges for supply-chain safety.
 - After dependency changes, update `pnpm-lock.yaml` and run the affected checks:

@@ -4,38 +4,23 @@
   let { data }: { data: PageData } = $props();
 </script>
 
-<section class="page-heading">
-  <p class="eyebrow">Users</p>
-  <h1>Team members</h1>
-  <p>Seeded users available through the app API and Gruntend tools.</p>
+<section class="space-y-8">
+  <header class="max-w-3xl space-y-3">
+    <p class="text-sm font-semibold uppercase tracking-[0.12em] text-orange-600">Team</p>
+    <h1 class="text-3xl font-medium tracking-tight text-neutral-950 md:text-2xl">Team members</h1>
+    <p class="text-base leading-7 text-neutral-600">People available to the restaurant tools and agent workflows.</p>
+  </header>
+
+  <section class="overflow-hidden border border-neutral-200 bg-white">
+    <div class="grid grid-cols-[1fr_160px] border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+      <span>Name</span>
+      <span>Role</span>
+    </div>
+    {#each data.users as user}
+      <article class="grid grid-cols-[1fr_160px] items-center border-b border-neutral-100 px-5 py-4 last:border-b-0">
+        <h2 class="text-lg font-semibold text-neutral-950">{user.name}</h2>
+        <span class="capitalize text-neutral-600">{user.role}</span>
+      </article>
+    {/each}
+  </section>
 </section>
-
-<section class="grid">
-  {#each data.users as user}
-    <article class="panel user-card">
-      <p class="muted">{user.userId}</p>
-      <h2>{user.name}</h2>
-      <span>{user.role}</span>
-    </article>
-  {/each}
-</section>
-
-<style>
-  .page-heading {
-    margin-bottom: 2rem;
-  }
-
-  .user-card h2 {
-    margin-bottom: 0.75rem;
-  }
-
-  .user-card span {
-    display: inline-flex;
-    border-radius: 999px;
-    background: var(--color-primary-50);
-    color: var(--color-primary-700);
-    padding: 0.35rem 0.7rem;
-    line-height: 1.2;
-    text-transform: capitalize;
-  }
-</style>
