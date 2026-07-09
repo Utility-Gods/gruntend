@@ -3,8 +3,30 @@
 
   let { data }: { data: PageData } = $props();
 
-  let selectedMenuId = $state(data.menus[0]?.menuId ?? "");
-  const selectedMenu = $derived(data.menus.find((menu) => menu.menuId === selectedMenuId) ?? data.menus[0]);
+  let menus = $state(data.menus.map((menu) => ({ ...menu, items: [...menu.items] })));
+  let selectedMenuId = $state(menus[0]?.menuId ?? "");
+  let deleteError = $state("");
+  const selectedMenu = $derived(menus.find((menu) => menu.menuId === selectedMenuId) ?? menus[0]);
+
+  async function deleteItem(menuId: string, itemId: string) {
+    deleteError = "";
+
+    const response = await fetch(`/api/menus/${menuId}/items/${itemId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      deleteError = body.message ?? "Unable to delete menu item.";
+      return;
+    }
+
+    menus = menus.map((menu) =>
+      menu.menuId === menuId
+        ? { ...menu, items: menu.items.filter((item) => item.itemId !== itemId) }
+        : menu,
+    );
+  }
 </script>
 
 <section class="mx-auto max-w-5xl space-y-6">
@@ -18,7 +40,7 @@
 
   {#if selectedMenu}
     <nav class="flex gap-7 overflow-x-auto border-b border-neutral-200" role="tablist" aria-label="Menus">
-      {#each data.menus as menu}
+      {#each menus as menu}
         <button
           type="button"
           role="tab"
@@ -45,6 +67,10 @@
         <p class="text-base text-neutral-600">{selectedMenu.description}</p>
       </div>
 
+      {#if deleteError}
+        <p class="mt-4 bg-red-50 px-3 py-2 text-sm text-red-700">{deleteError}</p>
+      {/if}
+
       <div class="divide-y divide-neutral-100">
         {#each selectedMenu.items as item}
           <article class="flex items-center justify-between gap-4 py-4">
@@ -52,7 +78,17 @@
               <h3 class="truncate text-base font-medium text-neutral-950">{item.name}</h3>
               <p class="truncate text-sm text-neutral-500">{item.tags.join(" · ") || "No tags"}</p>
             </div>
-            <strong class="shrink-0 text-sm font-medium text-orange-700">${item.price.toFixed(2)}</strong>
+            <div class="flex shrink-0 items-center gap-4">
+              <strong class="text-sm font-medium text-orange-700">${item.price.toFixed(2)}</strong>
+              <button
+                type="button"
+                class="text-sm text-neutral-400 hover:text-red-700"
+                aria-label={`Delete ${item.name}`}
+                on:click={() => deleteItem(selectedMenu.menuId, item.itemId)}
+              >
+                Delete
+              </button>
+            </div>
           </article>
         {:else}
           <div class="py-8">

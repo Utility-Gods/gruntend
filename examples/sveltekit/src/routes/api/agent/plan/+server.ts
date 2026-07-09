@@ -48,7 +48,7 @@ export const POST: RequestHandler = async ({ request }) => {
         users: listUsers(),
       },
       instructions:
-        "This is a restaurant admin app. Prefer reusing existing menus and users when names match. Read current app data with tools before mutating when the task depends on existing state. If you want to show interactive UI, return an object with an html string from the code plan. Use gr-href semantic paths such as /menus/{menuId}/items/{itemId}/actions/duplicate on controls. Do not return separate UI JSON.",
+        "This is a restaurant admin app. Prefer reusing existing menus and users when names match. Read current app data with tools before mutating when the task depends on existing state. Generated UI is available through the standard html tagged template function. For simple UI, return html`...`. For local UI state, return a render function that returns html`...`. Use function-valued event slots such as onclick=${handler}; do not return raw HTML strings or separate UI JSON.",
       model,
       options: {
         apiKey,

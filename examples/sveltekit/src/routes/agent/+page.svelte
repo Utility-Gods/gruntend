@@ -3,9 +3,11 @@
   import { createBrowserHandlers } from "$lib/agent/handlers";
   import { createHypermediaActionPlan } from "$lib/agent/hypermedia-action-plan";
   import HtmlSurface from "$lib/components/hypermedia/HtmlSurface.svelte";
+  import TaggedHtmlSurface from "$lib/components/runtime/TaggedHtmlSurface.svelte";
   import type { GeneratedCodePlan } from "gruntend/generate";
   import type { HtmlSurfaceActionSubmission } from "gruntend/hypermedia";
   import type { RuntimeEvent } from "gruntend/runtime";
+  import { createUiComponent, createUiTemplateTag, type UiComponent } from "gruntend/ui-runtime";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
   type ChatMessage = {
@@ -14,6 +16,7 @@
     readonly text: string;
     readonly tone?: "normal" | "error" | "pending";
     readonly surfaceHtml?: string;
+    readonly uiComponent?: UiComponent;
   };
   type AgentGenerationEnvelope = {
     readonly generator: "mock" | "pi-ai";
@@ -26,12 +29,14 @@
   };
 
   const examples = [
+    'Show a selectable "Dinner Menu" page',
     'Copy "Dinner Menu" to "Lunch Menu" except burgers',
     'Add vegetarian items to "Brunch Menu"',
     'Create user "Sam Rivera" as manager',
     "Summarize the restaurant data",
   ];
 
+  const taggedHtml = createUiTemplateTag();
   let prompt = examples[0];
   let state: RunState = "idle";
   let messages: ChatMessage[] = [
@@ -64,6 +69,7 @@
         input: plan.input,
         retry: { maxAttempts: 2 },
         handlers: createBrowserHandlers(fetch),
+        ui: { html: taggedHtml },
         onEvent: recordEvent,
       });
 
@@ -72,10 +78,12 @@
       }
 
       state = "done";
+      const uiComponent = readUiComponent(result.result);
       updateMessage(workingId, {
-        text: resultSummary(result.result),
+        text: uiComponent ? `Generated dynamic UI. I called ${toolCallCount} app tools to prepare it.` : resultSummary(result.result),
         tone: "normal",
-        surfaceHtml: readSurfaceHtml(result.result) ?? doneSurface(),
+        uiComponent,
+        surfaceHtml: uiComponent ? undefined : readSurfaceHtml(result.result) ?? doneSurface(),
       });
     } catch (caught) {
       state = "error";
@@ -123,13 +131,18 @@
   }
 
   function submitHypermediaAction(actionId: string, _submission: HtmlSurfaceActionSubmission) {
-    if (actionId === "/examples/copy-menu") {
+    if (actionId === "/examples/selectable-menu") {
       prompt = examples[0];
       return;
     }
 
-    if (actionId === "/examples/add-vegetarian-items") {
+    if (actionId === "/examples/copy-menu") {
       prompt = examples[1];
+      return;
+    }
+
+    if (actionId === "/examples/add-vegetarian-items") {
+      prompt = examples[2];
       return;
     }
 
@@ -162,6 +175,7 @@
         input: plan.input,
         retry: { maxAttempts: 2 },
         handlers: createBrowserHandlers(fetch),
+        ui: { html: taggedHtml },
         onEvent: recordEvent,
       });
 
@@ -169,10 +183,12 @@
         throw new Error(result.error ?? "The hypermedia action code plan failed.");
       }
 
+      const uiComponent = readUiComponent(result.result);
       updateMessage(workingId, {
-        text: resultSummary(result.result),
+        text: uiComponent ? `Generated dynamic UI. I called ${toolCallCount} app tools to prepare it.` : resultSummary(result.result),
         tone: "normal",
-        surfaceHtml: readSurfaceHtml(result.result) ?? doneSurface(),
+        uiComponent,
+        surfaceHtml: uiComponent ? undefined : readSurfaceHtml(result.result) ?? doneSurface(),
       });
     } catch (caught) {
       updateMessage(workingId, {
@@ -205,9 +221,19 @@
     return typeof result === "object" && result !== null;
   }
 
+  function readUiComponent(result: unknown): UiComponent | undefined {
+    const component = createUiComponent(result);
+    return component.status === "ok" ? component.value : undefined;
+  }
+
+  function reportUiError(error: unknown) {
+    console.error("[gruntend example] tagged UI failed", error);
+  }
+
   function quickActionsSurface(): string {
     return `<div class="surface-card">
   <div class="surface-actions">
+    <button type="button" gr-href="/examples/selectable-menu">Use selectable menu task</button>
     <button type="button" gr-href="/examples/copy-menu">Use copy-menu task</button>
     <button type="button" gr-href="/examples/add-vegetarian-items">Use vegetarian task</button>
   </div>
@@ -257,6 +283,11 @@
           {#each message.text.split("\n") as line}
             <p class="text-inherit">{line}</p>
           {/each}
+          {#if message.uiComponent}
+            <div class="mt-3">
+              <TaggedHtmlSurface component={message.uiComponent} onError={reportUiError} />
+            </div>
+          {/if}
           {#if message.surfaceHtml}
             <div class="mt-3">
               <HtmlSurface html={message.surfaceHtml} submitAction={submitHypermediaAction} />

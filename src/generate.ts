@@ -163,6 +163,7 @@ The code is executed as an async function body by Gruntend. It can only access t
 - tools
 - parallel(promises)
 - console
+- html tagged template function, only when the app instructions explicitly say generated UI is available
 
 Rules:
 - Do not use imports, require, fetch, window, document, localStorage, process, external APIs, or TypeScript syntax.
@@ -173,6 +174,8 @@ Rules:
 - Put reusable constants directly in input and reference them from code, e.g. "input": { "menuName": "Dinner" } and input.menuName.
 - Use tools to read current app data before mutating when the task depends on existing state.
 - Use await for dependent calls and parallel([...]) for independent calls.
+- If app instructions ask for generated UI, return html\`...\` for simple UI or return a render function that returns html\`...\` for local state.
+- Do not return raw HTML strings for generated UI.
 - If the task cannot be completed with the available tools, return code that returns an explanation object instead of inventing capabilities.`;
 }
 
@@ -210,4 +213,3 @@ function stripMarkdownFence(text: string): string {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
-

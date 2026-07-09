@@ -2,6 +2,7 @@ import { Result } from "better-result";
 import { Interpreter } from "@mariozechner/jailjs";
 import { transformToES5 } from "@mariozechner/jailjs/transform";
 import type { ToolRegistry } from "./registry.ts";
+import type { UiTemplateTag } from "./ui-runtime.ts";
 import type {
   RetryPolicy,
   RuntimeEvent,
@@ -19,6 +20,10 @@ import {
   type ToolResult,
 } from "./tool.ts";
 
+export interface CodePlanUiRuntimeOptions {
+  readonly html: UiTemplateTag;
+}
+
 export interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly code: string;
   readonly input?: unknown;
@@ -27,6 +32,7 @@ export interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly id?: string;
   readonly signal?: AbortSignal;
   readonly retry?: RetryPolicy;
+  readonly ui?: CodePlanUiRuntimeOptions;
   readonly onEvent?: (event: RuntimeEvent) => void;
 }
 
@@ -98,6 +104,7 @@ export async function runCodePlan<TTool extends Tool>(
       input: options.input ?? {},
       parallel: (values: readonly unknown[]) => Promise.all(values),
       tools,
+      ...(options.ui ? { html: options.ui.html } : {}),
     });
     const result = await interpreter.evaluate(ast);
 

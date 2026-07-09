@@ -41,6 +41,71 @@ function renderTextSurface(text) {
 export function createMockPlan(task: string): GeneratedCodePlan {
   const normalized = task.toLowerCase();
 
+  if (normalized.includes("selectable") || normalized.includes("menu page")) {
+    return {
+      summary: "Render a selectable Dinner Menu page with tagged HTML.",
+      input: { menuName: "Dinner Menu" },
+      code: `
+var menusResult = await tools.menus.list({});
+var menu = null;
+
+for (var menuIndex = 0; menuIndex < menusResult.menus.length; menuIndex = menuIndex + 1) {
+  if (menusResult.menus[menuIndex].name === input.menuName) {
+    menu = menusResult.menus[menuIndex];
+  }
+}
+
+if (!menu) {
+  return html\`<section class="surface-card"><p class="surface-text">Could not find \${input.menuName}.</p></section>\`;
+}
+
+var itemsResult = await tools.menu.items.list({ menuId: menu.menuId });
+var selected = [];
+var duplicatedItems = [];
+var status = "Choose items, then run a generated action.";
+
+function toggle(itemId) {
+  var index = selected.indexOf(itemId);
+
+  if (index === -1) {
+    selected.push(itemId);
+    status = selected.length + " selected.";
+    return;
+  }
+
+  selected.splice(index, 1);
+  status = selected.length + " selected.";
+}
+
+async function duplicateSelected() {
+  if (selected.length === 0) {
+    status = "Select at least one item first.";
+    return;
+  }
+
+  var copied = await parallel(selected.map(function (itemId) {
+    return tools.menu.item.duplicate({ menuId: menu.menuId, itemId: itemId });
+  }));
+
+  duplicatedItems = copied.map(function (result) {
+    return result.item;
+  });
+  status = "Duplicated " + duplicatedItems.length + " item" + (duplicatedItems.length === 1 ? "" : "s") + ".";
+  selected = [];
+}
+
+return function render() {
+  return html\`<section class="surface-card"><p class="surface-text">\${menu.name}</p><p class="surface-text">\${status}</p><div class="surface-list">\${itemsResult.items.map(function (item) {
+    return html\`<button type="button" class=\${selected.indexOf(item.itemId) === -1 ? "surface-item" : "surface-item is-selected"} onclick=\${function () {
+      toggle(item.itemId);
+    }}><span><strong>\${item.name}</strong><span>\${"$" + item.price.toFixed(2) + " · " + (item.tags.join(", ") || "no tags")}</span></span></button>\`;
+  })}</div><div class="surface-actions"><button type="button" onclick=\${duplicateSelected}>Duplicate selected</button></div>\${duplicatedItems.length === 0 ? "" : html\`<div class="surface-list">\${duplicatedItems.map(function (item) {
+    return html\`<div class="surface-item"><span><strong>\${item.name}</strong><span>Created by generated UI action</span></span></div>\`;
+  })}</div>\`}</section>\`;
+};`,
+    };
+  }
+
   if (normalized.includes("sam rivera") || normalized.includes("user")) {
     return {
       summary: "Create or reuse Sam Rivera as a manager.",

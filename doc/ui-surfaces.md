@@ -1,236 +1,171 @@
-# Gruntend UI Surfaces
+# Gruntend Tagged HTML UI Runtime
 
-This note captures the current understanding of Gruntend's generated UI direction after comparing the hypermedia prototype with the stateful `html` tagged-template runtime idea.
+This note captures the current generated UI direction.
 
 ## Goal
 
-Let an LLM/runtime produce useful UI without inventing a JSON UI DSL.
+Let an LLM produce useful UI without inventing a JSON UI DSL or asking it to generate JSX.
 
-The UI layer should stay close to normal web primitives:
+The LLM still returns the same Gruntend code plan shape:
 
-- JavaScript for logic and local state when needed.
-- HTML for layout and controls.
-- App-owned tools/actions for real effects.
-- Host-side compilation/hydration for safety.
-
-## Two complementary surfaces
-
-### 1. Hypermedia surface
-
-The current prototype returns HTML strings with semantic action attributes:
-
-```html
-<button type="button" gr-href="/menus/menu_1/items/item_2/actions/delete">
-  Delete
-</button>
+```json
+{
+  "summary": "short summary",
+  "input": {},
+  "code": "plain JavaScript async function body"
+}
 ```
 
-The host hydrates the surface:
-
-```ts
-hydrateHtmlSurface(root, {
-  submitAction(actionId, submission) {
-    // route semantic action to app-owned behavior
-  },
-});
-```
-
-Use this for:
-
-- navigation
-- app-owned actions
-- forms
-- approvals
-- tool-backed mutations
-- simple result cards and action menus
-
-Strengths:
-
-- very small runtime
-- easy to inspect
-- no generated UI JavaScript
-- actions are semantic paths owned by the app
-- good mock/demo story
-
-Limits:
-
-- no local component state beyond native browser form state
-- awkward for rich interactions such as dynamic selection counts, filters, previews, local sorting, select-all behavior
-- generated code often string-builds HTML manually unless paired with helper functions
-
-### 2. Stateful UI runtime surface
-
-For richer local UI, use native JavaScript plus an `html` tagged template:
+Inside that JavaScript, UI is expressed with one primitive:
 
 ```js
-const state = { selected: [] };
+html`...`
+```
 
-function toggle(id) {
-  const index = state.selected.indexOf(id);
-  if (index === -1) state.selected.push(id);
-  else state.selected.splice(index, 1);
+`html` is a standard JavaScript tagged template function injected by the runtime. It returns a structured template object, not a browser DOM node and not a trusted raw HTML string.
+
+## Component Contract
+
+For simple UI, the generated code can return an `html` template directly:
+
+```js
+return html`<p>Hello ${input.name}</p>`;
+```
+
+For local state, the generated code returns a render function:
+
+```js
+var count = 0;
+
+return function render() {
+  return html`
+    <button type="button" onclick=${function () {
+      count = count + 1;
+    }}>
+      Count: ${count}
+    </button>
+  `;
+};
+```
+
+The host treats a returned function as the component's render function. The function is kept inside the interpreter boundary, so its closed-over state stays private to that generated component instance.
+
+## Runtime Flow
+
+```text
+LLM returns plain JavaScript code
+  -> jailjs runs the code with injected input/tools/parallel/console/html
+  -> code returns html`...` or function render() { return html`...`; }
+  -> host compiles the template
+  -> text and attribute interpolations are escaped
+  -> function-valued event slots become inert data-gr-* handler ids
+  -> host renders safe HTML
+  -> event dispatch calls the captured interpreted closure
+  -> host calls render again
+```
+
+Generated code does not receive `window`, `document`, `fetch`, storage, timers, `eval`, or `Function` by default.
+
+## Menu Page Example
+
+This is the kind of generated JavaScript we want the runtime to support:
+
+```js
+var selected = [];
+
+function toggle(itemId) {
+  var index = selected.indexOf(itemId);
+
+  if (index === -1) {
+    selected.push(itemId);
+    return;
+  }
+
+  selected.splice(index, 1);
 }
 
-function render() {
+return function render() {
   return html`
     <section>
-      <p>${state.selected.length} selected</p>
-      <button onclick=${() => toggle("item_1")}>Toggle item</button>
+      <h2>${input.menuName}</h2>
+      <p>${selected.length} selected</p>
+
+      <div>
+        ${input.items.map(function (item) {
+          return html`
+            <button type="button" onclick=${function () {
+              toggle(item.itemId);
+            }}>
+              ${item.name}
+            </button>
+          `;
+        })}
+      </div>
     </section>
   `;
-}
-
-return { render };
+};
 ```
 
-The browser must not receive real inline JavaScript. The compiler rewrites event function slots to inert delegated bindings:
+The rendered DOM never receives `onclick`. The compiler rewrites function-valued events:
 
 ```html
-<button data-gr-click="h0">Toggle item</button>
+<button type="button" data-gr-click="h0">Truffle Fries</button>
 ```
 
-The host keeps:
-
-```ts
-h0 -> sandboxed function
-```
-
-Use this for:
-
-- multi-select before mutation
-- filtering/sorting
-- local previews
-- staged batch operations
-- richer generated components
-
-Strengths:
-
-- native JS semantics
-- no custom template DSL
-- local component state
-- composable functions/components
-
-Limits:
-
-- needs a JS interpreter/sandbox boundary
-- needs an HTML compiler/sanitizer
-- larger runtime than hypermedia
-- generated UI tools/actions need a capability membrane
-
-## Multi-select example
-
-Question: can the hypermedia prototype support selecting two rows and deleting them?
-
-Answer: partially.
-
-With native form state, yes:
-
-```html
-<form gr-href="/menus/menu_1/items/actions/delete-selected">
-  <label><input type="checkbox" name="itemId" value="item_1"> Fries</label>
-  <label><input type="checkbox" name="itemId" value="item_2"> Soup</label>
-  <button type="submit">Delete selected</button>
-</form>
-```
-
-This is enough when the browser's form state is the only state needed.
-
-But for dynamic local behavior like this:
+The component instance keeps:
 
 ```text
-select item A
-select item B
-show "2 selected"
-preview affected rows
-click delete selected
+h0 -> interpreted closure
 ```
 
-hypermedia alone is not enough unless each click round-trips through an app/session action. The stateful UI runtime is the better fit.
+Clicking calls the closure, mutates `selected`, and the host rerenders the component.
 
-## Recommended architecture
+## Safety Rules
 
-Keep both surfaces, with separate responsibilities:
-
-```text
-Hypermedia surface
-  HTML + gr-href/forms
-  app-owned semantic actions
-  minimal hydration
-
-Stateful UI runtime
-  JS + html tagged template
-  local state
-  delegated events
-  explicit action/tool membrane
-```
-
-They can compose later. A stateful component can stage local selection and then call an app-owned action:
+Tagged templates help because static markup and dynamic values stay separate:
 
 ```js
-async function deleteSelected() {
-  await actions.submit("/menus/menu_1/items/actions/delete-selected", {
-    itemIds: state.selected,
-  });
-}
+html`<p>${userInput}</p>`
 ```
 
-## Safety model
-
-### Hypermedia
-
-- Treat generated HTML as untrusted.
-- Allow only safe tags/attributes.
-- Hydrate only known semantic attributes such as `gr-href`.
-- Route action IDs through app-owned handlers/code plans.
-- Prefer forms for structured submissions.
-
-### Stateful UI runtime
-
-- Run generated JS in an interpreter/sandbox.
-- Do not expose `window`, `document`, `fetch`, `localStorage`, `eval`, `Function`, `WebSocket`, or `XMLHttpRequest`.
-- `html` returns a template object, not raw DOM.
-- Parse/compile rendered HTML before insertion.
-- Reject unsafe tags and attributes.
-- Reject static event handlers such as `onclick="alert(1)"`.
-- Allow event binding only through function interpolation, e.g. `onclick=${handler}`.
-- Rewrite events to inert `data-gr-*` attributes.
-- Reject interpolation that changes tag or attribute structure, including `<bu${"tton"}>`.
-
-## Decision table
-
-| Need | Hypermedia surface | Stateful UI runtime |
-| --- | --- | --- |
-| Show action cards | Good | Works, but heavier |
-| Navigate/open app pages | Good | Works via injected actions |
-| Submit a simple form | Good | Works, but heavier |
-| Select multiple checkboxes and submit | Good if native form state is enough | Good |
-| Dynamic selected count | Awkward | Good |
-| Local filtering/sorting | Awkward | Good |
-| Batch preview before action | Awkward | Good |
-| Minimal safe demo | Good | More moving parts |
-| Component-local state | No | Yes |
-
-## Current recommendation
-
-Use the hypermedia prototype as the current SvelteKit demo foundation because it is simple and product-visible.
-
-Add the stateful UI runtime as a separate capability, not a replacement, when we need local generated component state.
-
-Suggested public shape over time:
+The host receives:
 
 ```text
-gruntend/hypermedia
-  hydrateHtmlSurface(...)
-  materializeHtmlSurface(...)
-  matchSemanticActionPath(...)
-
-gruntend/ui-runtime
-  createUiComponent(...)
+strings = ["<p>", "</p>"]
+values = [userInput]
 ```
 
-The key distinction:
+That separation lets the compiler enforce these rules:
+
+- Escape text interpolations.
+- Escape attribute interpolations.
+- Reject interpolations that alter tag or attribute structure.
+- Reject static event attributes such as `onclick="evil()"`.
+- Allow event handlers only as function interpolation slots such as `onclick=${handler}`.
+- Rewrite allowed events to inert `data-gr-*` attributes.
+- Reject unsafe tags such as `script`, `iframe`, `object`, `embed`, `link`, `style`, and `meta`.
+- Drop unknown attributes by default.
+- Keep handler closures in memory, never in DOM attributes.
+
+The syntax alone is not the safety boundary. The host compiler is.
+
+## Non-Goals For V0
+
+- No JSX.
+- No React-compatible runtime.
+- No virtual DOM framework.
+- No hooks.
+- No browser-side execution of generated JavaScript.
+- No large layout DSL.
+
+The v0 runtime is just:
 
 ```text
-Hypermedia = app actions over safe HTML.
-UI runtime = local stateful generated components.
+plain generated JS + html tagged templates + strict compiler + handler table
 ```
+
+## Relation To Hypermedia
+
+The earlier hypermedia prototype remains useful for semantic app actions and forms, but it is not the main generated component model.
+
+For local component state, dynamic selection counts, previews, filters, and staged actions, tagged `html` is the primary direction.
