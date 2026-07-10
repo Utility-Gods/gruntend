@@ -22,9 +22,13 @@ test("compileHtmlTemplate returns safe html and delegated handler ids", () => {
 test("compileHtmlTemplate supports quoted attribute interpolation values", () => {
   const html = createHtmlTag();
 
-  const frame = compileHtmlTemplate(html`<input type="text" value="${'summer "special"'}" />`).unwrap();
+  const frame = compileHtmlTemplate(
+    html`<input type="text" value="${'summer "special"'}" />`,
+  ).unwrap();
 
-  expect(frame.html).toBe('<input type="text" value="summer &quot;special&quot;">');
+  expect(frame.html).toBe(
+    '<input type="text" value="summer &quot;special&quot;">',
+  );
 });
 
 test("createGeneratedUi renders generated closure state and runs generated handlers", () => {

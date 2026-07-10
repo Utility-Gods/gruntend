@@ -166,8 +166,17 @@ interface UiTemplateCompileContext {
 type TemplateInterpolationContext =
   | { readonly kind: "text" }
   | { readonly kind: "structure" }
-  | { readonly kind: "event"; readonly attribute: string; readonly event: string; readonly quoted: boolean }
-  | { readonly kind: "attribute"; readonly attribute: string; readonly quoted: boolean };
+  | {
+      readonly kind: "event";
+      readonly attribute: string;
+      readonly event: string;
+      readonly quoted: boolean;
+    }
+  | {
+      readonly kind: "attribute";
+      readonly attribute: string;
+      readonly quoted: boolean;
+    };
 
 function compileTemplateHtml(
   template: UiTemplate,
@@ -204,7 +213,10 @@ function compileTemplateHtml(
 
       if (interpolation.quoted) {
         html = html.replace(
-          new RegExp(`${escapeRegExp(interpolation.attribute)}\\s*=\\s*(["'])$`, "i"),
+          new RegExp(
+            `${escapeRegExp(interpolation.attribute)}\\s*=\\s*(["'])$`,
+            "i",
+          ),
           `data-gr-${interpolation.event}=$1`,
         );
         html += handlerId;
@@ -234,7 +246,9 @@ function compileTemplateHtml(
         continue;
       }
 
-      html += interpolation.quoted ? escapeHtml(String(value)) : `"${escapeHtml(String(value))}"`;
+      html += interpolation.quoted
+        ? escapeHtml(String(value))
+        : `"${escapeHtml(String(value))}"`;
       continue;
     }
 
@@ -307,7 +321,12 @@ function interpolationContext(
     if (booleanAttributes.has(lower)) return { kind: "structure" };
 
     if (eventAttributes.has(lower)) {
-      return { kind: "event", attribute: attr, event: lower.slice(2), quoted: true };
+      return {
+        kind: "event",
+        attribute: attr,
+        event: lower.slice(2),
+        quoted: true,
+      };
     }
 
     return { kind: "attribute", attribute: attr, quoted: true };
@@ -323,7 +342,12 @@ function interpolationContext(
 
   const lower = attr.toLowerCase();
   if (eventAttributes.has(lower)) {
-    return { kind: "event", attribute: attr, event: lower.slice(2), quoted: false };
+    return {
+      kind: "event",
+      attribute: attr,
+      event: lower.slice(2),
+      quoted: false,
+    };
   }
 
   return { kind: "attribute", attribute: attr, quoted: false };
