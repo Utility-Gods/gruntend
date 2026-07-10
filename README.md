@@ -45,7 +45,10 @@ const tools = defineTools({
               type: "array",
               items: {
                 type: "object",
-                properties: { name: { type: "string" }, price: { type: "number" } },
+                properties: {
+                  name: { type: "string" },
+                  price: { type: "number" },
+                },
               },
             },
           },
@@ -56,7 +59,13 @@ const tools = defineTools({
       duplicate: {
         description: "Duplicate one menu item.",
         input: v.object({ menuId: v.string(), itemId: v.string() }),
-        output: v.object({ item: v.object({ itemId: v.string(), name: v.string(), price: v.number() }) }),
+        output: v.object({
+          item: v.object({
+            itemId: v.string(),
+            name: v.string(),
+            price: v.number(),
+          }),
+        }),
       },
     },
   },
@@ -118,7 +127,9 @@ return function render() {
   return html`
     <section class="surface-card">
       <p class="surface-text">Count: ${count}</p>
-      <button type="button" class="surface-action" onclick=${increment}>Increment</button>
+      <button type="button" class="surface-action" onclick=${increment}>
+        Increment
+      </button>
     </section>
   `;
 };
@@ -155,7 +166,7 @@ Use normal JavaScript for orchestration:
 const itemResults = await Promise.all(
   menus.map(function (menu) {
     return tools.menu.items.list({ menuId: menu.menuId });
-  })
+  }),
 );
 ```
 
@@ -176,9 +187,10 @@ return err({
 ## Render generated UI
 
 ```ts
-import { createUiComponent, createUiTemplateTag } from "gruntend/ui-runtime";
+import { createGeneratedUi, createHtmlTag } from "gruntend/ui";
+import { mountGeneratedUi } from "gruntend/ui/dom";
 
-const html = createUiTemplateTag();
+const html = createHtmlTag();
 
 const result = await gruntend.runCodePlan(plan.code, {
   input: plan.input,
@@ -186,17 +198,19 @@ const result = await gruntend.runCodePlan(plan.code, {
   ui: { html },
 });
 
-const component = createUiComponent(result.result).unwrap();
-const rendered = component.render().unwrap();
+const ui = createGeneratedUi(result.result).unwrap();
+const frame = ui.render().unwrap();
 
-// rendered.html is safe compiled HTML.
-// rendered.handlers maps delegated handler ids to sandboxed functions.
+// frame.html is safe compiled HTML.
+// frame.handlers maps delegated handler ids to sandboxed functions.
+
+mountGeneratedUi(rootElement, ui);
 ```
 
 Event handlers are written naturally:
 
 ```js
-html`<button onclick=${increment}>Increment</button>`
+html`<button onclick=${increment}>Increment</button>`;
 ```
 
 but compiled to inert delegated attributes before reaching the browser:

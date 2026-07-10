@@ -93,22 +93,24 @@ export interface ToolSpec<
   readonly returns?: unknown;
 }
 
-type JoinToolName<Prefix extends string, Segment extends string> =
-  Prefix extends "" ? Segment : `${Prefix}.${Segment}`;
+type JoinToolName<
+  Prefix extends string,
+  Segment extends string,
+> = Prefix extends "" ? Segment : `${Prefix}.${Segment}`;
 
-export type ToolsFromNamespace<
-  TNamespace,
-  Prefix extends string = "",
-> = TNamespace extends ToolSpec<infer InputSchema, infer OutputSchema>
-  ? Prefix extends "" ? never : Tool<Prefix, InputSchema, OutputSchema>
-  : TNamespace extends object
-    ? {
-      readonly [Key in keyof TNamespace & string]: ToolsFromNamespace<
-        TNamespace[Key],
-        JoinToolName<Prefix, Key>
-      >;
-    }[keyof TNamespace & string]
-  : never;
+export type ToolsFromNamespace<TNamespace, Prefix extends string = ""> =
+  TNamespace extends ToolSpec<infer InputSchema, infer OutputSchema>
+    ? Prefix extends ""
+      ? never
+      : Tool<Prefix, InputSchema, OutputSchema>
+    : TNamespace extends object
+      ? {
+          readonly [Key in keyof TNamespace & string]: ToolsFromNamespace<
+            TNamespace[Key],
+            JoinToolName<Prefix, Key>
+          >;
+        }[keyof TNamespace & string]
+      : never;
 
 export type ToolHandlerFor<TTool extends Tool> = ToolHandler<
   InferSchemaOutput<TTool["input"]>,
@@ -120,9 +122,7 @@ export type ToolHandlerMap<TTools extends readonly Tool[]> = ToolHandlerMapFor<
 >;
 
 type UnionToIntersection<T> = (
-  T extends unknown
-    ? (value: T) => void
-    : never
+  T extends unknown ? (value: T) => void : never
 ) extends (value: infer Intersection) => void
   ? Intersection
   : never;
@@ -177,11 +177,13 @@ function collectNamespaceTools(
 }
 
 function isToolSpec(value: unknown): value is ToolSpec {
-  return !!value &&
+  return (
+    !!value &&
     typeof value === "object" &&
     "description" in value &&
     "input" in value &&
-    "output" in value;
+    "output" in value
+  );
 }
 
 export async function parseStandardSchema<TSchema extends StandardSchemaV1>(

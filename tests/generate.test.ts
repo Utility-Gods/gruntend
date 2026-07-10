@@ -136,16 +136,21 @@ test("parseGeneratedCodePlan parses and validates an LLM text response", () => {
     code: "return input.name;",
   });
 
-  expect(() => parseGeneratedCodePlan('{"summary":"Missing code","input":{}}')).toThrow(
-    'Generated code plan must include a non-empty "code" string.',
-  );
+  expect(() =>
+    parseGeneratedCodePlan('{"summary":"Missing code","input":{}}'),
+  ).toThrow('Generated code plan must include a non-empty "code" string.');
 });
 
 test("generateCodePlan enables tagged-html UI mode", async () => {
-  const complete: CodePlanGenerationComplete<"openai-responses"> = async (_receivedModel, context) => {
+  const complete: CodePlanGenerationComplete<"openai-responses"> = async (
+    _receivedModel,
+    context,
+  ) => {
     expect(context.systemPrompt).toContain("- html");
     expect(context.systemPrompt).toContain("Tagged HTML UI mode");
-    expect(String(context.messages[0].content)).toContain("Show selectable menu UI");
+    expect(String(context.messages[0].content)).toContain(
+      "Show selectable menu UI",
+    );
     return message;
   };
 
@@ -159,12 +164,18 @@ test("generateCodePlan enables tagged-html UI mode", async () => {
 });
 
 test("generateCodePlan is the typed LLM boundary", async () => {
-  const complete: CodePlanGenerationComplete<"openai-responses"> = async (receivedModel, context, options) => {
+  const complete: CodePlanGenerationComplete<"openai-responses"> = async (
+    receivedModel,
+    context,
+    options,
+  ) => {
     expect(receivedModel).toBe(model);
     expect(context.systemPrompt).toContain("Return JSON only");
     expect(context.systemPrompt).toContain("Do not wrap input values");
     expect(context.messages[0].role).toBe("user");
-    expect(String(context.messages[0].content)).toContain("Create a lunch menu");
+    expect(String(context.messages[0].content)).toContain(
+      "Create a lunch menu",
+    );
     expect(String(context.messages[0].content)).toContain("menus.create");
     expect(String(context.messages[0].content)).toContain("currentMenus");
     expect(options).toEqual({ apiKey: "test-key", maxTokens: 100 });

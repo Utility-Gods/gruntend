@@ -5,7 +5,7 @@
   import TaggedHtmlSurface from "$lib/components/runtime/TaggedHtmlSurface.svelte";
   import type { GeneratedCodePlan } from "gruntend/generate";
   import type { RuntimeEvent } from "gruntend/runtime";
-  import { createUiComponent, createUiTemplateTag, type UiComponent } from "gruntend/ui-runtime";
+  import { createGeneratedUi, createHtmlTag, type GeneratedUi } from "gruntend/ui";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
   type ChatMessage = {
@@ -13,7 +13,7 @@
     readonly role: "user" | "assistant";
     readonly text: string;
     readonly tone?: "normal" | "error" | "pending";
-    readonly uiComponent?: UiComponent;
+    readonly uiComponent?: GeneratedUi;
     readonly debug?: string;
   };
   type AgentGenerator = "mock" | "pi-ai";
@@ -26,7 +26,7 @@
     readonly plan: GeneratedCodePlan;
   };
 
-  const taggedHtml = createUiTemplateTag();
+  const taggedHtml = createHtmlTag();
   let prompt = "";
   let state: RunState = "idle";
   let messages: ChatMessage[] = [
@@ -178,13 +178,13 @@
     messages = messages.map((message) => (message.id === id ? { ...message, ...update } : message));
   }
 
-  function readUiComponent(result: unknown): UiComponent | undefined {
-    const component = createUiComponent(result);
-    return component.status === "ok" ? component.value : undefined;
+  function readUiComponent(result: unknown): GeneratedUi | undefined {
+    const ui = createGeneratedUi(result);
+    return ui.status === "ok" ? ui.value : undefined;
   }
 
-  function errorComponent(): UiComponent {
-    return createUiComponent(taggedHtml`<section class="surface-card"><p class="surface-text">The error is shown in this chat message. Try another task or adjust the prompt.</p></section>`).unwrap();
+  function errorComponent(): GeneratedUi {
+    return createGeneratedUi(taggedHtml`<section class="surface-card"><p class="surface-text">The error is shown in this chat message. Try another task or adjust the prompt.</p></section>`).unwrap();
   }
 
   function reportUiError(error: unknown) {
@@ -225,7 +225,7 @@
           {/each}
           {#if message.uiComponent}
             <div class="mt-3">
-              <TaggedHtmlSurface component={message.uiComponent} onError={reportUiError} />
+              <TaggedHtmlSurface ui={message.uiComponent} onError={reportUiError} />
             </div>
           {/if}
           {#if message.debug}
@@ -239,7 +239,13 @@
     {/each}
   </div>
 
-  <form class="space-y-3 bg-white p-4 shadow-sm" on:submit|preventDefault={runAgent}>
+  <form
+    class="space-y-3 bg-white p-4 shadow-sm"
+    onsubmit={(event) => {
+      event.preventDefault();
+      runAgent();
+    }}
+  >
     <textarea
       bind:value={prompt}
       rows="3"

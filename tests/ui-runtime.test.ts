@@ -3,42 +3,62 @@ import { expect, test } from "vitest";
 import { runCodePlan } from "../src/code-plan.ts";
 import { createToolRegistry } from "../src/registry.ts";
 import { defineTools } from "../src/tool.ts";
-import { compileUiTemplate, createUiComponent, createUiTemplateTag } from "../src/ui-runtime.ts";
+import {
+  compileUiTemplate,
+  createUiComponent,
+  createUiTemplateTag,
+} from "../src/ui-runtime.ts";
 
 test("compileUiTemplate rewrites function event slots to delegated handler attributes", () => {
   const html = createUiTemplateTag();
   const increment = () => undefined;
 
-  const compiled = compileUiTemplate(html`<button type="button" onclick=${increment}>Increment</button>`).unwrap();
+  const compiled = compileUiTemplate(
+    html`<button type="button" onclick=${increment}>Increment</button>`,
+  ).unwrap();
 
-  expect(compiled.html).toBe('<button type="button" data-gr-click="h0">Increment</button>');
+  expect(compiled.html).toBe(
+    '<button type="button" data-gr-click="h0">Increment</button>',
+  );
   expect(compiled.handlers).toEqual({ h0: increment });
 });
 
 test("compileUiTemplate escapes text and attribute interpolation values", () => {
   const html = createUiTemplateTag();
 
-  const compiled = compileUiTemplate(html`<p class=${"<tag>"}>${'<img src=x onerror="alert(1)">'}</p>`).unwrap();
+  const compiled = compileUiTemplate(
+    html`<p class=${"<tag>"}>${'<img src=x onerror="alert(1)">'}</p>`,
+  ).unwrap();
 
-  expect(compiled.html).toBe('<p class="&lt;tag&gt;">&lt;img src=x onerror=&quot;alert(1)&quot;&gt;</p>');
+  expect(compiled.html).toBe(
+    '<p class="&lt;tag&gt;">&lt;img src=x onerror=&quot;alert(1)&quot;&gt;</p>',
+  );
 });
 
 test("compileUiTemplate supports boolean attribute interpolation", () => {
   const html = createUiTemplateTag();
 
-  const compiled = compileUiTemplate(html`<select>
-    <option value="a" selected=${true}>A</option>
-    <option value="b" selected=${false}>B</option>
-  </select>`).unwrap();
+  const compiled = compileUiTemplate(
+    html`<select>
+      <option value="a" selected=${true}>A</option>
+      <option value="b" selected=${false}>B</option>
+    </select>`,
+  ).unwrap();
 
-  expect(compiled.html).toBe('<select>\n    <option value="a" selected="selected">A</option>\n    <option value="b">B</option>\n  </select>');
+  expect(compiled.html).toBe(
+    '<select>\n    <option value="a" selected="selected">A</option>\n    <option value="b">B</option>\n  </select>',
+  );
 });
 
 test("compileUiTemplate supports nested templates from normal JavaScript arrays", () => {
   const html = createUiTemplateTag();
   const items = ["Fries", "Soup"];
 
-  const compiled = compileUiTemplate(html`<ul>${items.map((item) => html`<li>${item}</li>`)}</ul>`).unwrap();
+  const compiled = compileUiTemplate(
+    html`<ul>
+      ${items.map((item) => html`<li>${item}</li>`)}
+    </ul>`,
+  ).unwrap();
 
   expect(compiled.html).toBe("<ul><li>Fries</li><li>Soup</li></ul>");
 });
@@ -46,7 +66,9 @@ test("compileUiTemplate supports nested templates from normal JavaScript arrays"
 test("compileUiTemplate rejects static event attributes", () => {
   const html = createUiTemplateTag();
 
-  const compiled = compileUiTemplate(html`<button onclick="alert(1)">Bad</button>`);
+  const compiled = compileUiTemplate(
+    html`<button onclick="alert(1)">Bad</button>`,
+  );
 
   expect(Result.isError(compiled)).toBe(true);
   expect(compiled.unwrapError()).toEqual({
@@ -70,7 +92,11 @@ test("compileUiTemplate rejects interpolation that changes tag structure", () =>
 test("compileUiTemplate rejects unsafe tags", () => {
   const html = createUiTemplateTag();
 
-  const compiled = compileUiTemplate(html`<script>alert(1)</script>`);
+  const compiled = compileUiTemplate(
+    html`<script>
+      alert(1);
+    </script>`,
+  );
 
   expect(Result.isError(compiled)).toBe(true);
   expect(compiled.unwrapError()).toEqual({
@@ -82,12 +108,15 @@ test("compileUiTemplate rejects unsafe tags", () => {
 test("compileUiTemplate rejects spoofed delegated handler attributes", () => {
   const html = createUiTemplateTag();
 
-  const compiled = compileUiTemplate(html`<button type="button" data-gr-click="h0">Bad</button>`);
+  const compiled = compileUiTemplate(
+    html`<button type="button" data-gr-click="h0">Bad</button>`,
+  );
 
   expect(Result.isError(compiled)).toBe(true);
   expect(compiled.unwrapError()).toEqual({
     code: "unsafe_attribute",
-    message: 'Generated handler attribute "data-gr-click" references an unknown handler.',
+    message:
+      'Generated handler attribute "data-gr-click" references an unknown handler.',
   });
 });
 
@@ -111,12 +140,16 @@ test("runCodePlan can return an interpreted render function with local state", a
   const component = createUiComponent(result.result).unwrap();
 
   const firstRender = component.render().unwrap();
-  expect(firstRender.html).toBe('<button type="button" data-gr-click="h0">Count: 0</button>');
+  expect(firstRender.html).toBe(
+    '<button type="button" data-gr-click="h0">Count: 0</button>',
+  );
 
   component.dispatch("h0");
 
   const secondRender = component.render().unwrap();
-  expect(secondRender.html).toBe('<button type="button" data-gr-click="h0">Count: 1</button>');
+  expect(secondRender.html).toBe(
+    '<button type="button" data-gr-click="h0">Count: 1</button>',
+  );
 });
 
 test("runCodePlan can return a tagged-template menu page with local selection state", async () => {
@@ -159,10 +192,14 @@ test("runCodePlan can return a tagged-template menu page with local selection st
   const component = createUiComponent(result.result).unwrap();
 
   const firstRender = component.render().unwrap();
-  expect(firstRender.html).toBe('<section><h2>Dinner Menu</h2><p>0 selected</p><div><button type="button" data-gr-click="h0">Truffle Fries</button><button type="button" data-gr-click="h1">Caesar Salad</button></div></section>');
+  expect(firstRender.html).toBe(
+    '<section><h2>Dinner Menu</h2><p>0 selected</p><div><button type="button" data-gr-click="h0">Truffle Fries</button><button type="button" data-gr-click="h1">Caesar Salad</button></div></section>',
+  );
 
   component.dispatch("h1");
 
   const secondRender = component.render().unwrap();
-  expect(secondRender.html).toBe('<section><h2>Dinner Menu</h2><p>1 selected</p><div><button type="button" data-gr-click="h0">Truffle Fries</button><button type="button" data-gr-click="h1">Caesar Salad</button></div></section>');
+  expect(secondRender.html).toBe(
+    '<section><h2>Dinner Menu</h2><p>1 selected</p><div><button type="button" data-gr-click="h0">Truffle Fries</button><button type="button" data-gr-click="h1">Caesar Salad</button></div></section>',
+  );
 });

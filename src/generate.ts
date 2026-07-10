@@ -52,7 +52,9 @@ export interface CodePlanGenerationResponse {
   readonly message: AssistantMessage;
 }
 
-export function createCodePlanManifest(tools: readonly Tool[]): readonly CodePlanToolManifest[] {
+export function createCodePlanManifest(
+  tools: readonly Tool[],
+): readonly CodePlanToolManifest[] {
   return tools.map((tool) => ({
     name: tool.name,
     description: tool.description,
@@ -72,16 +74,27 @@ export function validateGeneratedCodePlan(value: unknown): GeneratedCodePlan {
 
   const record = value as Record<string, unknown>;
 
-  if (typeof record.summary !== "string" || record.summary.trim().length === 0) {
-    throw new Error('Generated code plan must include a non-empty "summary" string.');
+  if (
+    typeof record.summary !== "string" ||
+    record.summary.trim().length === 0
+  ) {
+    throw new Error(
+      'Generated code plan must include a non-empty "summary" string.',
+    );
   }
 
-  if (!record.input || typeof record.input !== "object" || Array.isArray(record.input)) {
+  if (
+    !record.input ||
+    typeof record.input !== "object" ||
+    Array.isArray(record.input)
+  ) {
     throw new Error('Generated code plan must include an "input" object.');
   }
 
   if (typeof record.code !== "string" || record.code.trim().length === 0) {
-    throw new Error('Generated code plan must include a non-empty "code" string.');
+    throw new Error(
+      'Generated code plan must include a non-empty "code" string.',
+    );
   }
 
   return {
@@ -95,10 +108,16 @@ export async function generateCodePlan<TApi extends Api>(
   request: CodePlanGenerationRequest<TApi>,
 ): Promise<CodePlanGenerationResponse> {
   const complete = request.complete ?? defaultComplete;
-  const message = await complete(request.model, createPiAiContext(request), request.options);
+  const message = await complete(
+    request.model,
+    createPiAiContext(request),
+    request.options,
+  );
 
   if (message.stopReason === "error" || message.stopReason === "aborted") {
-    throw new Error(message.errorMessage ?? `Code plan generation ${message.stopReason}.`);
+    throw new Error(
+      message.errorMessage ?? `Code plan generation ${message.stopReason}.`,
+    );
   }
 
   const text = assistantText(message);
@@ -111,7 +130,9 @@ export async function generateCodePlan<TApi extends Api>(
   };
 }
 
-function normalizeGeneratedInput(input: Record<string, unknown>): Record<string, unknown> {
+function normalizeGeneratedInput(
+  input: Record<string, unknown>,
+): Record<string, unknown> {
   const keys = Object.keys(input);
   if (keys.length === 1 && isRecord(input.plain)) {
     return input.plain;
@@ -129,7 +150,9 @@ async function defaultComplete<TApi extends Api>(
   return completeSimple(model, context, options);
 }
 
-function createPiAiContext<TApi extends Api>(request: CodePlanGenerationRequest<TApi>): Context {
+function createPiAiContext<TApi extends Api>(
+  request: CodePlanGenerationRequest<TApi>,
+): Context {
   return {
     systemPrompt: codePlanSystemPrompt(request.ui),
     messages: [
@@ -152,7 +175,8 @@ function createPiAiContext<TApi extends Api>(request: CodePlanGenerationRequest<
 }
 
 function codePlanSystemPrompt(ui?: CodePlanGenerationUiOptions): string {
-  const uiInstructions = ui?.kind === "tagged-html" ? taggedHtmlInstructions() : "";
+  const uiInstructions =
+    ui?.kind === "tagged-html" ? taggedHtmlInstructions() : "";
 
   return `You generate Gruntend JavaScript code plans from user tasks and tool manifests.
 
@@ -217,6 +241,7 @@ Tagged HTML UI mode:
 - If the user asks for a mutation, return a confirmation UI instead of doing it immediately.
 - The confirmation UI must show what will change, including before and after values when available.
 - Put mutation tool calls behind a clearly labeled Confirm button or equivalent user action.
+- Preserve the preview's before and after values across confirmation. Do not recompute the preview from updated data in a way that loses the original before values.
 - After confirmation, update local UI state from handler results and show what changed.
 
 Capability example:
@@ -267,7 +292,7 @@ async function confirmPriceIncrease() {
 }
 return function render() {
   return html\`<section class="surface-card"><h2 class="surface-title">Confirm price changes</h2><div class="surface-list">\${previewItems.map(function (entry) {
-    return html\`<article class="surface-item"><span><strong>\${entry.item.name}</strong><span>\$\${entry.beforePrice} → \$\${entry.afterPrice}</span></span></article>\`;
+    return html\`<article class="surface-item"><span><strong>\${entry.item.name}</strong><span>Before: \${entry.beforePrice} · After: \${entry.afterPrice}</span></span></article>\`;
   })}</div>\${confirmed ? html\`<p class="surface-text">Price changes applied.</p>\` : html\`<div class="surface-actions"><button type="button" onclick=\${confirmPriceIncrease}>Confirm update prices</button></div>\`}</section>\`;
 };
 
@@ -300,7 +325,9 @@ function extractJsonObject(text: string): string {
     const end = trimmed.lastIndexOf("}");
 
     if (start === -1 || end === -1 || end <= start) {
-      throw new Error("Generated code plan response did not contain a JSON object.");
+      throw new Error(
+        "Generated code plan response did not contain a JSON object.",
+      );
     }
 
     return trimmed.slice(start, end + 1);
@@ -315,4 +342,3 @@ function stripMarkdownFence(text: string): string {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
-

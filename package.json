@@ -9,6 +9,8 @@
     "./client": "./src/client.ts",
     "./code-plan": "./src/code-plan.ts",
     "./generate": "./src/generate.ts",
+    "./ui": "./src/ui/index.ts",
+    "./ui/dom": "./src/ui/dom.ts",
     "./ui-runtime": "./src/ui-runtime.ts",
     "./registry": "./src/registry.ts",
     "./runtime": "./src/runtime.ts",
@@ -17,7 +19,9 @@
   "scripts": {
     "test": "vitest run",
     "check": "tsc --noEmit",
-    "fmt": "prettier --write ."
+    "lint": "pnpm check",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check ."
   },
   "dependencies": {
     "@mariozechner/jailjs": "0.1.1",

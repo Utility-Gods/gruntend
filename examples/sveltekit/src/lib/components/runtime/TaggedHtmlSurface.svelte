@@ -1,133 +1,44 @@
 <script lang="ts">
-  import type { UiComponent } from "gruntend/ui-runtime";
+  import type { Attachment } from "svelte/attachments";
+  import type { GeneratedUi } from "gruntend/ui";
+  import { mountGeneratedUi } from "gruntend/ui/dom";
 
   type Props = {
-    readonly component: UiComponent;
+    readonly ui: GeneratedUi;
     readonly class?: string;
     readonly onError?: (error: unknown) => void;
   };
 
-  let { component, class: className = "", onError }: Props = $props();
+  let { ui, class: className = "", onError }: Props = $props();
   let running = $state(false);
   let surfaceError = $state("");
 
-  function mountSurface(node: HTMLDivElement, mountedComponent: UiComponent) {
-    let currentComponent = mountedComponent;
-
-    function render() {
-      const next = currentComponent.render();
-
-      if (next.status === "ok") {
-        surfaceError = "";
-        node.innerHTML = next.value.html;
-        return;
-      }
-
-      surfaceError = next.error.message;
-      onError?.(next.error);
-    }
-
-    function runHandler(handlerId: string, event?: Event) {
-      try {
-        running = true;
-        Promise.resolve(currentComponent.dispatch(handlerId, event ? eventPayload(event) : undefined)).then(
-          () => {
-            render();
-            running = false;
-          },
-          (error: unknown) => {
-            running = false;
-            onError?.(error);
-          },
-        );
-      } catch (error) {
-        running = false;
-        onError?.(error);
-      }
-    }
-
-    function readHandlerId(event: Event, attribute: string): string | undefined {
-      const target = event.target;
-      if (!(target instanceof Element)) return undefined;
-
-      const control = target.closest(`[${attribute}]`);
-      const handlerId = control?.getAttribute(attribute)?.trim();
-      return handlerId || undefined;
-    }
-
-    function eventPayload(event: Event) {
-      const target = event.target;
-      const control = target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement
-        ? target
-        : undefined;
-
-      return {
-        type: event.type,
-        target: control
-          ? {
-              name: control.name,
-              value: control.value,
-              checked: control instanceof HTMLInputElement ? control.checked : false,
-            }
-          : undefined,
-        preventDefault() {
-          event.preventDefault();
+  function mountSurface(mountedUi: GeneratedUi): Attachment<HTMLDivElement> {
+    return (node) => {
+      const mounted = mountGeneratedUi(node, mountedUi, {
+        onError(error) {
+          surfaceError = error instanceof Error ? error.message : String(error);
+          onError?.(error);
         },
+        onRender() {
+          surfaceError = "";
+        },
+        onActionStart() {
+          running = true;
+        },
+        onActionEnd() {
+          running = false;
+        },
+      });
+
+      return () => {
+        mounted.destroy();
       };
-    }
-
-    const onClick = (event: MouseEvent) => {
-      const handlerId = readHandlerId(event, "data-gr-click");
-      if (!handlerId) return;
-
-      event.preventDefault();
-      runHandler(handlerId, event);
-    };
-
-    const onSubmit = (event: SubmitEvent) => {
-      const handlerId = readHandlerId(event, "data-gr-submit");
-      if (!handlerId) return;
-
-      event.preventDefault();
-      runHandler(handlerId, event);
-    };
-
-    const onInput = (event: Event) => {
-      const handlerId = readHandlerId(event, "data-gr-input");
-      if (!handlerId) return;
-
-      runHandler(handlerId, event);
-    };
-
-    const onChange = (event: Event) => {
-      const handlerId = readHandlerId(event, "data-gr-change");
-      if (!handlerId) return;
-
-      runHandler(handlerId, event);
-    };
-
-    render();
-    node.addEventListener("click", onClick);
-    node.addEventListener("submit", onSubmit);
-    node.addEventListener("input", onInput);
-    node.addEventListener("change", onChange);
-
-    return {
-      update(nextComponent: UiComponent) {
-        currentComponent = nextComponent;
-        render();
-      },
-      destroy() {
-        node.removeEventListener("click", onClick);
-        node.removeEventListener("submit", onSubmit);
-        node.removeEventListener("input", onInput);
-        node.removeEventListener("change", onChange);
-      },
     };
   }
 </script>
 
-<div use:mountSurface={component} class={`tagged-html-surface ${className}`.trim()}></div>
+<div {@attach mountSurface(ui)} class={`tagged-html-surface ${className}`.trim()}></div>
 {#if running}
   <p class="tagged-html-status">Running generated action...</p>
 {/if}

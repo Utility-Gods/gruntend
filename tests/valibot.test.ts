@@ -19,7 +19,9 @@ test("defineTools accepts Valibot standard schema contracts", async () => {
   });
 
   const input = await parseStandardSchema(add.input, { a: 2, b: 3 });
-  const output = await parseStandardSchema(add.output, { value: input.a + input.b });
+  const output = await parseStandardSchema(add.output, {
+    value: input.a + input.b,
+  });
 
   expect(output).toEqual({ value: 5 });
 });

@@ -6,7 +6,10 @@ export const GET: RequestHandler = ({ params }) => {
   const menu = getMenu(params.menuId);
 
   if (!menu) {
-    return json({ message: `Menu "${params.menuId}" was not found.` }, { status: 404 });
+    return json(
+      { message: `Menu "${params.menuId}" was not found.` },
+      { status: 404 },
+    );
   }
 
   return json({ items: listMenuItems(params.menuId) });
@@ -32,13 +35,20 @@ export const POST: RequestHandler = async ({ params, request }) => {
       menuId: params.menuId,
       name: body.name,
       price: body.price,
-      tags: Array.isArray(body.tags) ? body.tags.filter((tag): tag is string => typeof tag === "string") : [],
+      tags: Array.isArray(body.tags)
+        ? body.tags.filter((tag): tag is string => typeof tag === "string")
+        : [],
     });
 
     return json({ item }, { status: 201 });
   } catch (caught) {
     return json(
-      { message: caught instanceof Error ? caught.message : "Unable to create menu item." },
+      {
+        message:
+          caught instanceof Error
+            ? caught.message
+            : "Unable to create menu item.",
+      },
       { status: 404 },
     );
   }
