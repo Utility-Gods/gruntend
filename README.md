@@ -207,14 +207,63 @@ const frame = ui.render().unwrap();
 mountGeneratedUi(rootElement, ui);
 ```
 
-Framework adapters are thin wrappers over the same DOM primitive:
+Framework adapters are thin wrappers over the same DOM primitive. They do not own Gruntend state; pass the `GeneratedUi` returned by `createGeneratedUi()`.
 
-```ts
-import GeneratedUiSvelte from "gruntend/ui/svelte";
-import { GeneratedUi as GeneratedUiReact } from "gruntend/ui/react";
-import { GeneratedUi as GeneratedUiSolid } from "gruntend/ui/solid";
-import GeneratedUiVue from "gruntend/ui/vue";
+### Svelte
+
+```svelte
+<script lang="ts">
+  import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
+  import GeneratedUi from "gruntend/ui/svelte";
+
+  let { ui }: { ui: GeneratedUiModel } = $props();
+</script>
+
+<GeneratedUi class="agent-generated-ui" {ui} onError={(error) => console.error(error)} />
 ```
+
+### React
+
+```tsx
+import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
+import { GeneratedUi } from "gruntend/ui/react";
+
+export function AgentResult({ ui }: { ui: GeneratedUiModel }) {
+  return <GeneratedUi className="agent-generated-ui" ui={ui} onError={console.error} />;
+}
+```
+
+### Solid
+
+```tsx
+import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
+import { GeneratedUi } from "gruntend/ui/solid";
+
+export function AgentResult(props: { ui: GeneratedUiModel }) {
+  return <GeneratedUi class="agent-generated-ui" ui={props.ui} onError={console.error} />;
+}
+```
+
+### Vue
+
+```vue
+<script setup lang="ts">
+import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
+import GeneratedUi from "gruntend/ui/vue";
+
+defineProps<{ ui: GeneratedUiModel }>();
+
+function reportError(error: unknown) {
+  console.error(error);
+}
+</script>
+
+<template>
+  <GeneratedUi class="agent-generated-ui" :ui="ui" @error="reportError" />
+</template>
+```
+
+The Svelte, React, and Solid adapters accept `onError`, `onRender`, `onActionStart`, and `onActionEnd` callbacks. The Vue adapter emits `error`, `render`, `action-start`, and `action-end` events. The consuming app supplies its framework dependency; Gruntend keeps these adapters as optional subpath exports.
 
 Event handlers are written naturally:
 
