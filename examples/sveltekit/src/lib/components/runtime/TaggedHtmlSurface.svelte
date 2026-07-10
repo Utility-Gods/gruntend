@@ -27,10 +27,10 @@
       onError?.(next.error);
     }
 
-    function runHandler(handlerId: string) {
+    function runHandler(handlerId: string, event?: Event) {
       try {
         running = true;
-        Promise.resolve(currentComponent.dispatch(handlerId)).then(
+        Promise.resolve(currentComponent.dispatch(handlerId, event ? eventPayload(event) : undefined)).then(
           () => {
             render();
             running = false;
@@ -55,12 +55,33 @@
       return handlerId || undefined;
     }
 
+    function eventPayload(event: Event) {
+      const target = event.target;
+      const control = target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement
+        ? target
+        : undefined;
+
+      return {
+        type: event.type,
+        target: control
+          ? {
+              name: control.name,
+              value: control.value,
+              checked: control instanceof HTMLInputElement ? control.checked : false,
+            }
+          : undefined,
+        preventDefault() {
+          event.preventDefault();
+        },
+      };
+    }
+
     const onClick = (event: MouseEvent) => {
       const handlerId = readHandlerId(event, "data-gr-click");
       if (!handlerId) return;
 
       event.preventDefault();
-      runHandler(handlerId);
+      runHandler(handlerId, event);
     };
 
     const onSubmit = (event: SubmitEvent) => {
@@ -68,12 +89,28 @@
       if (!handlerId) return;
 
       event.preventDefault();
-      runHandler(handlerId);
+      runHandler(handlerId, event);
+    };
+
+    const onInput = (event: Event) => {
+      const handlerId = readHandlerId(event, "data-gr-input");
+      if (!handlerId) return;
+
+      runHandler(handlerId, event);
+    };
+
+    const onChange = (event: Event) => {
+      const handlerId = readHandlerId(event, "data-gr-change");
+      if (!handlerId) return;
+
+      runHandler(handlerId, event);
     };
 
     render();
     node.addEventListener("click", onClick);
     node.addEventListener("submit", onSubmit);
+    node.addEventListener("input", onInput);
+    node.addEventListener("change", onChange);
 
     return {
       update(nextComponent: UiComponent) {
@@ -83,6 +120,8 @@
       destroy() {
         node.removeEventListener("click", onClick);
         node.removeEventListener("submit", onSubmit);
+        node.removeEventListener("input", onInput);
+        node.removeEventListener("change", onChange);
       },
     };
   }
@@ -98,7 +137,9 @@
 
 <style>
   .tagged-html-surface :global([data-gr-click]),
-  .tagged-html-surface :global([data-gr-submit]) {
+  .tagged-html-surface :global([data-gr-submit]),
+  .tagged-html-surface :global([data-gr-input]),
+  .tagged-html-surface :global([data-gr-change]) {
     cursor: pointer;
   }
 
@@ -145,6 +186,7 @@
   }
 
   .tagged-html-surface :global(.surface-actions button),
+  .tagged-html-surface :global(button.surface-action),
   .tagged-html-surface :global(a.surface-action) {
     border: 0;
     background: var(--color-primary-600);
@@ -155,6 +197,7 @@
   }
 
   .tagged-html-surface :global(.surface-actions button:hover),
+  .tagged-html-surface :global(button.surface-action:hover),
   .tagged-html-surface :global(a.surface-action:hover) {
     background: var(--color-primary-700);
   }

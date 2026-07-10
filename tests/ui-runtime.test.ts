@@ -23,6 +23,17 @@ test("compileUiTemplate escapes text and attribute interpolation values", () => 
   expect(compiled.html).toBe('<p class="&lt;tag&gt;">&lt;img src=x onerror=&quot;alert(1)&quot;&gt;</p>');
 });
 
+test("compileUiTemplate supports boolean attribute interpolation", () => {
+  const html = createUiTemplateTag();
+
+  const compiled = compileUiTemplate(html`<select>
+    <option value="a" selected=${true}>A</option>
+    <option value="b" selected=${false}>B</option>
+  </select>`).unwrap();
+
+  expect(compiled.html).toBe('<select>\n    <option value="a" selected="selected">A</option>\n    <option value="b">B</option>\n  </select>');
+});
+
 test("compileUiTemplate supports nested templates from normal JavaScript arrays", () => {
   const html = createUiTemplateTag();
   const items = ["Fries", "Soup"];

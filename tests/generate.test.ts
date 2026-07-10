@@ -141,21 +141,11 @@ test("parseGeneratedCodePlan parses and validates an LLM text response", () => {
   );
 });
 
-test("generateCodePlan adds tagged-html UI instructions when requested", async () => {
+test("generateCodePlan enables tagged-html UI mode", async () => {
   const complete: CodePlanGenerationComplete<"openai-responses"> = async (_receivedModel, context) => {
     expect(context.systemPrompt).toContain("- html");
-    expect(context.systemPrompt).toContain("return html`");
-    expect(context.systemPrompt).toContain("return function render()");
-    expect(context.systemPrompt).toContain("onclick=${handler}");
-    expect(context.systemPrompt).toContain("Do not use style attributes");
-    expect(context.systemPrompt).toContain("surface-card");
-    expect(context.systemPrompt).toContain("surface-table");
-    expect(context.systemPrompt).toContain("Do not string-build HTML");
-    expect(context.systemPrompt).toContain('Do not return { html: "..." }');
-    expect(context.systemPrompt).toContain("return an html explanation instead of a plain object");
-    expect(context.systemPrompt).toContain("If a requested operation is impossible with the available tools, still return html UI");
-    expect(context.systemPrompt).toContain("Keep local component state in normal JavaScript closures");
-    expect(context.systemPrompt).toContain("Expose relevant capabilities for rendered entities wherever possible");
+    expect(context.systemPrompt).toContain("Tagged HTML UI mode");
+    expect(String(context.messages[0].content)).toContain("Show selectable menu UI");
     return message;
   };
 

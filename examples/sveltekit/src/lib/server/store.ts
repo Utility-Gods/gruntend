@@ -190,6 +190,37 @@ export function duplicateMenuItem(input: { readonly menuId: string; readonly ite
   });
 }
 
+export function updateMenuItem(input: {
+  readonly menuId: string;
+  readonly itemId: string;
+  readonly name?: string;
+  readonly price?: number;
+  readonly tags?: readonly string[];
+}): MenuItem {
+  const existing = getMenuItem(input);
+  if (!existing) {
+    throw new Error(`Menu item "${input.itemId}" was not found.`);
+  }
+
+  const next: MenuItem = {
+    ...existing,
+    name: input.name ?? existing.name,
+    price: input.price ?? existing.price,
+    tags: input.tags ? [...input.tags] : existing.tags,
+  };
+
+  db.run(
+    "UPDATE menu_items SET name = ?, price = ?, tags_json = ? WHERE menu_id = ? AND item_id = ?",
+    next.name,
+    next.price,
+    JSON.stringify(next.tags),
+    input.menuId,
+    input.itemId,
+  );
+
+  return next;
+}
+
 export function deleteMenuItem(input: { readonly menuId: string; readonly itemId: string }): MenuItem {
   const item = getMenuItem(input);
   if (!item) {

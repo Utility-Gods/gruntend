@@ -157,7 +157,9 @@ function createToolsObject(
     if (!methodName) continue;
 
     let current = root;
+    const namespace: string[] = [];
     for (const segment of path) {
+      namespace.push(segment);
       const existing = current[segment];
       if (
         existing && typeof existing === "object" && !Array.isArray(existing)
@@ -168,6 +170,7 @@ function createToolsObject(
         current[segment] = next;
         current = next;
       }
+      root[namespace.join(".")] = current;
     }
 
     current[methodName] = (params: unknown) => call(tool.name, params);
