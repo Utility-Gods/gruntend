@@ -229,7 +229,13 @@ import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
 import { GeneratedUi } from "gruntend/ui/react";
 
 export function AgentResult({ ui }: { ui: GeneratedUiModel }) {
-  return <GeneratedUi className="agent-generated-ui" ui={ui} onError={console.error} />;
+  return (
+    <GeneratedUi
+      className="agent-generated-ui"
+      ui={ui}
+      onError={console.error}
+    />
+  );
 }
 ```
 
@@ -240,7 +246,13 @@ import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
 import { GeneratedUi } from "gruntend/ui/solid";
 
 export function AgentResult(props: { ui: GeneratedUiModel }) {
-  return <GeneratedUi class="agent-generated-ui" ui={props.ui} onError={console.error} />;
+  return (
+    <GeneratedUi
+      class="agent-generated-ui"
+      ui={props.ui}
+      onError={console.error}
+    />
+  );
 }
 ```
 
