@@ -15,7 +15,9 @@ export interface UiInterpretedFunction {
   call(thisArg: unknown, ...args: readonly unknown[]): unknown;
 }
 
-export type UiCallable = ((...args: readonly unknown[]) => unknown) | UiInterpretedFunction;
+export type UiCallable =
+  | ((...args: readonly unknown[]) => unknown)
+  | UiInterpretedFunction;
 export type UiEventHandler = UiCallable;
 export type UiRenderFunction = UiCallable;
 
@@ -25,7 +27,11 @@ export interface UiTemplateCompileResult {
 }
 
 export interface UiTemplateCompileError {
-  readonly code: "invalid_render" | "unsafe_attribute" | "unsafe_interpolation" | "unsafe_tag";
+  readonly code:
+    | "invalid_render"
+    | "unsafe_attribute"
+    | "unsafe_interpolation"
+    | "unsafe_tag";
   readonly message: string;
 }
 
@@ -57,7 +63,15 @@ const uiTemplateSchema = v.object({
   strings: v.array(v.string()),
   values: v.array(v.unknown()),
 });
-const unsafeTags = new Set(["script", "iframe", "object", "embed", "link", "style", "meta"]);
+const unsafeTags = new Set([
+  "script",
+  "iframe",
+  "object",
+  "embed",
+  "link",
+  "style",
+  "meta",
+]);
 const eventAttributes = new Set(["onclick", "onsubmit", "oninput", "onchange"]);
 const booleanAttributes = new Set(["checked", "disabled", "selected"]);
 const allowedAttributes = new Set([
@@ -74,10 +88,14 @@ const allowedAttributes = new Set([
   "href",
 ]);
 const tagPattern = /<\/?\s*([A-Za-z][A-Za-z0-9-]*)([^>]*)>/g;
-const attributePattern = /([:@A-Za-z0-9_-]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g;
+const attributePattern =
+  /([:@A-Za-z0-9_-]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g;
 
 export function createUiTemplateTag(): UiTemplateTag {
-  return (strings: TemplateStringsArray, ...values: readonly unknown[]): UiTemplate => ({
+  return (
+    strings: TemplateStringsArray,
+    ...values: readonly unknown[]
+  ): UiTemplate => ({
     strings: Array.from(strings),
     values,
   });
@@ -126,7 +144,9 @@ export function createUiComponent(value: unknown): UiComponentCreateOutcome {
   });
 }
 
-export function compileUiTemplate(template: UiTemplate): UiTemplateCompileOutcome {
+export function compileUiTemplate(
+  template: UiTemplate,
+): UiTemplateCompileOutcome {
   const context: UiTemplateCompileContext = {
     handlers: {},
     nextHandlerId: 0,
@@ -143,6 +163,21 @@ interface UiTemplateCompileContext {
   nextHandlerId: number;
 }
 
+type TemplateInterpolationContext =
+  | { readonly kind: "text" }
+  | { readonly kind: "structure" }
+  | {
+      readonly kind: "event";
+      readonly attribute: string;
+      readonly event: string;
+      readonly quoted: boolean;
+    }
+  | {
+      readonly kind: "attribute";
+      readonly attribute: string;
+      readonly quoted: boolean;
+    };
+
 function compileTemplateHtml(
   template: UiTemplate,
   context: UiTemplateCompileContext,
@@ -157,14 +192,14 @@ function compileTemplateHtml(
     html += before;
 
     const interpolation = interpolationContext(html, after);
-    if (interpolation === "structure") {
+    if (interpolation.kind === "structure") {
       return Result.err({
         code: "unsafe_interpolation",
         message: "Interpolations cannot change tag or attribute structure.",
       });
     }
 
-    if (interpolation?.kind === "event") {
+    if (interpolation.kind === "event") {
       if (!isUiEventHandler(value)) {
         return Result.err({
           code: "unsafe_interpolation",
@@ -175,22 +210,45 @@ function compileTemplateHtml(
       const handlerId = `h${context.nextHandlerId}`;
       context.nextHandlerId = context.nextHandlerId + 1;
       context.handlers[handlerId] = value;
-      html = html.replace(new RegExp(`${interpolation.attribute}\\s*=\\s*$`, "i"), `data-gr-${interpolation.event}=`);
-      html += `"${handlerId}"`;
+
+      if (interpolation.quoted) {
+        html = html.replace(
+          new RegExp(
+            `${escapeRegExp(interpolation.attribute)}\\s*=\\s*(["'])$`,
+            "i",
+          ),
+          `data-gr-${interpolation.event}=$1`,
+        );
+        html += handlerId;
+      } else {
+        html = html.replace(
+          new RegExp(`${escapeRegExp(interpolation.attribute)}\\s*=\\s*$`, "i"),
+          `data-gr-${interpolation.event}=`,
+        );
+        html += `"${handlerId}"`;
+      }
       continue;
     }
 
-    if (interpolation?.kind === "attribute") {
+    if (interpolation.kind === "attribute") {
       if (booleanAttributes.has(interpolation.attribute.toLowerCase())) {
         if (value === false || value === null || value === undefined) {
-          html = html.replace(new RegExp(`\\s*${escapeRegExp(interpolation.attribute)}\\s*=\\s*$`, "i"), "");
+          html = html.replace(
+            new RegExp(
+              `\\s*${escapeRegExp(interpolation.attribute)}\\s*=\\s*$`,
+              "i",
+            ),
+            "",
+          );
         } else {
           html += `"${escapeHtml(interpolation.attribute.toLowerCase())}"`;
         }
         continue;
       }
 
-      html += `"${escapeHtml(String(value))}"`;
+      html += interpolation.quoted
+        ? escapeHtml(String(value))
+        : `"${escapeHtml(String(value))}"`;
       continue;
     }
 
@@ -208,7 +266,8 @@ function compileTextInterpolation(
   value: unknown,
   context: UiTemplateCompileContext,
 ): BetterResult<string, UiTemplateCompileError> {
-  if (value === null || value === undefined || value === false) return Result.ok("");
+  if (value === null || value === undefined || value === false)
+    return Result.ok("");
 
   if (isUiTemplate(value)) {
     return compileTemplateHtml(value, context);
@@ -239,27 +298,59 @@ function compileTextInterpolation(
 function interpolationContext(
   before: string,
   after: string,
-): "text" | "structure" | { kind: "event"; attribute: string; event: string } | { kind: "attribute"; attribute: string } {
+): TemplateInterpolationContext {
   const lastOpen = before.lastIndexOf("<");
   const lastClose = before.lastIndexOf(">");
   const inTag = lastOpen > lastClose;
 
-  if (!inTag) return "text";
+  if (!inTag) return { kind: "text" };
+
+  const quotedAttr = before.match(/([:@A-Za-z0-9_-]+)\s*=\s*(["'])$/);
+  if (quotedAttr) {
+    const attr = quotedAttr[1];
+    const quote = quotedAttr[2];
+
+    if (after[0] !== quote) return { kind: "structure" };
+
+    const next = after[1];
+    if (next && next !== ">" && next !== "/" && !/\s/.test(next)) {
+      return { kind: "structure" };
+    }
+
+    const lower = attr.toLowerCase();
+    if (booleanAttributes.has(lower)) return { kind: "structure" };
+
+    if (eventAttributes.has(lower)) {
+      return {
+        kind: "event",
+        attribute: attr,
+        event: lower.slice(2),
+        quoted: true,
+      };
+    }
+
+    return { kind: "attribute", attribute: attr, quoted: true };
+  }
 
   const attr = before.match(/([:@A-Za-z0-9_-]+)\s*=\s*$/)?.[1];
-  if (!attr) return "structure";
+  if (!attr) return { kind: "structure" };
 
   const next = after[0];
   if (next && next !== ">" && next !== "/" && !/\s/.test(next)) {
-    return "structure";
+    return { kind: "structure" };
   }
 
   const lower = attr.toLowerCase();
   if (eventAttributes.has(lower)) {
-    return { kind: "event", attribute: attr, event: lower.slice(2) };
+    return {
+      kind: "event",
+      attribute: attr,
+      event: lower.slice(2),
+      quoted: false,
+    };
   }
 
-  return { kind: "attribute", attribute: attr };
+  return { kind: "attribute", attribute: attr, quoted: false };
 }
 
 function escapeRegExp(value: string): string {
@@ -335,7 +426,11 @@ function sanitizeAttributeText(
       });
     }
 
-    if (name.startsWith("aria-") || name.startsWith("data-gr-") || allowedAttributes.has(name)) {
+    if (
+      name.startsWith("aria-") ||
+      name.startsWith("data-gr-") ||
+      allowedAttributes.has(name)
+    ) {
       if (name === "href" && !isSafeHref(value)) {
         return Result.err({
           code: "unsafe_attribute",
@@ -351,7 +446,10 @@ function sanitizeAttributeText(
 }
 
 function unquoteAttribute(value: string): string {
-  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
 
@@ -374,15 +472,25 @@ function isUiRenderFunction(value: unknown): value is UiRenderFunction {
   return isUiEventHandler(value);
 }
 
-function isUiInterpretedFunction(value: unknown): value is UiInterpretedFunction {
-  return !!value && typeof value === "object" && "call" in value && typeof (value as { call?: unknown }).call === "function";
+function isUiInterpretedFunction(
+  value: unknown,
+): value is UiInterpretedFunction {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    "call" in value &&
+    typeof (value as { call?: unknown }).call === "function"
+  );
 }
 
 function isUiTemplate(value: unknown): value is UiTemplate {
   return v.safeParse(uiTemplateSchema, value).success;
 }
 
-function callUiFunction(handler: UiRenderFunction, ...args: readonly unknown[]): unknown {
+function callUiFunction(
+  handler: UiRenderFunction,
+  ...args: readonly unknown[]
+): unknown {
   if (typeof handler === "function") return handler(...args);
   return handler.call(undefined, ...args);
 }

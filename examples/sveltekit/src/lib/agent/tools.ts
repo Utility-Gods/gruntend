@@ -163,7 +163,10 @@ export const appTools = defineTools({
         output: v.object({ item: menuItemSchema }),
         parameters: {
           type: "object",
-          properties: { menuId: { type: "string" }, itemId: { type: "string" } },
+          properties: {
+            menuId: { type: "string" },
+            itemId: { type: "string" },
+          },
           required: ["menuId", "itemId"],
         },
         returns: {
@@ -206,7 +209,10 @@ export const appTools = defineTools({
         output: v.object({ item: menuItemSchema }),
         parameters: {
           type: "object",
-          properties: { menuId: { type: "string" }, itemId: { type: "string" } },
+          properties: {
+            menuId: { type: "string" },
+            itemId: { type: "string" },
+          },
           required: ["menuId", "itemId"],
         },
         returns: {

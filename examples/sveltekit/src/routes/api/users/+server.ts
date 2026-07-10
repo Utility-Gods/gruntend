@@ -19,8 +19,14 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ message: "User name is required." }, { status: 400 });
   }
 
-  if (typeof body.role !== "string" || !allowedRoles.has(body.role as User["role"])) {
-    return json({ message: "User role must be owner, chef, or manager." }, { status: 400 });
+  if (
+    typeof body.role !== "string" ||
+    !allowedRoles.has(body.role as User["role"])
+  ) {
+    return json(
+      { message: "User role must be owner, chef, or manager." },
+      { status: 400 },
+    );
   }
 
   const user = createUser({

@@ -162,7 +162,9 @@ function createToolsObject(
       namespace.push(segment);
       const existing = current[segment];
       if (
-        existing && typeof existing === "object" && !Array.isArray(existing)
+        existing &&
+        typeof existing === "object" &&
+        !Array.isArray(existing)
       ) {
         current = existing as Record<string, unknown>;
       } else {
@@ -352,9 +354,10 @@ function toToolRunError(
 }
 
 async function executeWithRetry(options: {
-  readonly execute: (
-    context: { readonly attempt: number; readonly maxAttempts: number },
-  ) => Promise<ToolOk<unknown>>;
+  readonly execute: (context: {
+    readonly attempt: number;
+    readonly maxAttempts: number;
+  }) => Promise<ToolOk<unknown>>;
   readonly retry?: RetryPolicy;
   readonly onRetry?: (context: {
     readonly error: unknown;

@@ -2,10 +2,14 @@
   import { onMount } from "svelte";
   import { gruntend } from "$lib/agent/client";
   import { createBrowserHandlers } from "$lib/agent/handlers";
-  import TaggedHtmlSurface from "$lib/components/runtime/TaggedHtmlSurface.svelte";
   import type { GeneratedCodePlan } from "gruntend/generate";
   import type { RuntimeEvent } from "gruntend/runtime";
-  import { createUiComponent, createUiTemplateTag, type UiComponent } from "gruntend/ui-runtime";
+  import {
+    createGeneratedUi,
+    createHtmlTag,
+    type GeneratedUi as GeneratedUiModel,
+  } from "gruntend/ui";
+  import GeneratedUi from "gruntend/ui/svelte";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
   type ChatMessage = {
@@ -13,7 +17,7 @@
     readonly role: "user" | "assistant";
     readonly text: string;
     readonly tone?: "normal" | "error" | "pending";
-    readonly uiComponent?: UiComponent;
+    readonly uiComponent?: GeneratedUiModel;
     readonly debug?: string;
   };
   type AgentGenerator = "mock" | "pi-ai";
@@ -26,7 +30,7 @@
     readonly plan: GeneratedCodePlan;
   };
 
-  const taggedHtml = createUiTemplateTag();
+  const taggedHtml = createHtmlTag();
   let prompt = "";
   let state: RunState = "idle";
   let messages: ChatMessage[] = [
@@ -178,13 +182,13 @@
     messages = messages.map((message) => (message.id === id ? { ...message, ...update } : message));
   }
 
-  function readUiComponent(result: unknown): UiComponent | undefined {
-    const component = createUiComponent(result);
-    return component.status === "ok" ? component.value : undefined;
+  function readUiComponent(result: unknown): GeneratedUiModel | undefined {
+    const ui = createGeneratedUi(result);
+    return ui.status === "ok" ? ui.value : undefined;
   }
 
-  function errorComponent(): UiComponent {
-    return createUiComponent(taggedHtml`<section class="surface-card"><p class="surface-text">The error is shown in this chat message. Try another task or adjust the prompt.</p></section>`).unwrap();
+  function errorComponent(): GeneratedUiModel {
+    return createGeneratedUi(taggedHtml`<section class="surface-card"><p class="surface-text">The error is shown in this chat message. Try another task or adjust the prompt.</p></section>`).unwrap();
   }
 
   function reportUiError(error: unknown) {
@@ -225,7 +229,11 @@
           {/each}
           {#if message.uiComponent}
             <div class="mt-3">
-              <TaggedHtmlSurface component={message.uiComponent} onError={reportUiError} />
+              <GeneratedUi
+                class="agent-generated-ui"
+                ui={message.uiComponent}
+                onError={reportUiError}
+              />
             </div>
           {/if}
           {#if message.debug}
@@ -239,7 +247,13 @@
     {/each}
   </div>
 
-  <form class="space-y-3 bg-white p-4 shadow-sm" on:submit|preventDefault={runAgent}>
+  <form
+    class="space-y-3 bg-white p-4 shadow-sm"
+    onsubmit={(event) => {
+      event.preventDefault();
+      runAgent();
+    }}
+  >
     <textarea
       bind:value={prompt}
       rows="3"
@@ -258,3 +272,138 @@
     </div>
   </form>
 </section>
+
+<style>
+  :global(.agent-generated-ui [data-gr-click]),
+  :global(.agent-generated-ui [data-gr-submit]),
+  :global(.agent-generated-ui [data-gr-input]),
+  :global(.agent-generated-ui [data-gr-change]) {
+    cursor: pointer;
+  }
+
+  :global(.agent-generated-ui .surface-card) {
+    display: grid;
+    gap: 0.9rem;
+    background: #fff;
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+  }
+
+  :global(.agent-generated-ui .surface-title) {
+    color: var(--color-text-primary);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  :global(.agent-generated-ui .surface-text),
+  :global(.agent-generated-ui .surface-muted) {
+    color: var(--color-text-secondary);
+  }
+
+  :global(.agent-generated-ui .surface-badge) {
+    display: inline-flex;
+    align-items: center;
+    background: var(--color-primary-50);
+    color: var(--color-primary-700);
+    padding: 0.15rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 650;
+  }
+
+  :global(.agent-generated-ui .surface-list) {
+    display: grid;
+    gap: 0.45rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: 0.75rem;
+  }
+
+  :global(.agent-generated-ui .surface-actions) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  :global(.agent-generated-ui .surface-actions button),
+  :global(.agent-generated-ui button.surface-action),
+  :global(.agent-generated-ui a.surface-action) {
+    border: 0;
+    background: var(--color-primary-600);
+    color: #fff;
+    padding: 0.55rem 0.8rem;
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  :global(.agent-generated-ui .surface-actions button:hover),
+  :global(.agent-generated-ui button.surface-action:hover),
+  :global(.agent-generated-ui a.surface-action:hover) {
+    background: var(--color-primary-700);
+  }
+
+  :global(.agent-generated-ui .surface-item) {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--color-border);
+    background: #fff;
+    padding: 0.85rem;
+    color: var(--color-text-primary);
+    text-align: left;
+  }
+
+  :global(.agent-generated-ui .surface-item.is-selected) {
+    border-color: var(--color-primary-600);
+    background: var(--color-primary-50);
+  }
+
+  :global(.agent-generated-ui .surface-item strong),
+  :global(.agent-generated-ui .surface-item span) {
+    display: block;
+  }
+
+  :global(.agent-generated-ui .surface-item strong) {
+    font-weight: 650;
+  }
+
+  :global(.agent-generated-ui .surface-item span span) {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+  }
+
+  :global(.agent-generated-ui .surface-table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  :global(.agent-generated-ui .surface-table th),
+  :global(.agent-generated-ui .surface-table td) {
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.55rem 0.35rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  :global(.agent-generated-ui .surface-table th) {
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  :global(.agent-generated-ui .generated-ui-status) {
+    margin-top: 0.5rem;
+    color: var(--color-primary-700);
+    font-size: 0.85rem;
+    font-weight: 650;
+  }
+
+  :global(.agent-generated-ui .generated-ui-error) {
+    margin-top: 0.5rem;
+    color: var(--color-error);
+    font-size: 0.85rem;
+    font-weight: 650;
+  }
+</style>

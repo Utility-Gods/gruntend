@@ -93,8 +93,5 @@ test("defineTools preserves the namespace declaration order", () => {
     },
   });
 
-  expect(tools.map((tool) => tool.name)).toEqual([
-    "math.add",
-    "math.multiply",
-  ]);
+  expect(tools.map((tool) => tool.name)).toEqual(["math.add", "math.multiply"]);
 });

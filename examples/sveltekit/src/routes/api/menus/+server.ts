@@ -19,8 +19,10 @@ export const POST: RequestHandler = async ({ request }) => {
 
   const menu = createMenu({
     name: body.name,
-    description: typeof body.description === "string" ? body.description : undefined,
-    ownerUserId: typeof body.ownerUserId === "string" ? body.ownerUserId : undefined,
+    description:
+      typeof body.description === "string" ? body.description : undefined,
+    ownerUserId:
+      typeof body.ownerUserId === "string" ? body.ownerUserId : undefined,
   });
 
   return json({ menu }, { status: 201 });

@@ -43,7 +43,9 @@ export const POST: RequestHandler = async ({ request }) => {
   const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) {
     return json(
-      { message: "OPENAI_API_KEY is required when GRUNTEND_AGENT_MODE=openai." },
+      {
+        message: "OPENAI_API_KEY is required when GRUNTEND_AGENT_MODE=openai.",
+      },
       { status: 500 },
     );
   }
@@ -78,7 +80,12 @@ export const POST: RequestHandler = async ({ request }) => {
     });
   } catch (caught) {
     return json(
-      { message: caught instanceof Error ? caught.message : "Unable to generate a code plan." },
+      {
+        message:
+          caught instanceof Error
+            ? caught.message
+            : "Unable to generate a code plan.",
+      },
       { status: 500 },
     );
   }
@@ -95,10 +102,14 @@ function resolvePlannerMode(): AgentPlannerMode {
 }
 
 function resolveOpenAiModel(modelId: string): Model<"openai-responses"> {
-  const model = getModel("openai", modelId as never) as Model<"openai-responses"> | undefined;
+  const model = getModel("openai", modelId as never) as
+    | Model<"openai-responses">
+    | undefined;
 
   if (!model) {
-    throw new Error(`Unknown OpenAI model "${modelId}". Set OPENAI_MODEL to a model in the pi-ai registry.`);
+    throw new Error(
+      `Unknown OpenAI model "${modelId}". Set OPENAI_MODEL to a model in the pi-ai registry.`,
+    );
   }
 
   return model;

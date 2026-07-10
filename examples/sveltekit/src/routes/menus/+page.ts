@@ -12,7 +12,9 @@ export const load: PageLoad = async ({ fetch }) => {
   const menus = await Promise.all(
     data.menus.map(async (menu): Promise<MenuWithItems> => {
       const itemsResponse = await fetch(`/api/menus/${menu.menuId}/items`);
-      const itemsData = (await itemsResponse.json()) as { readonly items: readonly MenuItem[] };
+      const itemsData = (await itemsResponse.json()) as {
+        readonly items: readonly MenuItem[];
+      };
 
       return {
         ...menu,
