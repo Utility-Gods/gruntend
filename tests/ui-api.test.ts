@@ -35,15 +35,12 @@ test("createGeneratedUi renders generated closure state and runs generated handl
   const html = createHtmlTag();
   let count = 0;
 
+  const inc = function () {
+    count = count + 1;
+  };
+
   const ui = createGeneratedUi(function render() {
-    return html`<button
-      type="button"
-      onclick=${function () {
-        count = count + 1;
-      }}
-    >
-      Count: ${count}
-    </button>`;
+    return html`<button type="button" onclick=${inc}>Count: ${count}</button>`;
   }).unwrap();
 
   const first = ui.render().unwrap();

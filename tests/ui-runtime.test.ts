@@ -46,7 +46,7 @@ test("compileUiTemplate supports boolean attribute interpolation", () => {
   ).unwrap();
 
   expect(compiled.html).toBe(
-    '<select>\n    <option value="a" selected="selected">A</option>\n    <option value="b">B</option>\n  </select>',
+    '<select>\n      <option value="a" selected="selected">A</option>\n      <option value="b">B</option>\n    </select>',
   );
 });
 
@@ -60,7 +60,9 @@ test("compileUiTemplate supports nested templates from normal JavaScript arrays"
     </ul>`,
   ).unwrap();
 
-  expect(compiled.html).toBe("<ul><li>Fries</li><li>Soup</li></ul>");
+  expect(compiled.html).toBe(
+    "<ul>\n      <li>Fries</li><li>Soup</li>\n    </ul>",
+  );
 });
 
 test("compileUiTemplate rejects static event attributes", () => {
