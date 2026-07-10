@@ -1,11 +1,11 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { gruntend } from "$lib/agent/client";
   import { createBrowserHandlers } from "$lib/agent/handlers";
-  import { createHypermediaActionPlan } from "$lib/agent/hypermedia-action-plan";
-  import HtmlSurface from "$lib/components/hypermedia/HtmlSurface.svelte";
+  import TaggedHtmlSurface from "$lib/components/runtime/TaggedHtmlSurface.svelte";
   import type { GeneratedCodePlan } from "gruntend/generate";
-  import type { HtmlSurfaceActionSubmission } from "gruntend/hypermedia";
   import type { RuntimeEvent } from "gruntend/runtime";
+  import { createUiComponent, createUiTemplateTag, type UiComponent } from "gruntend/ui-runtime";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
   type ChatMessage = {
@@ -13,36 +13,35 @@
     readonly role: "user" | "assistant";
     readonly text: string;
     readonly tone?: "normal" | "error" | "pending";
-    readonly surfaceHtml?: string;
+    readonly uiComponent?: UiComponent;
+    readonly debug?: string;
   };
-  type AgentGenerationEnvelope = {
-    readonly generator: "mock" | "pi-ai";
+  type AgentGenerator = "mock" | "pi-ai";
+  type AgentPlannerInfo = {
+    readonly generator: AgentGenerator;
+    readonly mode?: "mock" | "openai";
     readonly model?: string;
+  };
+  type AgentGenerationEnvelope = AgentPlannerInfo & {
     readonly plan: GeneratedCodePlan;
   };
-  type RuntimeHtmlResult = {
-    readonly html?: unknown;
-    readonly action?: unknown;
-  };
 
-  const examples = [
-    'Copy "Dinner Menu" to "Lunch Menu" except burgers',
-    'Add vegetarian items to "Brunch Menu"',
-    'Create user "Sam Rivera" as manager',
-    "Summarize the restaurant data",
-  ];
-
-  let prompt = examples[0];
+  const taggedHtml = createUiTemplateTag();
+  let prompt = "";
   let state: RunState = "idle";
   let messages: ChatMessage[] = [
     {
       id: "welcome",
       role: "assistant",
-      text: "Tell me what to do with menus or users. This demo skips OpenAI and uses a deterministic planner, but the app tools still run through Gruntend.",
-      surfaceHtml: quickActionsSurface(),
+      text: "Tell me what to do with menus or users. Generated UI is JS plus an html tagged template, compiled before it reaches the browser.",
     },
   ];
   let toolCallCount = 0;
+  let plannerInfo: AgentPlannerInfo | undefined;
+
+  onMount(() => {
+    void loadPlannerInfo();
+  });
 
   async function runAgent() {
     const task = prompt.trim();
@@ -52,9 +51,19 @@
     toolCallCount = 0;
     appendMessage({ role: "user", text: task });
     const workingId = appendMessage({ role: "assistant", text: "Working on it...", tone: "pending" });
+    let debugDetails = "";
 
     try {
-      const plan = await generatePlan(task);
+      const envelope = await generatePlan(task);
+      const plan = envelope.plan;
+      plannerInfo = readPlannerInfo(envelope);
+      debugDetails = formatDebugDetails({
+        generator: envelope.generator,
+        model: envelope.model,
+        summary: plan.summary,
+        input: plan.input,
+        code: plan.code,
+      });
 
       state = "running";
       updateMessage(workingId, { text: `${plan.summary}\nRunning app tools now...`, tone: "pending" });
@@ -64,6 +73,7 @@
         input: plan.input,
         retry: { maxAttempts: 2 },
         handlers: createBrowserHandlers(fetch),
+        ui: { html: taggedHtml },
         onEvent: recordEvent,
       });
 
@@ -71,23 +81,48 @@
         throw new Error(result.error ?? "The code plan failed.");
       }
 
+      const uiComponent = readUiComponent(result.result);
+      if (!uiComponent) {
+        debugDetails = formatDebugDetails({
+          generator: envelope.generator,
+          model: envelope.model,
+          summary: plan.summary,
+          input: plan.input,
+          code: plan.code,
+          result: result.result,
+        });
+        console.error("[gruntend example] generated plan did not return UI", debugDetails);
+        throw new Error("The code plan did not return an html template or render function.");
+      }
+
       state = "done";
       updateMessage(workingId, {
-        text: resultSummary(result.result),
+        text: `Generated tagged-template UI. I called ${toolCallCount} app tools.`,
         tone: "normal",
-        surfaceHtml: readSurfaceHtml(result.result) ?? doneSurface(),
+        uiComponent,
       });
     } catch (caught) {
       state = "error";
       updateMessage(workingId, {
         text: `Something failed: ${caught instanceof Error ? caught.message : String(caught)}`,
         tone: "error",
-        surfaceHtml: errorSurface(),
+        uiComponent: errorComponent(),
+        debug: [debugDetails, caught instanceof Error ? caught.stack || caught.message : String(caught)].filter(Boolean).join("\n\n"),
       });
     }
   }
 
-  async function generatePlan(task: string): Promise<GeneratedCodePlan> {
+  async function loadPlannerInfo() {
+    try {
+      const response = await fetch("/api/agent/plan");
+      if (!response.ok) return;
+      plannerInfo = (await response.json()) as AgentPlannerInfo;
+    } catch {
+      // Planner info is diagnostic only.
+    }
+  }
+
+  async function generatePlan(task: string): Promise<AgentGenerationEnvelope> {
     const response = await fetch("/api/agent/plan", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -103,7 +138,28 @@
       );
     }
 
-    return (payload as AgentGenerationEnvelope).plan;
+    return payload as AgentGenerationEnvelope;
+  }
+
+  function readPlannerInfo(envelope: AgentGenerationEnvelope): AgentPlannerInfo {
+    return {
+      generator: envelope.generator,
+      model: envelope.model,
+    };
+  }
+
+  function plannerLabel(info: AgentPlannerInfo | undefined): string {
+    if (!info) return "Checking planner...";
+    return info.generator === "mock" ? "Mock planner" : `LLM planner${info.model ? ` · ${info.model}` : ""}`;
+  }
+
+  function plannerBadgeClass(info: AgentPlannerInfo | undefined): string {
+    if (!info) return "bg-neutral-100 text-neutral-600";
+    return info.generator === "mock" ? "bg-neutral-100 text-neutral-700" : "bg-green-100 text-green-800";
+  }
+
+  function formatDebugDetails(details: Record<string, unknown>): string {
+    return JSON.stringify(details, null, 2);
   }
 
   function recordEvent(event: RuntimeEvent) {
@@ -122,112 +178,17 @@
     messages = messages.map((message) => (message.id === id ? { ...message, ...update } : message));
   }
 
-  function submitHypermediaAction(actionId: string, _submission: HtmlSurfaceActionSubmission) {
-    if (actionId === "/examples/copy-menu") {
-      prompt = examples[0];
-      return;
-    }
-
-    if (actionId === "/examples/add-vegetarian-items") {
-      prompt = examples[1];
-      return;
-    }
-
-    if (actionId === "/menus") {
-      window.location.href = "/menus";
-      return;
-    }
-
-    if (actionId === "/users") {
-      window.location.href = "/users";
-      return;
-    }
-
-    void runHypermediaActionPlan(actionId);
+  function readUiComponent(result: unknown): UiComponent | undefined {
+    const component = createUiComponent(result);
+    return component.status === "ok" ? component.value : undefined;
   }
 
-  async function runHypermediaActionPlan(actionId: string) {
-    const plan = createHypermediaActionPlan(actionId);
-    if (!plan) {
-      appendMessage({ role: "assistant", text: `No code plan is registered for ${actionId}.`, tone: "error" });
-      return;
-    }
-
-    toolCallCount = 0;
-    const workingId = appendMessage({ role: "assistant", text: `${plan.summary}\nRunning app tools now...`, tone: "pending" });
-
-    try {
-      const result = await gruntend.runCodePlan(plan.code, {
-        id: "sveltekit-agent-hypermedia-action",
-        input: plan.input,
-        retry: { maxAttempts: 2 },
-        handlers: createBrowserHandlers(fetch),
-        onEvent: recordEvent,
-      });
-
-      if (result.status === "failed") {
-        throw new Error(result.error ?? "The hypermedia action code plan failed.");
-      }
-
-      updateMessage(workingId, {
-        text: resultSummary(result.result),
-        tone: "normal",
-        surfaceHtml: readSurfaceHtml(result.result) ?? doneSurface(),
-      });
-    } catch (caught) {
-      updateMessage(workingId, {
-        text: `Something failed: ${caught instanceof Error ? caught.message : String(caught)}`,
-        tone: "error",
-        surfaceHtml: errorSurface(),
-      });
-    }
+  function errorComponent(): UiComponent {
+    return createUiComponent(taggedHtml`<section class="surface-card"><p class="surface-text">The error is shown in this chat message. Try another task or adjust the prompt.</p></section>`).unwrap();
   }
 
-  function resultSummary(result: unknown): string {
-    const action = readRuntimeAction(result);
-    return `Done. I called ${toolCallCount} app tools${action ? ` for ${action}` : ""}.`;
-  }
-
-  function readRuntimeAction(result: unknown): string | undefined {
-    if (!isRuntimeHtmlResult(result) || typeof result.action !== "string") return undefined;
-    return result.action;
-  }
-
-  function readSurfaceHtml(result: unknown): string | undefined {
-    if (!isRuntimeHtmlResult(result) || typeof result.html !== "string" || result.html.trim().length === 0) {
-      return undefined;
-    }
-
-    return result.html;
-  }
-
-  function isRuntimeHtmlResult(result: unknown): result is RuntimeHtmlResult {
-    return typeof result === "object" && result !== null;
-  }
-
-  function quickActionsSurface(): string {
-    return `<div class="surface-card">
-  <div class="surface-actions">
-    <button type="button" gr-href="/examples/copy-menu">Use copy-menu task</button>
-    <button type="button" gr-href="/examples/add-vegetarian-items">Use vegetarian task</button>
-  </div>
-</div>`;
-  }
-
-  function doneSurface(): string {
-    return `<div class="surface-card">
-  <p class="surface-text">The plan completed, but it did not return a hypermedia HTML surface.</p>
-  <div class="surface-actions">
-    <button type="button" gr-href="/menus">Open menus</button>
-    <button type="button" gr-href="/users">Open users</button>
-  </div>
-</div>`;
-  }
-
-  function errorSurface(): string {
-    return `<div class="surface-card">
-  <p class="surface-text">The error is shown in this chat message. Try another task or adjust the prompt.</p>
-</div>`;
+  function reportUiError(error: unknown) {
+    console.error("[gruntend example] tagged UI failed", error);
   }
 </script>
 
@@ -235,9 +196,14 @@
   <header class="space-y-2">
     <p class="text-xs font-medium uppercase tracking-[0.12em] text-orange-600">Agent chat</p>
     <h1 class="text-3xl font-medium tracking-tight text-neutral-950">Ask the app to do something</h1>
-    <p class="max-w-2xl text-base leading-7 text-neutral-600">
-      Mock planning is deterministic. The generated code still runs through Gruntend tools and app handlers.
-    </p>
+    <div class="flex flex-wrap items-center gap-3">
+      <p class="max-w-2xl text-base leading-7 text-neutral-600">
+        Generated UI uses native JavaScript plus the Gruntend <code>html</code> tag.
+      </p>
+      <span class={`inline-flex px-2.5 py-1 text-xs font-semibold ${plannerBadgeClass(plannerInfo)}`}>
+        {plannerLabel(plannerInfo)}
+      </span>
+    </div>
   </header>
 
   <div class="space-y-4" aria-live="polite">
@@ -257,10 +223,16 @@
           {#each message.text.split("\n") as line}
             <p class="text-inherit">{line}</p>
           {/each}
-          {#if message.surfaceHtml}
+          {#if message.uiComponent}
             <div class="mt-3">
-              <HtmlSurface html={message.surfaceHtml} submitAction={submitHypermediaAction} />
+              <TaggedHtmlSurface component={message.uiComponent} onError={reportUiError} />
             </div>
+          {/if}
+          {#if message.debug}
+            <details class="mt-3 whitespace-pre-wrap bg-black/5 p-3 text-xs leading-5 text-neutral-700">
+              <summary class="cursor-pointer font-semibold">Debug details</summary>
+              {message.debug}
+            </details>
           {/if}
         </div>
       </article>
@@ -275,23 +247,11 @@
       placeholder="Ask about menus or users"
     ></textarea>
 
-    <div class="flex flex-col gap-3 border-t border-neutral-100 pt-3 md:flex-row md:items-end md:justify-between">
-      <div class="flex flex-wrap gap-2" aria-label="Example tasks">
-        {#each examples as example}
-          <button
-            type="button"
-            class="bg-neutral-100 px-3 py-2 text-sm text-neutral-700 hover:bg-orange-50 hover:text-orange-700"
-            on:click={() => (prompt = example)}
-          >
-            {example}
-          </button>
-        {/each}
-      </div>
-
+    <div class="flex justify-end border-t border-neutral-100 pt-3">
       <button
         class="bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
         type="submit"
-        disabled={state === "planning" || state === "running"}
+        disabled={state === "planning" || state === "running" || prompt.trim().length === 0}
       >
         {state === "planning" || state === "running" ? "Working..." : "Send"}
       </button>

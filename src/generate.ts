@@ -31,12 +31,17 @@ export type CodePlanGenerationComplete<TApi extends Api = Api> = (
   options?: SimpleStreamOptions,
 ) => Promise<AssistantMessage>;
 
+export interface CodePlanGenerationUiOptions {
+  readonly kind: "tagged-html";
+}
+
 export interface CodePlanGenerationRequest<TApi extends Api = Api> {
   readonly model: Model<TApi>;
   readonly tools: readonly Tool[];
   readonly task: string;
   readonly input?: unknown;
   readonly instructions?: string;
+  readonly ui?: CodePlanGenerationUiOptions;
   readonly options?: SimpleStreamOptions;
   readonly complete?: CodePlanGenerationComplete<TApi>;
 }
@@ -126,7 +131,7 @@ async function defaultComplete<TApi extends Api>(
 
 function createPiAiContext<TApi extends Api>(request: CodePlanGenerationRequest<TApi>): Context {
   return {
-    systemPrompt: codePlanSystemPrompt(),
+    systemPrompt: codePlanSystemPrompt(request.ui),
     messages: [
       {
         role: "user",
@@ -146,7 +151,9 @@ function createPiAiContext<TApi extends Api>(request: CodePlanGenerationRequest<
   };
 }
 
-function codePlanSystemPrompt(): string {
+function codePlanSystemPrompt(ui?: CodePlanGenerationUiOptions): string {
+  const uiInstructions = ui?.kind === "tagged-html" ? taggedHtmlInstructions() : "";
+
   return `You generate Gruntend JavaScript code plans from user tasks and tool manifests.
 
 Return JSON only. Do not include markdown, prose, or code fences.
@@ -161,8 +168,8 @@ The JSON shape must be exactly:
 The code is executed as an async function body by Gruntend. It can only access these globals:
 - input
 - tools
-- parallel(promises)
-- console
+- Promise
+- console${ui?.kind === "tagged-html" ? "\n- html" : ""}
 
 Rules:
 - Do not use imports, require, fetch, window, document, localStorage, process, external APIs, or TypeScript syntax.
@@ -172,8 +179,59 @@ Rules:
 - Do not wrap input values under plain, data, args, parameters, or any other container.
 - Put reusable constants directly in input and reference them from code, e.g. "input": { "menuName": "Dinner" } and input.menuName.
 - Use tools to read current app data before mutating when the task depends on existing state.
-- Use await for dependent calls and parallel([...]) for independent calls.
-- If the task cannot be completed with the available tools, return code that returns an explanation object instead of inventing capabilities.`;
+- Use await for dependent calls and Promise.all([...]) for independent calls.
+- If the task cannot be completed with the available tools, return code that returns an explanation object instead of inventing capabilities. In tagged-html UI mode, return an html explanation instead of a plain object.${uiInstructions}`;
+}
+
+function taggedHtmlInstructions(): string {
+  return `
+
+Tagged HTML UI mode:
+- The runtime provides one UI primitive: html tagged templates.
+- Return UI as either return html\`...\`; or return function render() { return html\`...\`; }.
+- Use return function render() when the UI needs local component state.
+- Keep local component state in normal JavaScript closures with var and function declarations.
+- Bind events with function interpolation, e.g. onclick=\${handler}, onsubmit=\${handler}, oninput=\${handler}, or onchange=\${handler}.
+- Do not use string event handlers such as onclick="handler()".
+- Do not use style attributes; the host compiler strips inline styles.
+- Use semantic class names instead of inline styles: surface-card, surface-text, surface-list, surface-actions, surface-item, surface-action, is-selected, surface-table, surface-muted, surface-badge.
+- Do not string-build HTML with concatenation, arrays of strings, or template strings that are not tagged with html.
+- Do not return { html: "..." }, plain explanation objects, or separate UI JSON.
+- If a requested operation is impossible with the available tools, still return html UI that explains the missing capability and shows the relevant data/capabilities that are available.
+- Do not use a JSON UI DSL, component catalog, JSX, Svelte syntax, or TypeScript syntax.
+- For text and attributes, interpolate values directly in html templates so the host compiler can escape them.
+- For lists, use Array.prototype.map and return nested html templates.
+- Expose relevant capabilities for rendered entities wherever possible, even in read-oriented views.
+- Every entity card or row should include a surface-actions area when matching tools exist and the action can be called with data already available on that entity.
+- For example, if tools.menu.item.duplicate exists, menu item rows should include a Duplicate button that calls tools.menu.item.duplicate from an onclick handler.
+- For example, if tools.menu.item.delete exists, menu item rows should include a clearly labeled Delete button that calls tools.menu.item.delete from an onclick handler and updates local UI state.
+- Keep capabilities explicit and safe: label destructive actions clearly and use app tools inside event handlers for effects.
+- For app effects, call tools from event handlers or before returning the render function.
+
+Capability example:
+var items = input.items;
+async function duplicateItem(item) {
+  var duplicated = await tools.menu.item.duplicate({ menuId: item.menuId, itemId: item.itemId });
+  items = items.concat([duplicated.item]);
+}
+async function deleteItem(item) {
+  await tools.menu.item.delete({ menuId: item.menuId, itemId: item.itemId });
+  items = items.filter(function (candidate) { return candidate.itemId !== item.itemId; });
+}
+return function render() {
+  return html\`<section class="surface-card"><div class="surface-list">\${items.map(function (item) {
+    return html\`<article class="surface-item"><span><strong>\${item.name}</strong><span>\${item.price}</span></span><div class="surface-actions"><button type="button" onclick=\${function () { return duplicateItem(item); }}>Duplicate</button><button type="button" onclick=\${function () { return deleteItem(item); }}>Delete</button></div></article>\`;
+  })}</div></section>\`;
+};
+
+Minimal stateful example:
+var count = 0;
+function increment() {
+  count = count + 1;
+}
+return function render() {
+  return html\`<section class="surface-card"><p class="surface-text">Count: \${count}</p><button type="button" class="surface-action" onclick=\${increment}>Increment</button></section>\`;
+};`;
 }
 
 function assistantText(message: AssistantMessage): string {

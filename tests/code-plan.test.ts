@@ -67,7 +67,7 @@ test("runCodePlan executes LLM-generated code against registered tool handlers",
       name: input.targetMenuName,
     });
 
-    const created = await parallel(
+    const created = await Promise.all(
       source.items.map((item) =>
         tools.menu.item.create({
           menuId: target.menuId,
@@ -99,6 +99,38 @@ test("runCodePlan executes LLM-generated code against registered tool handlers",
       targetMenuId: "menu:lunch-menu",
       copiedItems: ["Burger", "Fries"],
     },
+    errors: {},
+  });
+});
+
+test("runCodePlan exposes flat bracket tool aliases for dot-named tool calls", async () => {
+  const menuTools = defineTools({
+    menu: {
+      items: {
+        list: {
+          description: "List menu items.",
+          input: v.object({ menuId: v.string() }),
+          output: v.object({ items: v.array(v.object({ name: v.string() })) }),
+        },
+      },
+    },
+  });
+
+  const result = await runCodePlan({
+    code: `
+      const result = await tools["menu.items.list"]({ menuId: input.menuId });
+      return result.items.map(function (item) { return item.name; });
+    `,
+    input: { menuId: "menu_1" },
+    registry: createToolRegistry(menuTools),
+    handlers: {
+      "menu.items.list": ({ ok }) => ok({ items: [{ name: "Fries" }] }),
+    },
+  });
+
+  expect(result).toEqual({
+    status: "done",
+    result: ["Fries"],
     errors: {},
   });
 });

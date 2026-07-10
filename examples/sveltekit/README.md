@@ -9,7 +9,7 @@ This example has:
 - normal app routes for browsing that data
 - a Gruntend tool namespace over the app API
 - a chat-style agent route with a mocked code-plan generator
-- hypermedia message islands hydrated through `gruntend/hypermedia`
+- tagged-template message islands hydrated through `gruntend/ui-runtime`
 
 ## Run
 
@@ -31,6 +31,7 @@ Open:
 Try:
 
 ```text
+Show a selectable "Dinner Menu" page
 Copy "Dinner Menu" to "Lunch Menu" except burgers
 Add vegetarian items to "Brunch Menu"
 Create user "Sam Rivera" as manager
@@ -39,7 +40,7 @@ Summarize the restaurant data
 
 The agent route is mocked on purpose: `/api/agent/plan` returns deterministic Gruntend code plans without requiring `OPENAI_API_KEY`. The browser still executes those plans through the real Gruntend runtime, registered app tools, and app-owned handlers.
 
-The chat transcript can render HTML hypermedia surfaces. Those surfaces contain inert semantic controls such as `gr-href="/menus"` or `gr-href="/menus/menu_1/items/item_2/actions/duplicate"`; the Svelte `HtmlSurface` island hydrates them with `hydrateHtmlSurface()` and sends the semantic href back to the page. Item actions are compiled into Gruntend code plans and executed through app tools; they do not directly call backend functions from the click handler.
+The chat transcript renders generated UI returned from code plans as native JavaScript plus the Gruntend `html` tagged template. Event handlers use function interpolation, for example `onclick=${handler}`. The UI compiler rewrites those handlers to inert delegated attributes such as `data-gr-click="h0"`, so the browser never receives real inline JavaScript. The selectable menu prompt demonstrates local generated component state plus app tool calls for duplicated items.
 
 ## Switching back to a real LLM later
 

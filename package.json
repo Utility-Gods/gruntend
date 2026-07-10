@@ -9,7 +9,7 @@
     "./client": "./src/client.ts",
     "./code-plan": "./src/code-plan.ts",
     "./generate": "./src/generate.ts",
-    "./hypermedia": "./src/hypermedia.ts",
+    "./ui-runtime": "./src/ui-runtime.ts",
     "./registry": "./src/registry.ts",
     "./runtime": "./src/runtime.ts",
     "./tool": "./src/tool.ts"
