@@ -60,6 +60,23 @@ export function createBrowserHandlers(fetcher: Fetcher): ToolHandlerMap<typeof a
       return ok(response.data);
     },
 
+    "menu.item.update": async ({ input, ok, err }) => {
+      const response = await requestJson<{ item: MenuItem }>(
+        fetcher,
+        `/api/menus/${input.menuId}/items/${input.itemId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            name: input.name,
+            price: input.price,
+            tags: input.tags,
+          }),
+        },
+      );
+      if (!response.ok) return err(toHandlerError(response.error));
+      return ok(response.data);
+    },
+
     "menu.item.delete": async ({ input, ok, err }) => {
       const response = await requestJson<{ item: MenuItem }>(fetcher, `/api/menus/${input.menuId}/items/${input.itemId}`, {
         method: "DELETE",

@@ -172,6 +172,34 @@ export const appTools = defineTools({
           required: ["item"],
         },
       },
+      update: {
+        description:
+          "Update one menu item. Use this to change item name, price, tags, or to apply percentage price changes.",
+        input: v.object({
+          menuId: v.string(),
+          itemId: v.string(),
+          name: v.optional(v.string()),
+          price: v.optional(v.number()),
+          tags: v.optional(v.array(v.string())),
+        }),
+        output: v.object({ item: menuItemSchema }),
+        parameters: {
+          type: "object",
+          properties: {
+            menuId: { type: "string" },
+            itemId: { type: "string" },
+            name: { type: "string" },
+            price: { type: "number" },
+            tags: { type: "array", items: { type: "string" } },
+          },
+          required: ["menuId", "itemId"],
+        },
+        returns: {
+          type: "object",
+          properties: { item: menuItemModel },
+          required: ["item"],
+        },
+      },
       delete: {
         description: "Delete one menu item.",
         input: v.object({ menuId: v.string(), itemId: v.string() }),

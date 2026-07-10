@@ -59,6 +59,7 @@ const uiTemplateSchema = v.object({
 });
 const unsafeTags = new Set(["script", "iframe", "object", "embed", "link", "style", "meta"]);
 const eventAttributes = new Set(["onclick", "onsubmit", "oninput", "onchange"]);
+const booleanAttributes = new Set(["checked", "disabled", "selected"]);
 const allowedAttributes = new Set([
   "class",
   "id",
@@ -180,6 +181,15 @@ function compileTemplateHtml(
     }
 
     if (interpolation?.kind === "attribute") {
+      if (booleanAttributes.has(interpolation.attribute.toLowerCase())) {
+        if (value === false || value === null || value === undefined) {
+          html = html.replace(new RegExp(`\\s*${escapeRegExp(interpolation.attribute)}\\s*=\\s*$`, "i"), "");
+        } else {
+          html += `"${escapeHtml(interpolation.attribute.toLowerCase())}"`;
+        }
+        continue;
+      }
+
       html += `"${escapeHtml(String(value))}"`;
       continue;
     }
@@ -229,7 +239,7 @@ function compileTextInterpolation(
 function interpolationContext(
   before: string,
   after: string,
-): "text" | "structure" | { kind: "event"; attribute: string; event: string } | { kind: "attribute" } {
+): "text" | "structure" | { kind: "event"; attribute: string; event: string } | { kind: "attribute"; attribute: string } {
   const lastOpen = before.lastIndexOf("<");
   const lastClose = before.lastIndexOf(">");
   const inTag = lastOpen > lastClose;
@@ -249,7 +259,11 @@ function interpolationContext(
     return { kind: "event", attribute: attr, event: lower.slice(2) };
   }
 
-  return { kind: "attribute" };
+  return { kind: "attribute", attribute: attr };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function sanitizeHtml(

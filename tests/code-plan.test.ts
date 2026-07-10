@@ -103,7 +103,7 @@ test("runCodePlan executes LLM-generated code against registered tool handlers",
   });
 });
 
-test("runCodePlan exposes flat bracket tool aliases for dot-named tool calls", async () => {
+test("runCodePlan exposes bracket tool aliases for dot-named tool calls", async () => {
   const menuTools = defineTools({
     menu: {
       items: {
@@ -116,19 +116,38 @@ test("runCodePlan exposes flat bracket tool aliases for dot-named tool calls", a
     },
   });
 
-  const result = await runCodePlan({
+  const registry = createToolRegistry(menuTools);
+  const handlers = {
+    "menu.items.list": ({ ok }) => ok({ items: [{ name: "Fries" }] }),
+  } satisfies ToolHandlerMap<typeof menuTools>;
+
+  const flatResult = await runCodePlan({
     code: `
       const result = await tools["menu.items.list"]({ menuId: input.menuId });
       return result.items.map(function (item) { return item.name; });
     `,
     input: { menuId: "menu_1" },
-    registry: createToolRegistry(menuTools),
-    handlers: {
-      "menu.items.list": ({ ok }) => ok({ items: [{ name: "Fries" }] }),
-    },
+    registry,
+    handlers,
   });
 
-  expect(result).toEqual({
+  expect(flatResult).toEqual({
+    status: "done",
+    result: ["Fries"],
+    errors: {},
+  });
+
+  const namespaceResult = await runCodePlan({
+    code: `
+      const result = await tools["menu.items"].list({ menuId: input.menuId });
+      return result.items.map(function (item) { return item.name; });
+    `,
+    input: { menuId: "menu_1" },
+    registry,
+    handlers,
+  });
+
+  expect(namespaceResult).toEqual({
     status: "done",
     result: ["Fries"],
     errors: {},
