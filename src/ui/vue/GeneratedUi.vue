@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useAttrs, watch } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  useAttrs,
+  watch,
+} from "vue";
 import type {
   GeneratedUi as GeneratedUiController,
   GeneratedUiFrame,

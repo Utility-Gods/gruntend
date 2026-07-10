@@ -90,7 +90,9 @@ export function GeneratedUi({
       {running ? (
         <p className="generated-ui-status">Running generated action...</p>
       ) : null}
-      {surfaceError ? <p className="generated-ui-error">{surfaceError}</p> : null}
+      {surfaceError ? (
+        <p className="generated-ui-error">{surfaceError}</p>
+      ) : null}
     </div>
   );
 }

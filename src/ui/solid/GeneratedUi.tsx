@@ -79,7 +79,9 @@ export function GeneratedUi(props: GeneratedUiProps): JSX.Element {
       {running() ? (
         <p class="generated-ui-status">Running generated action...</p>
       ) : null}
-      {surfaceError() ? <p class="generated-ui-error">{surfaceError()}</p> : null}
+      {surfaceError() ? (
+        <p class="generated-ui-error">{surfaceError()}</p>
+      ) : null}
     </div>
   );
 }
