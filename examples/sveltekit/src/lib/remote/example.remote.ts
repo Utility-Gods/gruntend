@@ -73,10 +73,12 @@ export const getMenusWithItems = query(async () => {
   const context = requestStore();
   const menus = await listMenus(context);
   const menusWithItems = await Promise.all(
-    menus.map(async (menu): Promise<MenuWithItems> => ({
-      ...menu,
-      items: await listMenuItems(menu.menuId, context),
-    })),
+    menus.map(
+      async (menu): Promise<MenuWithItems> => ({
+        ...menu,
+        items: await listMenuItems(menu.menuId, context),
+      }),
+    ),
   );
 
   return { menus: menusWithItems };

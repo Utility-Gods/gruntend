@@ -12,7 +12,10 @@ const generateAgentPlanSchema = v.object({
 
 const rateLimitWindowMs = 10 * 60 * 1000;
 const rateLimitMaxRequests = 5;
-const rateLimitBuckets = new Map<string, { readonly resetAt: number; count: number }>();
+const rateLimitBuckets = new Map<
+  string,
+  { readonly resetAt: number; count: number }
+>();
 
 type AgentPlannerMode = "mock" | "openai";
 
@@ -46,7 +49,9 @@ export const generateAgentPlan = command(
 
     const apiKey = env.OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error("OPENAI_API_KEY is required when GRUNTEND_AGENT_MODE=openai.");
+      throw new Error(
+        "OPENAI_API_KEY is required when GRUNTEND_AGENT_MODE=openai.",
+      );
     }
 
     const model = resolveOpenAiModel(env.OPENAI_MODEL || "gpt-5.1");
@@ -85,13 +90,18 @@ function assertAgentRateLimit(clientAddress: string): void {
   const bucket = rateLimitBuckets.get(clientAddress);
 
   if (!bucket || bucket.resetAt <= now) {
-    rateLimitBuckets.set(clientAddress, { resetAt: now + rateLimitWindowMs, count: 1 });
+    rateLimitBuckets.set(clientAddress, {
+      resetAt: now + rateLimitWindowMs,
+      count: 1,
+    });
     return;
   }
 
   bucket.count = bucket.count + 1;
   if (bucket.count > rateLimitMaxRequests) {
-    throw new Error("Too many agent planning requests. Please wait a few minutes and try again.");
+    throw new Error(
+      "Too many agent planning requests. Please wait a few minutes and try again.",
+    );
   }
 }
 

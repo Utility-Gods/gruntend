@@ -206,7 +206,9 @@ export async function createUser(
   };
 
   await d1
-    .prepare("INSERT INTO users (user_id, name, role, created_at) VALUES (?, ?, ?, ?)")
+    .prepare(
+      "INSERT INTO users (user_id, name, role, created_at) VALUES (?, ?, ?, ?)",
+    )
     .bind(user.userId, user.name, user.role, user.createdAt)
     .run();
 
@@ -266,8 +268,16 @@ export async function createMenu(
   };
 
   await d1
-    .prepare("INSERT INTO menus (menu_id, name, description, owner_user_id, created_at) VALUES (?, ?, ?, ?, ?)")
-    .bind(menu.menuId, menu.name, menu.description, menu.ownerUserId, menu.createdAt)
+    .prepare(
+      "INSERT INTO menus (menu_id, name, description, owner_user_id, created_at) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(
+      menu.menuId,
+      menu.name,
+      menu.description,
+      menu.ownerUserId,
+      menu.createdAt,
+    )
     .run();
 
   return menu;
@@ -320,7 +330,9 @@ export async function createMenuItem(
   if (!menu) throw new Error(`Menu "${input.menuId}" does not exist.`);
 
   const existing = await d1
-    .prepare("SELECT * FROM menu_items WHERE menu_id = ? AND lower(name) = lower(?)")
+    .prepare(
+      "SELECT * FROM menu_items WHERE menu_id = ? AND lower(name) = lower(?)",
+    )
     .bind(input.menuId, input.name)
     .first<MenuItemRow>();
   if (existing) return rowToMenuItem(existing);
@@ -334,8 +346,16 @@ export async function createMenuItem(
   };
 
   await d1
-    .prepare("INSERT INTO menu_items (item_id, menu_id, name, price, tags_json) VALUES (?, ?, ?, ?, ?)")
-    .bind(item.itemId, item.menuId, item.name, item.price, JSON.stringify(item.tags))
+    .prepare(
+      "INSERT INTO menu_items (item_id, menu_id, name, price, tags_json) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(
+      item.itemId,
+      item.menuId,
+      item.name,
+      item.price,
+      JSON.stringify(item.tags),
+    )
     .run();
 
   return item;
@@ -383,8 +403,16 @@ export async function updateMenuItem(
   if (!d1) return memoryStore.updateMenuItem(input);
 
   await d1
-    .prepare("UPDATE menu_items SET name = ?, price = ?, tags_json = ? WHERE menu_id = ? AND item_id = ?")
-    .bind(next.name, next.price, JSON.stringify(next.tags), input.menuId, input.itemId)
+    .prepare(
+      "UPDATE menu_items SET name = ?, price = ?, tags_json = ? WHERE menu_id = ? AND item_id = ?",
+    )
+    .bind(
+      next.name,
+      next.price,
+      JSON.stringify(next.tags),
+      input.menuId,
+      input.itemId,
+    )
     .run();
 
   return next;
@@ -411,25 +439,30 @@ async function ensureD1(db: D1Database): Promise<void> {
   if (initializedD1.has(db)) return;
 
   await db
-    .prepare(`CREATE TABLE IF NOT EXISTS users (
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS users (
       user_id TEXT PRIMARY KEY,
       name TEXT NOT NULL COLLATE NOCASE UNIQUE,
       role TEXT NOT NULL,
       created_at TEXT NOT NULL
-    )`)
+    )`,
+    )
     .run();
   await db
-    .prepare(`CREATE TABLE IF NOT EXISTS menus (
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS menus (
       menu_id TEXT PRIMARY KEY,
       name TEXT NOT NULL COLLATE NOCASE UNIQUE,
       description TEXT NOT NULL,
       owner_user_id TEXT NOT NULL,
       created_at TEXT NOT NULL,
       FOREIGN KEY (owner_user_id) REFERENCES users(user_id)
-    )`)
+    )`,
+    )
     .run();
   await db
-    .prepare(`CREATE TABLE IF NOT EXISTS menu_items (
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS menu_items (
       item_id TEXT PRIMARY KEY,
       menu_id TEXT NOT NULL,
       name TEXT NOT NULL COLLATE NOCASE,
@@ -437,7 +470,8 @@ async function ensureD1(db: D1Database): Promise<void> {
       tags_json TEXT NOT NULL,
       FOREIGN KEY (menu_id) REFERENCES menus(menu_id) ON DELETE CASCADE,
       UNIQUE (menu_id, name)
-    )`)
+    )`,
+    )
     .run();
 
   const count = await db
@@ -447,20 +481,38 @@ async function ensureD1(db: D1Database): Promise<void> {
   if ((count?.count ?? 0) === 0) {
     for (const user of seedUsers) {
       await db
-        .prepare("INSERT INTO users (user_id, name, role, created_at) VALUES (?, ?, ?, ?)")
+        .prepare(
+          "INSERT INTO users (user_id, name, role, created_at) VALUES (?, ?, ?, ?)",
+        )
         .bind(user.userId, user.name, user.role, user.createdAt)
         .run();
     }
     for (const menu of seedMenus) {
       await db
-        .prepare("INSERT INTO menus (menu_id, name, description, owner_user_id, created_at) VALUES (?, ?, ?, ?, ?)")
-        .bind(menu.menuId, menu.name, menu.description, menu.ownerUserId, menu.createdAt)
+        .prepare(
+          "INSERT INTO menus (menu_id, name, description, owner_user_id, created_at) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(
+          menu.menuId,
+          menu.name,
+          menu.description,
+          menu.ownerUserId,
+          menu.createdAt,
+        )
         .run();
     }
     for (const item of seedItems) {
       await db
-        .prepare("INSERT INTO menu_items (item_id, menu_id, name, price, tags_json) VALUES (?, ?, ?, ?, ?)")
-        .bind(item.itemId, item.menuId, item.name, item.price, JSON.stringify(item.tags))
+        .prepare(
+          "INSERT INTO menu_items (item_id, menu_id, name, price, tags_json) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(
+          item.itemId,
+          item.menuId,
+          item.name,
+          item.price,
+          JSON.stringify(item.tags),
+        )
         .run();
     }
   }
@@ -513,7 +565,9 @@ async function menuItemNameExists(
 
   await ensureD1(d1);
   const row = await d1
-    .prepare("SELECT item_id FROM menu_items WHERE menu_id = ? AND lower(name) = lower(?)")
+    .prepare(
+      "SELECT item_id FROM menu_items WHERE menu_id = ? AND lower(name) = lower(?)",
+    )
     .bind(menuId, name)
     .first<{ readonly item_id: string }>();
   return !!row;
@@ -534,8 +588,13 @@ function createMemoryStore() {
     listUsers(): User[] {
       return [...users.values()].sort(byId("userId")).map(copyUser);
     },
-    createUser(input: { readonly name: string; readonly role: User["role"] }): User {
-      const existing = [...users.values()].find((user) => sameText(user.name, input.name));
+    createUser(input: {
+      readonly name: string;
+      readonly role: User["role"];
+    }): User {
+      const existing = [...users.values()].find((user) =>
+        sameText(user.name, input.name),
+      );
       if (existing) return copyUser(existing);
 
       const user: User = {
@@ -559,7 +618,9 @@ function createMemoryStore() {
       readonly description?: string;
       readonly ownerUserId?: string;
     }): Menu {
-      const existing = [...menus.values()].find((menu) => sameText(menu.name, input.name));
+      const existing = [...menus.values()].find((menu) =>
+        sameText(menu.name, input.name),
+      );
       if (existing) return copyMenu(existing);
 
       const menu: Menu = {
@@ -578,7 +639,10 @@ function createMemoryStore() {
         .sort(byId("itemId"))
         .map(copyMenuItem);
     },
-    getMenuItem(input: { readonly menuId: string; readonly itemId: string }): MenuItem | undefined {
+    getMenuItem(input: {
+      readonly menuId: string;
+      readonly itemId: string;
+    }): MenuItem | undefined {
       const item = items.get(input.itemId);
       return item?.menuId === input.menuId ? copyMenuItem(item) : undefined;
     },
@@ -588,9 +652,11 @@ function createMemoryStore() {
       readonly price: number;
       readonly tags?: readonly string[];
     }): MenuItem {
-      if (!menus.has(input.menuId)) throw new Error(`Menu "${input.menuId}" does not exist.`);
+      if (!menus.has(input.menuId))
+        throw new Error(`Menu "${input.menuId}" does not exist.`);
       const existing = [...items.values()].find(
-        (item) => item.menuId === input.menuId && sameText(item.name, input.name),
+        (item) =>
+          item.menuId === input.menuId && sameText(item.name, input.name),
       );
       if (existing) return copyMenuItem(existing);
 
@@ -612,7 +678,8 @@ function createMemoryStore() {
       readonly tags?: readonly string[];
     }): MenuItem {
       const existing = items.get(input.itemId);
-      if (!existing || existing.menuId !== input.menuId) throw new Error(`Menu item "${input.itemId}" was not found.`);
+      if (!existing || existing.menuId !== input.menuId)
+        throw new Error(`Menu item "${input.itemId}" was not found.`);
 
       const next: MenuItem = {
         ...existing,
@@ -623,15 +690,21 @@ function createMemoryStore() {
       items.set(next.itemId, next);
       return copyMenuItem(next);
     },
-    deleteMenuItem(input: { readonly menuId: string; readonly itemId: string }): MenuItem {
+    deleteMenuItem(input: {
+      readonly menuId: string;
+      readonly itemId: string;
+    }): MenuItem {
       const existing = items.get(input.itemId);
-      if (!existing || existing.menuId !== input.menuId) throw new Error(`Menu item "${input.itemId}" was not found.`);
+      if (!existing || existing.menuId !== input.menuId)
+        throw new Error(`Menu item "${input.itemId}" was not found.`);
 
       items.delete(input.itemId);
       return copyMenuItem(existing);
     },
     menuItemNameExists(menuId: string, name: string): boolean {
-      return [...items.values()].some((item) => item.menuId === menuId && sameText(item.name, name));
+      return [...items.values()].some(
+        (item) => item.menuId === menuId && sameText(item.name, name),
+      );
     },
   };
 }

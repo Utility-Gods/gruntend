@@ -15,8 +15,7 @@ import type { appTools } from "./tools";
 
 export function createBrowserHandlers(): ToolHandlerMap<typeof appTools> {
   return {
-    "menus.list": async ({ ok, err }) =>
-      runTool(() => getMenus(), ok, err),
+    "menus.list": async ({ ok, err }) => runTool(() => getMenus(), ok, err),
 
     "menus.get": async ({ input, ok, err }) =>
       runTool(() => getMenuById(input), ok, err),
@@ -39,8 +38,7 @@ export function createBrowserHandlers(): ToolHandlerMap<typeof appTools> {
     "menu.item.delete": async ({ input, ok, err }) =>
       runTool(() => deleteMenuItemCommand(input), ok, err),
 
-    "users.list": async ({ ok, err }) =>
-      runTool(() => getUsers(), ok, err),
+    "users.list": async ({ ok, err }) => runTool(() => getUsers(), ok, err),
 
     "users.create": async ({ input, ok, err }) =>
       runTool(() => createUserCommand(input), ok, err),
