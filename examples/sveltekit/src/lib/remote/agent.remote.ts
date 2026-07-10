@@ -1,63 +1,67 @@
+import { command, getRequestEvent, query } from "$app/server";
 import { env } from "$env/dynamic/private";
+import * as v from "valibot";
 import { createMockPlan } from "$lib/agent/mock-plan";
 import { appTools } from "$lib/agent/tools";
 import { listMenus, listUsers } from "$lib/server/store";
-import { json } from "@sveltejs/kit";
 import { generateCodePlan, getModel, type Model } from "gruntend/generate";
-import type { RequestHandler } from "./$types";
+
+const generateAgentPlanSchema = v.object({
+  prompt: v.pipe(v.string(), v.nonEmpty()),
+});
+
+const rateLimitWindowMs = 10 * 60 * 1000;
+const rateLimitMaxRequests = 5;
+const rateLimitBuckets = new Map<
+  string,
+  { readonly resetAt: number; count: number }
+>();
 
 type AgentPlannerMode = "mock" | "openai";
 
-export const GET: RequestHandler = () => {
+export const getAgentPlannerInfo = query(async () => {
   const mode = resolvePlannerMode();
 
-  return json({
+  return {
     generator: mode === "mock" ? "mock" : "pi-ai",
     mode,
     model: mode === "mock" ? "mock-planner" : env.OPENAI_MODEL || "gpt-5.1",
-  });
-};
+  };
+});
 
-export const POST: RequestHandler = async ({ request }) => {
-  const body = (await request.json()) as { readonly prompt?: unknown };
+export const generateAgentPlan = command(
+  generateAgentPlanSchema,
+  async ({ prompt }) => {
+    const event = getRequestEvent();
+    assertAgentRateLimit(event.getClientAddress());
+    const mode = resolvePlannerMode();
 
-  if (typeof body.prompt !== "string" || body.prompt.trim().length === 0) {
-    return json({ message: "Prompt is required." }, { status: 400 });
-  }
+    if (mode === "mock") {
+      return {
+        generator: "mock" as const,
+        model: "mock-planner",
+        plan: createMockPlan(prompt.trim()),
+        stopReason: "stop",
+        usage: undefined,
+        responseId: `mock_${Date.now()}`,
+      };
+    }
 
-  const prompt = body.prompt.trim();
-  const mode = resolvePlannerMode();
+    const apiKey = env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "OPENAI_API_KEY is required when GRUNTEND_AGENT_MODE=openai.",
+      );
+    }
 
-  if (mode === "mock") {
-    const plan = createMockPlan(prompt);
-    return json({
-      generator: "mock",
-      model: "mock-planner",
-      plan,
-      stopReason: "stop",
-      usage: undefined,
-      responseId: `mock_${Date.now()}`,
-    });
-  }
-
-  const apiKey = env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return json(
-      {
-        message: "OPENAI_API_KEY is required when GRUNTEND_AGENT_MODE=openai.",
-      },
-      { status: 500 },
-    );
-  }
-
-  try {
     const model = resolveOpenAiModel(env.OPENAI_MODEL || "gpt-5.1");
+    const context = { platform: event.platform };
     const generated = await generateCodePlan({
       tools: appTools,
-      task: prompt,
+      task: prompt.trim(),
       input: {
-        menus: listMenus(),
-        users: listUsers(),
+        menus: await listMenus(context),
+        users: await listUsers(context),
       },
       instructions:
         "This is a restaurant admin app. Prefer reusing existing menus and users when names match. Read current app data with tools before mutating when the task depends on existing state.",
@@ -70,26 +74,36 @@ export const POST: RequestHandler = async ({ request }) => {
       },
     });
 
-    return json({
-      generator: "pi-ai",
+    return {
+      generator: "pi-ai" as const,
       model: model.id,
       plan: generated.plan,
       stopReason: generated.message.stopReason,
       usage: generated.message.usage,
       responseId: generated.message.responseId,
+    };
+  },
+);
+
+function assertAgentRateLimit(clientAddress: string): void {
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(clientAddress);
+
+  if (!bucket || bucket.resetAt <= now) {
+    rateLimitBuckets.set(clientAddress, {
+      resetAt: now + rateLimitWindowMs,
+      count: 1,
     });
-  } catch (caught) {
-    return json(
-      {
-        message:
-          caught instanceof Error
-            ? caught.message
-            : "Unable to generate a code plan.",
-      },
-      { status: 500 },
+    return;
+  }
+
+  bucket.count = bucket.count + 1;
+  if (bucket.count > rateLimitMaxRequests) {
+    throw new Error(
+      "Too many agent planning requests. Please wait a few minutes and try again.",
     );
   }
-};
+}
 
 function resolvePlannerMode(): AgentPlannerMode {
   const mode = env.GRUNTEND_AGENT_MODE ?? "mock";

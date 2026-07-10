@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@mariozechner/jailjs": "0.1.1",
-    "@mariozechner/pi-ai": "0.73.1",
+    "@earendil-works/pi-ai": "0.74.0",
     "better-result": "2.7.0",
     "valibot": "1.4.0"
   },

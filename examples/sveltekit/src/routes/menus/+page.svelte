@@ -1,13 +1,21 @@
 <script lang="ts">
-  import type { PageData } from "./$types";
+  import { base } from "$app/paths";
+  import {
+    deleteMenuItemCommand,
+    getMenusWithItems,
+  } from "$lib/remote/example.remote";
 
-  let { data }: { data: PageData } = $props();
+  const menusResponse = $derived(getMenusWithItems().current);
+  const menus = $derived(menusResponse?.menus ?? []);
 
-  let menus = $state(data.menus.map((menu) => ({ ...menu, items: [...menu.items] })));
-  let selectedMenuId = $state(menus[0]?.menuId ?? "");
+  let selectedMenuId = $state<string | undefined>();
   let deletingItemId = $state("");
   let deleteError = $state("");
-  const selectedMenu = $derived(menus.find((menu) => menu.menuId === selectedMenuId) ?? menus[0]);
+  const selectedMenu = $derived(
+    selectedMenuId
+      ? menus.find((menu) => menu.menuId === selectedMenuId) ?? menus[0]
+      : menus[0],
+  );
 
   async function deleteItem(menuId: string, itemId: string) {
     if (deletingItemId) return;
@@ -15,21 +23,14 @@
     deletingItemId = itemId;
     deleteError = "";
 
-    const response = await fetch(`/api/menus/${menuId}/items/${itemId}`, { method: "DELETE" });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { readonly message?: string };
-      deleteError = body.message ?? "Unable to delete menu item.";
+    try {
+      await deleteMenuItemCommand({ menuId, itemId }).updates(getMenusWithItems());
+    } catch (caught) {
+      deleteError =
+        caught instanceof Error ? caught.message : "Unable to delete menu item.";
+    } finally {
       deletingItemId = "";
-      return;
     }
-
-    menus = menus.map((menu) =>
-      menu.menuId === menuId
-        ? { ...menu, items: menu.items.filter((item) => item.itemId !== itemId) }
-        : menu,
-    );
-    deletingItemId = "";
   }
 </script>
 
@@ -98,7 +99,7 @@
           <div class="py-8">
             <h3 class="text-base font-medium text-neutral-950">No items yet</h3>
             <p class="mt-1 text-neutral-600">Ask the agent to add items to this menu.</p>
-            <a class="mt-4 inline-flex bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700" href="/agent">
+            <a class="mt-4 inline-flex bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700" href={`${base}/agent`}>
               Open agent
             </a>
           </div>

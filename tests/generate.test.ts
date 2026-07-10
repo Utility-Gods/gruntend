@@ -8,7 +8,7 @@ import {
   type CodePlanGenerationResponse,
 } from "../src/generate.ts";
 import { defineTools, type StandardSchemaV1 } from "../src/tool.ts";
-import type { AssistantMessage, Model } from "@mariozechner/pi-ai";
+import type { AssistantMessage, Model } from "@earendil-works/pi-ai";
 
 function schema<T>(): StandardSchemaV1<T> {
   return {

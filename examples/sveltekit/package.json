@@ -4,12 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --bun vite --host 0.0.0.0",
-    "build": "bun --bun vite build",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "deploy": "pnpm build && wrangler deploy",
+    "d1:migrate:local": "wrangler d1 migrations apply gruntend-example --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply gruntend-example --remote"
   },
   "dependencies": {
-    "@sveltejs/adapter-auto": "7.0.1",
+    "@sveltejs/adapter-cloudflare": "7.2.9",
     "@sveltejs/kit": "2.69.0",
     "@sveltejs/vite-plugin-svelte": "7.1.2",
     "gruntend": "workspace:*",
@@ -21,6 +24,7 @@
     "@tailwindcss/vite": "4.3.2",
     "svelte-check": "4.7.1",
     "tailwindcss": "4.3.2",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "wrangler": "4.110.0"
   }
 }

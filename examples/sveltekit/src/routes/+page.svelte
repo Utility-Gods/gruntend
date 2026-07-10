@@ -1,14 +1,18 @@
+<script lang="ts">
+  import { base } from "$app/paths";
+</script>
+
 <section class="space-y-10">
   <header class="max-w-3xl space-y-4">
     <p class="text-sm font-semibold uppercase tracking-[0.12em] text-orange-600">Example app</p>
     <h1 class="text-3xl font-medium tracking-tight text-neutral-950 md:text-2xl">A real app shell for Gruntend agents.</h1>
     <p class="text-base leading-7 text-neutral-600">
-      Restaurant data is persisted in SQLite. The agent produces code plans, runs app-owned tools, and returns compiled
-      tagged-template UI.
+      Restaurant data runs locally from seeded memory and can persist to Cloudflare D1. The agent produces code plans,
+      runs app-owned tools, and returns compiled tagged-template UI.
     </p>
     <div class="flex flex-wrap gap-3 pt-2">
-      <a class="bg-orange-600 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-700" href="/agent">Open agent</a>
-      <a class="border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-100" href="/menus">
+      <a class="bg-orange-600 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-700" href={`${base}/agent`}>Open agent</a>
+      <a class="border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-100" href={`${base}/menus`}>
         Browse menus
       </a>
     </div>

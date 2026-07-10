@@ -1,7 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
+  import { base } from "$app/paths";
   import { gruntend } from "$lib/agent/client";
   import { createBrowserHandlers } from "$lib/agent/handlers";
+  import { generateAgentPlan, getAgentPlannerInfo } from "$lib/remote/agent.remote";
   import type { GeneratedCodePlan } from "gruntend/generate";
   import type { RuntimeEvent } from "gruntend/runtime";
   import {
@@ -76,7 +79,7 @@
         id: "sveltekit-agent-chat-plan",
         input: plan.input,
         retry: { maxAttempts: 2 },
-        handlers: createBrowserHandlers(fetch),
+        handlers: createBrowserHandlers(),
         ui: { html: taggedHtml },
         onEvent: recordEvent,
       });
@@ -118,31 +121,14 @@
 
   async function loadPlannerInfo() {
     try {
-      const response = await fetch("/api/agent/plan");
-      if (!response.ok) return;
-      plannerInfo = (await response.json()) as AgentPlannerInfo;
+      plannerInfo = await getAgentPlannerInfo();
     } catch {
       // Planner info is diagnostic only.
     }
   }
 
   async function generatePlan(task: string): Promise<AgentGenerationEnvelope> {
-    const response = await fetch("/api/agent/plan", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt: task }),
-    });
-    const payload = (await response.json()) as AgentGenerationEnvelope | { readonly message?: string };
-
-    if (!response.ok) {
-      throw new Error(
-        "message" in payload && typeof payload.message === "string" && payload.message.length > 0
-          ? payload.message
-          : "Planning failed.",
-      );
-    }
-
-    return payload as AgentGenerationEnvelope;
+    return generateAgentPlan({ prompt: task });
   }
 
   function readPlannerInfo(envelope: AgentGenerationEnvelope): AgentPlannerInfo {
@@ -194,6 +180,21 @@
   function reportUiError(error: unknown) {
     console.error("[gruntend example] tagged UI failed", error);
   }
+
+  function handleGeneratedLinkClick(event: MouseEvent) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const anchor = target.closest("a[href]");
+    if (!(anchor instanceof HTMLAnchorElement)) return;
+    if (anchor.target || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    const href = anchor.getAttribute("href");
+    if (!href?.startsWith("/")) return;
+
+    event.preventDefault();
+    void goto(`${base}${href}`);
+  }
 </script>
 
 <section class="mx-auto max-w-3xl space-y-6" aria-label="Agent chat">
@@ -228,7 +229,7 @@
             <p class="text-inherit">{line}</p>
           {/each}
           {#if message.uiComponent}
-            <div class="mt-3">
+            <div class="mt-3" onclick={handleGeneratedLinkClick}>
               <GeneratedUi
                 class="agent-generated-ui"
                 ui={message.uiComponent}
