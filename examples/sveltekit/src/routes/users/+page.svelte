@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { PageData } from "./$types";
+  import { getUsers } from "$lib/remote/example.remote";
 
-  let { data }: { data: PageData } = $props();
+  const usersResponse = $derived(getUsers().current);
+  const users = $derived(usersResponse?.users ?? []);
 </script>
 
 <section class="space-y-8">
@@ -16,7 +17,7 @@
       <span>Name</span>
       <span>Role</span>
     </div>
-    {#each data.users as user}
+    {#each users as user}
       <article class="grid grid-cols-[1fr_160px] items-center border-b border-neutral-100 px-5 py-4 last:border-b-0">
         <h2 class="text-lg font-semibold text-neutral-950">{user.name}</h2>
         <span class="capitalize text-neutral-600">{user.role}</span>

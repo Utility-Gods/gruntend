@@ -6,7 +6,7 @@ import {
   type Model,
   type SimpleStreamOptions,
   type TextContent,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import type { Tool } from "./tool.ts";
 
 export { getModel };
@@ -146,7 +146,7 @@ async function defaultComplete<TApi extends Api>(
   context: Context,
   options?: SimpleStreamOptions,
 ): Promise<AssistantMessage> {
-  const { completeSimple } = await import("@mariozechner/pi-ai");
+  const { completeSimple } = await import("@earendil-works/pi-ai");
   return completeSimple(model, context, options);
 }
 

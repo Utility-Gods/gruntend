@@ -1,25 +1,22 @@
-declare module "bun:sqlite" {
-  export class Database {
-    constructor(filename: string, options?: { readonly create?: boolean });
-    run(sql: string, ...params: unknown[]): unknown;
-    query<
-      TRow = unknown,
-      TParams extends readonly unknown[] = readonly unknown[],
-    >(sql: string): Statement<TRow, TParams>;
-    transaction<TArgs extends readonly unknown[]>(
-      fn: (...args: TArgs) => void,
-    ): (...args: TArgs) => void;
-  }
+type D1Database = {
+  prepare(query: string): D1PreparedStatement;
+};
 
-  export interface Statement<TRow, TParams extends readonly unknown[]> {
-    all(...params: TParams): TRow[];
-    get(...params: TParams): TRow | null;
-    run(...params: TParams): unknown;
-  }
-}
+type D1PreparedStatement = {
+  bind(...values: readonly unknown[]): D1PreparedStatement;
+  all<TRow = unknown>(): Promise<{ readonly results?: readonly TRow[] }>;
+  first<TRow = unknown>(): Promise<TRow | null>;
+  run(): Promise<unknown>;
+};
 
 declare global {
-  namespace App {}
+  namespace App {
+    interface Platform {
+      readonly env?: {
+        readonly GRUNTEND_DB?: D1Database;
+      };
+    }
+  }
 }
 
 export {};

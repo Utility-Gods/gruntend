@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from "$app/paths";
   import { page } from "$app/state";
   import type { Snippet } from "svelte";
 
@@ -12,23 +13,23 @@
   };
 
   const navItems: NavItem[] = [
-    { href: "/agent", label: "Agent" },
-    { href: "/menus", label: "Menus" },
-    { href: "/users", label: "Team" },
+    { href: `${base}/agent`, label: "Agent" },
+    { href: `${base}/menus`, label: "Menus" },
+    { href: `${base}/users`, label: "Team" },
   ];
 
   let { children }: Props = $props();
 
   function isActive(href: string) {
     const pathname = page.url.pathname;
-    return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+    return href === `${base}/` ? pathname === `${base}/` : pathname === href || pathname.startsWith(`${href}/`);
   }
 </script>
 
 <div class="min-h-screen bg-[#fafafa] text-neutral-900">
   <header class="border-b border-neutral-200 bg-white">
     <div class="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
-      <a class="text-base font-medium tracking-tight text-neutral-950" href="/agent">Gruntend</a>
+      <a class="text-base font-medium tracking-tight text-neutral-950" href={`${base}/agent`}>Gruntend</a>
 
       <nav class="flex items-center gap-1" aria-label="Application navigation">
         {#each navItems as item}

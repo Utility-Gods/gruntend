@@ -316,7 +316,7 @@ await gruntend.runCodePlan(code, {
 
 ## SvelteKit example
 
-`examples/sveltekit` is the main example app. It includes seeded restaurant data, app API routes, a tool namespace over those APIs, and an `/agent` route that runs generated tagged-template UI through Gruntend.
+`examples/sveltekit` is the main example app. It includes seeded restaurant data, SvelteKit remote functions, a tool namespace over app-owned handlers, and an `/agent` route that runs generated tagged-template UI through Gruntend.
 
 Run mock mode:
 
