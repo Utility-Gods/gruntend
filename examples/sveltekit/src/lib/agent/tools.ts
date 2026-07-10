@@ -157,6 +157,36 @@ export const appTools = defineTools({
           required: ["item"],
         },
       },
+      duplicate: {
+        description: "Duplicate one menu item.",
+        input: v.object({ menuId: v.string(), itemId: v.string() }),
+        output: v.object({ item: menuItemSchema }),
+        parameters: {
+          type: "object",
+          properties: { menuId: { type: "string" }, itemId: { type: "string" } },
+          required: ["menuId", "itemId"],
+        },
+        returns: {
+          type: "object",
+          properties: { item: menuItemModel },
+          required: ["item"],
+        },
+      },
+      delete: {
+        description: "Delete one menu item.",
+        input: v.object({ menuId: v.string(), itemId: v.string() }),
+        output: v.object({ item: menuItemSchema }),
+        parameters: {
+          type: "object",
+          properties: { menuId: { type: "string" }, itemId: { type: "string" } },
+          required: ["menuId", "itemId"],
+        },
+        returns: {
+          type: "object",
+          properties: { item: menuItemModel },
+          required: ["item"],
+        },
+      },
     },
   },
   users: {

@@ -1,3 +1,6 @@
+import { Result } from "better-result";
+import type { Err, Ok, Result as BetterResult } from "better-result";
+
 export type MaybePromise<T> = T | Promise<T>;
 
 export namespace StandardSchemaV1 {
@@ -49,23 +52,15 @@ export interface ToolExecutionError {
   readonly details?: Record<string, unknown>;
 }
 
-export interface ToolOk<Output> {
-  readonly ok: true;
-  readonly data: Output;
-}
-
-export interface ToolErr {
-  readonly ok: false;
-  readonly error: ToolExecutionError;
-}
-
-export type ToolResult<Output> = ToolOk<Output> | ToolErr;
+export type ToolOk<Output> = Ok<Output, ToolExecutionError>;
+export type ToolErr = Err<never, ToolExecutionError>;
+export type ToolResult<Output> = BetterResult<Output, ToolExecutionError>;
 
 export interface ToolHandlerContext<Input, Output> {
   readonly input: Input;
   readonly signal?: AbortSignal;
-  readonly ok: (data: Output) => ToolOk<Output>;
-  readonly err: (error: ToolExecutionError) => ToolErr;
+  readonly ok: (data: Output) => ToolResult<Output>;
+  readonly err: (error: ToolExecutionError) => ToolResult<never>;
   readonly maxAttempts: number;
   readonly attempt: number;
 }
@@ -210,9 +205,9 @@ export async function parseStandardSchema<TSchema extends StandardSchemaV1>(
 }
 
 export function ok<Output>(data: Output): ToolOk<Output> {
-  return { ok: true, data };
+  return Result.ok(data);
 }
 
 export function err(error: ToolExecutionError): ToolErr {
-  return { ok: false, error: { retryable: false, ...error } };
+  return Result.err({ retryable: false, ...error });
 }

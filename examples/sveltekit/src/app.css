@@ -68,9 +68,9 @@
   --color-info-bg: oklch(0.95 0.05 250);
   --color-info-border: oklch(0.85 0.1 250);
 
-  --font-display: "Montserrat", "Roboto", sans-serif;
-  --font-sans: "Montserrat", "Roboto", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Roboto", ui-sans-serif, system-ui, sans-serif;
+  --font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 @layer base {
@@ -136,7 +136,7 @@
   }
 
   body {
-    overflow: hidden;
+    overflow: auto;
     background: var(--color-surface);
     color: var(--color-text-primary);
     font-family: var(--font-sans);
@@ -175,8 +175,8 @@
   h3 {
     color: var(--color-text-primary);
     font-family: var(--font-display);
-    letter-spacing: -0.025em;
-    line-height: 1.18;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
   }
 
   p {

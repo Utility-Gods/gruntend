@@ -50,6 +50,24 @@ export function createBrowserHandlers(fetcher: Fetcher): ToolHandlerMap<typeof a
       return ok(response.data);
     },
 
+    "menu.item.duplicate": async ({ input, ok, err }) => {
+      const response = await requestJson<{ item: MenuItem }>(
+        fetcher,
+        `/api/menus/${input.menuId}/items/${input.itemId}/duplicate`,
+        { method: "POST" },
+      );
+      if (!response.ok) return err(toHandlerError(response.error));
+      return ok(response.data);
+    },
+
+    "menu.item.delete": async ({ input, ok, err }) => {
+      const response = await requestJson<{ item: MenuItem }>(fetcher, `/api/menus/${input.menuId}/items/${input.itemId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) return err(toHandlerError(response.error));
+      return ok(response.data);
+    },
+
     "users.list": async ({ ok, err }) => {
       const response = await requestJson<{ users: User[] }>(fetcher, "/api/users");
       if (!response.ok) return err(toHandlerError(response.error));

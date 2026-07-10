@@ -1,53 +1,71 @@
 import { env } from "$env/dynamic/private";
+import { createMockPlan } from "$lib/agent/mock-plan";
 import { appTools } from "$lib/agent/tools";
 import { listMenus, listUsers } from "$lib/server/store";
 import { json } from "@sveltejs/kit";
 import { generateCodePlan, getModel, type Model } from "gruntend/generate";
 import type { RequestHandler } from "./$types";
 
+type AgentPlannerMode = "mock" | "openai";
+
+export const GET: RequestHandler = () => {
+  const mode = resolvePlannerMode();
+
+  return json({
+    generator: mode === "mock" ? "mock" : "pi-ai",
+    mode,
+    model: mode === "mock" ? "mock-planner" : env.OPENAI_MODEL || "gpt-5.1",
+  });
+};
+
 export const POST: RequestHandler = async ({ request }) => {
-  console.info("[gruntend example] POST /api/agent/plan received");
   const body = (await request.json()) as { readonly prompt?: unknown };
 
   if (typeof body.prompt !== "string" || body.prompt.trim().length === 0) {
-    console.info("[gruntend example] rejected: missing prompt");
     return json({ message: "Prompt is required." }, { status: 400 });
+  }
+
+  const prompt = body.prompt.trim();
+  const mode = resolvePlannerMode();
+
+  if (mode === "mock") {
+    const plan = createMockPlan(prompt);
+    return json({
+      generator: "mock",
+      model: "mock-planner",
+      plan,
+      stopReason: "stop",
+      usage: undefined,
+      responseId: `mock_${Date.now()}`,
+    });
   }
 
   const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.info("[gruntend example] rejected: OPENAI_API_KEY is missing");
-    return json({ message: "OPENAI_API_KEY is not configured." }, { status: 500 });
+    return json(
+      { message: "OPENAI_API_KEY is required when GRUNTEND_AGENT_MODE=openai." },
+      { status: 500 },
+    );
   }
 
   try {
     const model = resolveOpenAiModel(env.OPENAI_MODEL || "gpt-5.1");
-    console.info("[gruntend example] calling pi-ai/OpenAI", {
-      model: model.id,
-      prompt: body.prompt,
-      keyConfigured: true,
-    });
     const generated = await generateCodePlan({
       tools: appTools,
-      task: body.prompt,
+      task: prompt,
       input: {
         menus: listMenus(),
         users: listUsers(),
       },
       instructions:
         "This is a restaurant admin app. Prefer reusing existing menus and users when names match. Read current app data with tools before mutating when the task depends on existing state.",
+      ui: { kind: "tagged-html" },
       model,
       options: {
         apiKey,
         reasoning: model.reasoning ? "low" : undefined,
         maxTokens: 5000,
       },
-    });
-
-    console.info("[gruntend example] pi-ai/OpenAI completed", {
-      model: model.id,
-      stopReason: generated.message.stopReason,
-      usage: generated.message.usage,
     });
 
     return json({
@@ -59,13 +77,22 @@ export const POST: RequestHandler = async ({ request }) => {
       responseId: generated.message.responseId,
     });
   } catch (caught) {
-    console.error("[gruntend example] pi-ai/OpenAI generation failed", caught);
     return json(
       { message: caught instanceof Error ? caught.message : "Unable to generate a code plan." },
       { status: 500 },
     );
   }
 };
+
+function resolvePlannerMode(): AgentPlannerMode {
+  const mode = env.GRUNTEND_AGENT_MODE ?? "mock";
+
+  if (mode === "mock" || mode === "openai") {
+    return mode;
+  }
+
+  throw new Error('GRUNTEND_AGENT_MODE must be "mock" or "openai".');
+}
 
 function resolveOpenAiModel(modelId: string): Model<"openai-responses"> {
   const model = getModel("openai", modelId as never) as Model<"openai-responses"> | undefined;

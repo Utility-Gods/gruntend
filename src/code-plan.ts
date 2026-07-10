@@ -1,6 +1,8 @@
+import { Result } from "better-result";
 import { Interpreter } from "@mariozechner/jailjs";
 import { transformToES5 } from "@mariozechner/jailjs/transform";
 import type { ToolRegistry } from "./registry.ts";
+import type { UiTemplateTag } from "./ui-runtime.ts";
 import type {
   RetryPolicy,
   RuntimeEvent,
@@ -14,8 +16,13 @@ import {
   type Tool,
   type ToolHandler,
   type ToolHandlerMapFor,
+  type ToolOk,
   type ToolResult,
 } from "./tool.ts";
+
+export interface CodePlanUiRuntimeOptions {
+  readonly html: UiTemplateTag;
+}
 
 export interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly code: string;
@@ -25,6 +32,7 @@ export interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly id?: string;
   readonly signal?: AbortSignal;
   readonly retry?: RetryPolicy;
+  readonly ui?: CodePlanUiRuntimeOptions;
   readonly onEvent?: (event: RuntimeEvent) => void;
 }
 
@@ -70,7 +78,7 @@ export async function runCodePlan<TTool extends Tool>(
           onEvent: options.onEvent,
         });
 
-        return output.data;
+        return output.value;
       } catch (error) {
         const toolError = toToolRunError(error, callId, toolName);
         errors[callId] = toolError;
@@ -94,8 +102,8 @@ export async function runCodePlan<TTool extends Tool>(
       Promise,
       console,
       input: options.input ?? {},
-      parallel: (values: readonly unknown[]) => Promise.all(values),
       tools,
+      ...(options.ui ? { html: options.ui.html } : {}),
     });
     const result = await interpreter.evaluate(ast);
 
@@ -142,6 +150,8 @@ function createToolsObject(
   const root: Record<string, unknown> = {};
 
   for (const tool of tools) {
+    root[tool.name] = (params: unknown) => call(tool.name, params);
+
     const path = tool.name.split(".");
     const methodName = path.pop();
     if (!methodName) continue;
@@ -176,7 +186,7 @@ async function executeToolCall(options: {
   readonly signal?: AbortSignal;
   readonly retry?: RetryPolicy;
   readonly onEvent?: (event: RuntimeEvent) => void;
-}): Promise<ToolResult<unknown> & { readonly ok: true }> {
+}): Promise<ToolOk<unknown>> {
   const tool = options.registry.get(options.tool);
 
   if (!tool) {
@@ -242,22 +252,18 @@ async function executeToolCall(options: {
         );
       }
 
-      if (!result.ok) {
-        throw newToolContractError(
-          "handler_error",
-          result.error.message,
-          {
-            code: result.error.code,
-            retryable: result.error.retryable ?? false,
-            details: result.error.details,
-          },
-        );
+      if (Result.isError(result)) {
+        throw newToolContractError("handler_error", result.error.message, {
+          code: result.error.code,
+          retryable: result.error.retryable ?? false,
+          details: result.error.details,
+        });
       }
 
       try {
         const parsedOutput = await parseStandardSchema(
           tool.output,
-          result.data,
+          result.value,
         );
         const output = ok(parsedOutput);
         options.onEvent?.({
@@ -345,14 +351,14 @@ function toToolRunError(
 async function executeWithRetry(options: {
   readonly execute: (
     context: { readonly attempt: number; readonly maxAttempts: number },
-  ) => Promise<ToolResult<unknown> & { readonly ok: true }>;
+  ) => Promise<ToolOk<unknown>>;
   readonly retry?: RetryPolicy;
   readonly onRetry?: (context: {
     readonly error: unknown;
     readonly attempt: number;
     readonly maxAttempts: number;
   }) => void;
-}): Promise<ToolResult<unknown> & { readonly ok: true }> {
+}): Promise<ToolOk<unknown>> {
   const maxAttempts = options.retry?.maxAttempts ?? 1;
   let attempt = 0;
   let lastError: unknown;

@@ -1,13 +1,13 @@
 ---
 name: photoship-design-system
-description: Use when styling or restructuring the SvelteKit example UI. Follow the Photoship component-system approach: shared components, app chrome, compact surfaces, orange primary actions, neutral cards, badges, tabs, forms, and clear workflow/report layouts.
+description: "Use when styling or restructuring the SvelteKit example UI. Follow the Photoship component-system approach: shared components, app chrome, compact surfaces, orange primary actions, neutral cards, badges, tabs, forms, and clear workflow/report layouts."
 ---
 
 # Photoship Design System
 
 Use this skill for UI/design work in `examples/sveltekit`.
 
-The goal is **not** to copy random colors. The goal is to make the example feel like a mature Photoship-style app by porting and using a small design system.
+The goal is to use the Photoship **color language and restraint**, not to copy Photoship's layout, logo treatment, typography, heavy chrome, pills, badges, or component shapes.
 
 ## Source of Truth
 
@@ -51,12 +51,14 @@ Pages should compose these components instead of defining one-off local button/c
 ## Design Rules
 
 - Treat the UI as an app/dashboard, not a marketing landing page.
-- Use a Photoship-like app shell:
-  - left sidebar on desktop
-  - sticky top bar
-  - compact content container
-  - neutral background
-  - white card surfaces
+- Do **not** copy Photoship layout/chrome. For this example prefer a simple top nav and quiet content area.
+- Use a light, smooth system font stack. Do **not** use Montserrat-heavy oversized headings.
+- Prefer Tailwind utilities in pages for one-off layout; only use shared components when they reduce complexity.
+- Use Photoship colors only as theme inspiration:
+  - orange primary actions
+  - neutral backgrounds
+  - dark text
+  - subtle gray dividers
 - Use Photoship tokens:
   - primary orange: `#f54a00`
   - primary hover: `#c2410c`
@@ -74,11 +76,14 @@ Pages should compose these components instead of defining one-off local button/c
   - primary-outline
   - danger
 - Forms should use shared input/textarea styles with orange focus rings.
-- Badges should be small, pill-shaped, semantic, and subdued.
-- Use icons/marks sparingly to communicate action/state.
-- Use shadows subtly. Do not create giant floating marketing cards.
-- Do **not** solve design by adding more borders. Improve hierarchy, spacing, grouping, and component structure.
-- Avoid decorative gradients unless they directly match a Photoship pattern.
+- Avoid badges unless they communicate real state. Do not decorate the UI with badges.
+- Avoid pill buttons and excessive rounded corners. Use mostly square or lightly rounded controls.
+- Avoid nested bordered boxes. A card should not contain another bordered card unless absolutely necessary.
+- Use dividers, whitespace, and type scale instead of stacking borders.
+- Use icons/marks sparingly. Do not mimic the Photoship logo.
+- Use shadows rarely. Do not create giant floating marketing cards.
+- Keep headings modest: no huge hero typography for normal app screens.
+- Avoid decorative gradients.
 
 ## Agent Page UX
 
@@ -112,9 +117,9 @@ Do not dump full raw model messages, thinking, or encrypted payloads.
 
 ## Workflow
 
-1. Inspect the relevant Photoship source component(s).
-2. Port the pattern into a shared Svelte component or global component class.
-3. Replace page-local styling with the shared component.
+1. Use Photoship colors/tokens as reference only.
+2. Prefer simple Tailwind layout in the page.
+3. Remove unnecessary nested borders, badges, pills, heavy font weights, and oversized headings.
 4. Run:
 
 ```bash

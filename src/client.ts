@@ -1,4 +1,4 @@
-import { type CodePlanRunResult, runCodePlan } from "./code-plan.ts";
+import { type CodePlanRunResult, type CodePlanUiRuntimeOptions, runCodePlan } from "./code-plan.ts";
 import { createToolRegistry, type ToolRegistry } from "./registry.ts";
 import type { RetryPolicy, RuntimeEvent } from "./runtime.ts";
 import type { Tool, ToolHandlerMap } from "./tool.ts";
@@ -28,6 +28,7 @@ export interface GruntendClientCodePlanRunOptions<
   readonly retry?: RetryPolicy;
   readonly handlers: ToolHandlerMap<TTools>;
   readonly signal?: AbortSignal;
+  readonly ui?: CodePlanUiRuntimeOptions;
   readonly onEvent?: (event: RuntimeEvent) => void;
 }
 
@@ -47,6 +48,7 @@ export function createGruntendClient<const TTools extends readonly Tool[]>(
         handlers: runOptions.handlers,
         signal: runOptions.signal,
         retry: runOptions.retry,
+        ui: runOptions.ui,
         onEvent: runOptions.onEvent,
       });
     },

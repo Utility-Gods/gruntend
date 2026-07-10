@@ -1,47 +1,34 @@
-<script lang="ts">
-  import type { PageData } from "./$types";
+<section class="space-y-10">
+  <header class="max-w-3xl space-y-4">
+    <p class="text-sm font-semibold uppercase tracking-[0.12em] text-orange-600">Example app</p>
+    <h1 class="text-3xl font-medium tracking-tight text-neutral-950 md:text-2xl">A real app shell for Gruntend agents.</h1>
+    <p class="text-base leading-7 text-neutral-600">
+      Restaurant data is persisted in SQLite. The agent produces code plans, runs app-owned tools, and returns compiled
+      tagged-template UI.
+    </p>
+    <div class="flex flex-wrap gap-3 pt-2">
+      <a class="bg-orange-600 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-700" href="/agent">Open agent</a>
+      <a class="border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-100" href="/menus">
+        Browse menus
+      </a>
+    </div>
+  </header>
 
-  let { data }: { data: PageData } = $props();
-
-  const itemCountHint = "Open the menus route to inspect nested items served by API routes.";
-</script>
-
-<section class="hero">
-  <p class="eyebrow">Example app</p>
-  <h1>A real-ish app for Gruntend agents.</h1>
-  <p>
-    This SvelteKit app has seeded restaurant data, API routes, normal pages, and an agent route that asks an LLM for
-    Gruntend code plans through the SDK boundary.
-  </p>
-  <div class="actions">
-    <a class="button" href="/agent">Open agent</a>
-    <a class="secondary" href="/menus">Browse menus</a>
-  </div>
+  <section class="grid gap-4 md:grid-cols-3" aria-label="Application summary">
+    <article class="border border-neutral-200 bg-white p-5">
+      <div class="text-2xl font-semibold text-neutral-950">Tools</div>
+      <h2 class="mt-3 text-lg font-semibold">App capabilities</h2>
+      <p class="mt-1 text-neutral-600">Menus and users are exposed through app-owned Gruntend tools.</p>
+    </article>
+    <article class="border border-neutral-200 bg-white p-5">
+      <div class="text-2xl font-semibold text-neutral-950">JS</div>
+      <h2 class="mt-3 text-lg font-semibold">Code plans</h2>
+      <p class="mt-1 text-neutral-600">Generated plans run through the sandboxed Gruntend runtime.</p>
+    </article>
+    <article class="border border-neutral-200 bg-white p-5">
+      <div class="text-2xl font-semibold text-neutral-950">html</div>
+      <h2 class="mt-3 text-lg font-semibold">Tagged templates</h2>
+      <p class="mt-1 text-neutral-600">Generated UI uses <code>html</code> templates and delegated <code>data-gr-*</code> events.</p>
+    </article>
+  </section>
 </section>
-
-<section class="grid stats" aria-label="Application summary">
-  <article class="panel">
-    <span>{data.menus.length}</span>
-    <h2>Menus</h2>
-    <p>{itemCountHint}</p>
-  </article>
-  <article class="panel">
-    <span>{data.users.length}</span>
-    <h2>Users</h2>
-    <p>Seeded users are available through <code>/api/users</code> and Gruntend tools.</p>
-  </article>
-  <article class="panel">
-    <span>LLM</span>
-    <h2>Generation seam</h2>
-    <p>The agent route calls pi-ai/OpenAI on the server, then executes the generated plan through Gruntend tools.</p>
-  </article>
-</section>
-
-<style>
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.85rem;
-    margin-top: 1.5rem;
-  }
-</style>

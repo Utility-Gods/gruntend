@@ -1,14 +1,14 @@
 # Gruntend
 
-Typed tool namespaces for LLM-generated code plans.
+Typed tool namespaces and generated UI for app-owned capabilities.
 
-Gruntend lets an application expose a small, typed capability surface to an LLM, receive a code-like plan, and execute that plan through app-owned runtime handlers.
+Gruntend lets an app expose a small capability surface to an LLM, receive a JavaScript code plan, and execute that plan through app-owned handlers. In UI mode, the plan can return safe `html` tagged-template UI with local component state.
 
 ```text
-defineTools()        app capability surface
-LLM code plan        orchestration
-runtime handlers     real app effects
-runtime events       execution trace
+defineTools()     app capability surface
+generateCodePlan  LLM → JavaScript plan
+runCodePlan       sandboxed execution through handlers
+ui-runtime        html tagged templates → delegated browser UI
 ```
 
 ## Install
@@ -18,8 +18,6 @@ pnpm add gruntend valibot
 ```
 
 ## Define tools
-
-Gruntend 0.1 uses explicit subpath imports. There is no barrel file.
 
 ```ts
 import { createGruntendClient } from "gruntend/client";
@@ -55,14 +53,10 @@ const tools = defineTools({
       },
     },
     item: {
-      create: {
-        description: "Create one menu item.",
-        input: v.object({
-          menuId: v.string(),
-          name: v.string(),
-          price: v.number(),
-        }),
-        output: v.object({ itemId: v.string(), name: v.string() }),
+      duplicate: {
+        description: "Duplicate one menu item.",
+        input: v.object({ menuId: v.string(), itemId: v.string() }),
+        output: v.object({ item: v.object({ itemId: v.string(), name: v.string(), price: v.number() }) }),
       },
     },
   },
@@ -71,31 +65,28 @@ const tools = defineTools({
 const gruntend = createGruntendClient({ tools });
 ```
 
-A tool contract is only:
+A tool contract is just:
 
 - namespace/name
 - description
-- input schema for runtime validation
-- output schema for runtime validation
-- optional `parameters` / `returns` model-facing data for code-plan generation
+- input schema
+- output schema
+- optional model-facing `parameters` / `returns`
 
-`parameters` and `returns` are plain model-facing data; Gruntend does not inspect validation schema internals.
-
-Ordering, branching, loops, and parallelism live in the generated code plan.
+Handlers stay owned by the app. Gruntend validates generated tool inputs and handler outputs at runtime.
 
 ## Generate a code plan
-
-For real LLM calls, Gruntend owns the prompt contract and JSON parsing. App code passes a typed request: tools, the user's task, optional app data, a pi-ai model, and pi-ai options.
 
 ```ts
 import { generateCodePlan, getModel } from "gruntend/generate";
 
 const generated = await generateCodePlan({
   tools,
-  task: "Copy the dinner menu into a lunch menu",
+  task: "Show all menu items and expose their available actions.",
   input: {
     menus: await listMenus(),
   },
+  ui: { kind: "tagged-html" },
   model: getModel("openai", "gpt-5.1"),
   options: {
     apiKey: process.env.OPENAI_API_KEY,
@@ -104,107 +95,71 @@ const generated = await generateCodePlan({
   },
 });
 
-// typed Gruntend plan
 const { summary, input, code } = generated.plan;
-
-// pi-ai-compatible raw response for inspection/logging
-console.log(generated.message.usage);
 ```
 
-`generateCodePlan()` returns:
+`ui: { kind: "tagged-html" }` tells the model to return UI using the provided `html` tagged template, not string-built HTML or UI JSON.
 
-```ts
-{
-  plan: {
-    summary: string;
-    input: Record<string, unknown>;
-    code: string;
-  };
-  text: string;
-  message: AssistantMessage;
+Generated UI should return either a template:
+
+```js
+return html`<section class="surface-card">Done</section>`;
+```
+
+or a render function for local component state:
+
+```js
+var count = 0;
+function increment() {
+  count = count + 1;
 }
-```
 
-Prompts are backend details of Gruntend. The application chooses the model/options and provides user/app input; Gruntend builds the LLM request, validates the response, and returns a code plan that can be executed with `runCodePlan()`.
+return function render() {
+  return html`
+    <section class="surface-card">
+      <p class="surface-text">Count: ${count}</p>
+      <button type="button" class="surface-action" onclick=${increment}>Increment</button>
+    </section>
+  `;
+};
+```
 
 ## Run a code plan
 
 ```ts
-const code = `
-const source = await tools.menu.items.list({
-  menuId: input.sourceMenuId,
-});
-
-const created = await parallel(
-  source.items.map((item) =>
-    tools.menu.item.create({
-      menuId: input.targetMenuId,
-      name: item.name,
-      price: item.price,
-    })
-  )
-);
-
-return {
-  copiedItems: created.map((item) => item.name),
-};
-`;
-
 const result = await gruntend.runCodePlan(code, {
-  input: {
-    sourceMenuId: "menu:source",
-    targetMenuId: "menu:target",
-  },
+  input,
   handlers: {
-    "menu.items.list": async ({ ok }) =>
-      ok({ items: [{ name: "Burger", price: 12 }] }),
+    "menu.items.list": async ({ input, ok }) =>
+      ok({ items: await listMenuItems(input.menuId) }),
 
-    "menu.item.create": async ({ input, ok }) =>
-      ok({ itemId: `item:${input.name}`, name: input.name }),
+    "menu.item.duplicate": async ({ input, ok }) =>
+      ok({ item: await duplicateMenuItem(input.menuId, input.itemId) }),
   },
 });
 ```
 
-## Conditional plans
+Generated code can access only injected globals:
 
-Because plans are code, they can branch on prior tool output:
-
-```ts
-const existing = await tools.menu.find({ name: input.name });
-
-if (existing.exists) {
-  return { action: "reused", menuId: existing.menuId };
-}
-
-const created = await tools.menu.create({ name: input.name });
-return { action: "created", menuId: created.menuId };
-```
-
-## Runtime boundary
-
-Generated code can access only the injected plan globals:
-
-```ts
+```text
 input
 tools
-parallel(promises)
+Promise
 console
+html when UI mode is provided at runtime
 ```
 
-App internals stay inside handlers: auth, cookies, stores, database clients, API clients, route state, etc.
+Use normal JavaScript for orchestration:
 
-For each tool call, Gruntend:
+```js
+const itemResults = await Promise.all(
+  menus.map(function (menu) {
+    return tools.menu.items.list({ menuId: menu.menuId });
+  })
+);
+```
 
-1. checks that the tool exists
-2. validates generated input
-3. calls the app-owned handler
-4. handles `ok(...)` / `err(...)`
-5. retries retryable failures when configured
-6. validates successful output
-7. returns plain validated data to the code plan
-8. emits lifecycle events
-
-## Handler results
+Expected handler failures use `err(...)`; successful handlers use `ok(...)`.
 
 ```ts
 return ok({ menuId: "menu_1" });
@@ -218,9 +173,41 @@ return err({
 });
 ```
 
-Expected failures should use `err(...)`. Unexpected failures may throw.
+## Render generated UI
 
-## Events
+```ts
+import { createUiComponent, createUiTemplateTag } from "gruntend/ui-runtime";
+
+const html = createUiTemplateTag();
+
+const result = await gruntend.runCodePlan(plan.code, {
+  input: plan.input,
+  handlers,
+  ui: { html },
+});
+
+const component = createUiComponent(result.result).unwrap();
+const rendered = component.render().unwrap();
+
+// rendered.html is safe compiled HTML.
+// rendered.handlers maps delegated handler ids to sandboxed functions.
+```
+
+Event handlers are written naturally:
+
+```js
+html`<button onclick=${increment}>Increment</button>`
+```
+
+but compiled to inert delegated attributes before reaching the browser:
+
+```html
+<button data-gr-click="h0">Increment</button>
+```
+
+The browser never receives real inline JavaScript.
+
+## Lifecycle events
 
 `runCodePlan()` emits one lifecycle stream:
 
@@ -243,35 +230,29 @@ await gruntend.runCodePlan(code, {
 });
 ```
 
-## Examples
+## SvelteKit example
 
-### SvelteKit app
+`examples/sveltekit` is the main example app. It includes seeded restaurant data, app API routes, a tool namespace over those APIs, and an `/agent` route that runs generated tagged-template UI through Gruntend.
 
-`examples/sveltekit` is the main application example. It uses pinned latest SvelteKit, seeded in-memory API data, normal app routes, and an agent route powered by `gruntend/generate` + pi-ai/OpenAI.
-
-Routes:
-
-- `/` — app dashboard
-- `/menus` — menus from `/api/menus`
-- `/menus/[menuId]` — nested menu items from `/api/menus/[menuId]/items`
-- `/users` — seeded users from `/api/users`
-- `/agent` — pi-ai/OpenAI generation → Gruntend code plan → app API handlers
-
-For real LLM mode, copy `examples/sveltekit/.env.example` to `examples/sveltekit/.env` and set `OPENAI_API_KEY`. The key stays server-only.
-
-Run it:
+Run mock mode:
 
 ```bash
 pnpm --filter gruntend-sveltekit-example dev
 ```
 
-Check/build it:
+Use real LLM mode with `examples/sveltekit/.env`:
 
-```bash
-pnpm --filter gruntend-sveltekit-example check
-pnpm --filter gruntend-sveltekit-example build
+```env
+GRUNTEND_AGENT_MODE=openai
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-5.1
 ```
 
+Then open:
+
+```text
+/agent
+```
 
 ## Development
 
@@ -279,4 +260,6 @@ pnpm --filter gruntend-sveltekit-example build
 pnpm install
 pnpm test
 pnpm check
+pnpm --filter gruntend-sveltekit-example check
+pnpm --filter gruntend-sveltekit-example build
 ```

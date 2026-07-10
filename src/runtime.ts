@@ -1,4 +1,4 @@
-import type { ToolResult } from "./tool.ts";
+import type { ToolOk } from "./tool.ts";
 
 export type RetryPolicy = {
   readonly maxAttempts?: number;
@@ -73,7 +73,7 @@ export interface ToolCompletedEvent {
   readonly planId: string;
   readonly callId: string;
   readonly tool: string;
-  readonly output: ToolResult<unknown> & { readonly ok: true };
+  readonly output: ToolOk<unknown>;
 }
 
 export interface ToolFailedEvent {
