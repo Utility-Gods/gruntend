@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import LoadingSurface from "$lib/components/photoship/LoadingSurface.svelte";
   import {
     deleteMenuItemCommand,
     getMenusWithItems,
@@ -52,7 +53,9 @@
     </p>
   </header>
 
-  {#if selectedMenu}
+  {#if !menusResponse}
+    <LoadingSurface label="Loading menus from the demo database..." rows={5} />
+  {:else if selectedMenu}
     <nav
       class="flex gap-7 overflow-x-auto border-b border-neutral-200"
       role="tablist"

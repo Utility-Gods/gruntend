@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LoadingSurface from "$lib/components/photoship/LoadingSurface.svelte";
   import { getUsers } from "$lib/remote/example.remote";
 
   const usersResponse = $derived(getUsers().current);
@@ -22,20 +23,27 @@
     </p>
   </header>
 
-  <section class="overflow-hidden border border-neutral-200 bg-white">
-    <div
-      class="grid grid-cols-[1fr_160px] border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-neutral-500"
-    >
-      <span>Name</span>
-      <span>Role</span>
-    </div>
-    {#each users as user}
-      <article
-        class="grid grid-cols-[1fr_160px] items-center border-b border-neutral-100 px-5 py-4 last:border-b-0"
+  {#if !usersResponse}
+    <LoadingSurface
+      label="Loading team members from the demo database..."
+      rows={3}
+    />
+  {:else}
+    <section class="overflow-hidden border border-neutral-200 bg-white">
+      <div
+        class="grid grid-cols-[1fr_160px] border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-neutral-500"
       >
-        <h2 class="text-lg font-semibold text-neutral-950">{user.name}</h2>
-        <span class="capitalize text-neutral-600">{user.role}</span>
-      </article>
-    {/each}
-  </section>
+        <span>Name</span>
+        <span>Role</span>
+      </div>
+      {#each users as user}
+        <article
+          class="grid grid-cols-[1fr_160px] items-center border-b border-neutral-100 px-5 py-4 last:border-b-0"
+        >
+          <h2 class="text-lg font-semibold text-neutral-950">{user.name}</h2>
+          <span class="capitalize text-neutral-600">{user.role}</span>
+        </article>
+      {/each}
+    </section>
+  {/if}
 </section>

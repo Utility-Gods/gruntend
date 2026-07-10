@@ -10,13 +10,6 @@ const generateAgentPlanSchema = v.object({
   prompt: v.pipe(v.string(), v.nonEmpty()),
 });
 
-const rateLimitWindowMs = 10 * 60 * 1000;
-const rateLimitMaxRequests = 5;
-const rateLimitBuckets = new Map<
-  string,
-  { readonly resetAt: number; count: number }
->();
-
 type AgentPlannerMode = "mock" | "openai";
 
 export const getAgentPlannerInfo = query(async () => {
@@ -33,7 +26,6 @@ export const generateAgentPlan = command(
   generateAgentPlanSchema,
   async ({ prompt }) => {
     const event = getRequestEvent();
-    assertAgentRateLimit(event.getClientAddress());
     const mode = resolvePlannerMode();
 
     if (mode === "mock") {
@@ -84,26 +76,6 @@ export const generateAgentPlan = command(
     };
   },
 );
-
-function assertAgentRateLimit(clientAddress: string): void {
-  const now = Date.now();
-  const bucket = rateLimitBuckets.get(clientAddress);
-
-  if (!bucket || bucket.resetAt <= now) {
-    rateLimitBuckets.set(clientAddress, {
-      resetAt: now + rateLimitWindowMs,
-      count: 1,
-    });
-    return;
-  }
-
-  bucket.count = bucket.count + 1;
-  if (bucket.count > rateLimitMaxRequests) {
-    throw new Error(
-      "Too many agent planning requests. Please wait a few minutes and try again.",
-    );
-  }
-}
 
 function resolvePlannerMode(): AgentPlannerMode {
   const mode = env.GRUNTEND_AGENT_MODE ?? "mock";
