@@ -2,6 +2,8 @@
 
 Typed tool namespaces and generated UI for app-owned capabilities.
 
+> Gruntend is in pre-release. The npm package will be published soon. For now, the SvelteKit example in this repository demonstrates the current runtime and generated UI direction.
+
 Gruntend lets an app expose a small capability surface to an LLM, receive a JavaScript code plan, and execute that plan through app-owned handlers. In UI mode, the plan can return safe `html` tagged-template UI with local component state.
 
 ```text
@@ -13,9 +15,7 @@ ui-runtime        html tagged templates → delegated browser UI
 
 ## Install
 
-```bash
-pnpm add gruntend valibot
-```
+The npm package is not published yet. Install instructions will be added before the first public package release.
 
 ## Define tools
 
