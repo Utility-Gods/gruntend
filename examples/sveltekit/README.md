@@ -9,7 +9,7 @@ This example has:
 - normal app routes for browsing that data
 - a Gruntend tool namespace over the app API
 - a chat-style agent route with a mocked code-plan generator
-- tagged-template message islands hydrated through `gruntend/ui` and `gruntend/ui/dom`
+- tagged-template message islands rendered through `gruntend/ui` and `gruntend/ui/svelte`
 
 ## Run
 

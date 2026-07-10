@@ -207,6 +207,15 @@ const frame = ui.render().unwrap();
 mountGeneratedUi(rootElement, ui);
 ```
 
+Framework adapters are thin wrappers over the same DOM primitive:
+
+```ts
+import GeneratedUiSvelte from "gruntend/ui/svelte";
+import { GeneratedUi as GeneratedUiReact } from "gruntend/ui/react";
+import { GeneratedUi as GeneratedUiSolid } from "gruntend/ui/solid";
+import GeneratedUiVue from "gruntend/ui/vue";
+```
+
 Event handlers are written naturally:
 
 ```js
