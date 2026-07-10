@@ -8,8 +8,8 @@
     "build": "vite build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "deploy": "pnpm build && wrangler deploy",
-    "d1:migrate:local": "wrangler d1 migrations apply gruntend-example --local",
-    "d1:migrate:remote": "wrangler d1 migrations apply gruntend-example --remote"
+    "d1:migrate:local": "wrangler d1 migrations apply gruntend-demo --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply gruntend-demo --remote"
   },
   "dependencies": {
     "@sveltejs/adapter-cloudflare": "7.2.9",

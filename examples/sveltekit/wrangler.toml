@@ -7,4 +7,14 @@ compatibility_flags = ["nodejs_compat"]
 binding = "ASSETS"
 directory = ".svelte-kit/cloudflare"
 not_found_handling = "404-page"
+run_worker_first = true
+
+[[d1_databases]]
+binding = "GRUNTEND_DB"
+database_name = "gruntend-demo"
+migrations_dir = "migrations"
+
+[vars]
+GRUNTEND_AGENT_MODE = "mock"
+GRUNTEND_EXAMPLE_BASE_PATH = "/example"
 

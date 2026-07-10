@@ -10,7 +10,13 @@
     readonly children?: Snippet;
   };
 
-  let { variant = "default", interactive = false, class: className = "", children, ...rest }: Props = $props();
+  let {
+    variant = "default",
+    interactive = false,
+    class: className = "",
+    children,
+    ...rest
+  }: Props = $props();
 
   const classes = $derived(
     `ps-card ps-card-${variant} ${interactive ? "ps-card-interactive" : ""} ${className}`.trim(),

@@ -4,7 +4,10 @@
   import { base } from "$app/paths";
   import { gruntend } from "$lib/agent/client";
   import { createBrowserHandlers } from "$lib/agent/handlers";
-  import { generateAgentPlan, getAgentPlannerInfo } from "$lib/remote/agent.remote";
+  import {
+    generateAgentPlan,
+    getAgentPlannerInfo,
+  } from "$lib/remote/agent.remote";
   import type { GeneratedCodePlan } from "gruntend/generate";
   import type { RuntimeEvent } from "gruntend/runtime";
   import {
@@ -57,7 +60,11 @@
     state = "planning";
     toolCallCount = 0;
     appendMessage({ role: "user", text: task });
-    const workingId = appendMessage({ role: "assistant", text: "Working on it...", tone: "pending" });
+    const workingId = appendMessage({
+      role: "assistant",
+      text: "Working on it...",
+      tone: "pending",
+    });
     let debugDetails = "";
 
     try {
@@ -73,7 +80,10 @@
       });
 
       state = "running";
-      updateMessage(workingId, { text: `${plan.summary}\nRunning app tools now...`, tone: "pending" });
+      updateMessage(workingId, {
+        text: `${plan.summary}\nRunning app tools now...`,
+        tone: "pending",
+      });
 
       const result = await gruntend.runCodePlan(plan.code, {
         id: "sveltekit-agent-chat-plan",
@@ -98,8 +108,13 @@
           code: plan.code,
           result: result.result,
         });
-        console.error("[gruntend example] generated plan did not return UI", debugDetails);
-        throw new Error("The code plan did not return an html template or render function.");
+        console.error(
+          "[gruntend example] generated plan did not return UI",
+          debugDetails,
+        );
+        throw new Error(
+          "The code plan did not return an html template or render function.",
+        );
       }
 
       state = "done";
@@ -114,7 +129,14 @@
         text: `Something failed: ${caught instanceof Error ? caught.message : String(caught)}`,
         tone: "error",
         uiComponent: errorComponent(),
-        debug: [debugDetails, caught instanceof Error ? caught.stack || caught.message : String(caught)].filter(Boolean).join("\n\n"),
+        debug: [
+          debugDetails,
+          caught instanceof Error
+            ? caught.stack || caught.message
+            : String(caught),
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
       });
     }
   }
@@ -131,7 +153,9 @@
     return generateAgentPlan({ prompt: task });
   }
 
-  function readPlannerInfo(envelope: AgentGenerationEnvelope): AgentPlannerInfo {
+  function readPlannerInfo(
+    envelope: AgentGenerationEnvelope,
+  ): AgentPlannerInfo {
     return {
       generator: envelope.generator,
       model: envelope.model,
@@ -140,12 +164,16 @@
 
   function plannerLabel(info: AgentPlannerInfo | undefined): string {
     if (!info) return "Checking planner...";
-    return info.generator === "mock" ? "Mock planner" : `LLM planner${info.model ? ` · ${info.model}` : ""}`;
+    return info.generator === "mock"
+      ? "Mock planner"
+      : `LLM planner${info.model ? ` · ${info.model}` : ""}`;
   }
 
   function plannerBadgeClass(info: AgentPlannerInfo | undefined): string {
     if (!info) return "bg-neutral-100 text-neutral-600";
-    return info.generator === "mock" ? "bg-neutral-100 text-neutral-700" : "bg-green-100 text-green-800";
+    return info.generator === "mock"
+      ? "bg-neutral-100 text-neutral-700"
+      : "bg-green-100 text-green-800";
   }
 
   function formatDebugDetails(details: Record<string, unknown>): string {
@@ -164,8 +192,13 @@
     return id;
   }
 
-  function updateMessage(id: string, update: Partial<Omit<ChatMessage, "id" | "role">>) {
-    messages = messages.map((message) => (message.id === id ? { ...message, ...update } : message));
+  function updateMessage(
+    id: string,
+    update: Partial<Omit<ChatMessage, "id" | "role">>,
+  ) {
+    messages = messages.map((message) =>
+      message.id === id ? { ...message, ...update } : message,
+    );
   }
 
   function readUiComponent(result: unknown): GeneratedUiModel | undefined {
@@ -174,7 +207,9 @@
   }
 
   function errorComponent(): GeneratedUiModel {
-    return createGeneratedUi(taggedHtml`<section class="surface-card"><p class="surface-text">The error is shown in this chat message. Try another task or adjust the prompt.</p></section>`).unwrap();
+    return createGeneratedUi(
+      taggedHtml`<section class="surface-card"><p class="surface-text">The error is shown in this chat message. Try another task or adjust the prompt.</p></section>`,
+    ).unwrap();
   }
 
   function reportUiError(error: unknown) {
@@ -187,7 +222,14 @@
 
     const anchor = target.closest("a[href]");
     if (!(anchor instanceof HTMLAnchorElement)) return;
-    if (anchor.target || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (
+      anchor.target ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
 
     const href = anchor.getAttribute("href");
     if (!href?.startsWith("/")) return;
@@ -199,13 +241,19 @@
 
 <section class="mx-auto max-w-3xl space-y-6" aria-label="Agent chat">
   <header class="space-y-2">
-    <p class="text-xs font-medium uppercase tracking-[0.12em] text-orange-600">Agent chat</p>
-    <h1 class="text-3xl font-medium tracking-tight text-neutral-950">Ask the app to do something</h1>
+    <p class="text-xs font-medium uppercase tracking-[0.12em] text-orange-600">
+      Agent chat
+    </p>
+    <h1 class="text-3xl font-medium tracking-tight text-neutral-950">
+      Ask the app to do something
+    </h1>
     <div class="flex flex-wrap items-center gap-3">
       <p class="max-w-2xl text-base leading-7 text-neutral-600">
         Generated UI uses native JavaScript plus the Gruntend <code>html</code> tag.
       </p>
-      <span class={`inline-flex px-2.5 py-1 text-xs font-semibold ${plannerBadgeClass(plannerInfo)}`}>
+      <span
+        class={`inline-flex px-2.5 py-1 text-xs font-semibold ${plannerBadgeClass(plannerInfo)}`}
+      >
         {plannerLabel(plannerInfo)}
       </span>
     </div>
@@ -213,7 +261,9 @@
 
   <div class="space-y-4" aria-live="polite">
     {#each messages as message}
-      <article class={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+      <article
+        class={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+      >
         <div
           class={`max-w-[88%] px-0 py-1 text-[15px] leading-7 ${
             message.role === "user"
@@ -238,8 +288,12 @@
             </div>
           {/if}
           {#if message.debug}
-            <details class="mt-3 whitespace-pre-wrap bg-black/5 p-3 text-xs leading-5 text-neutral-700">
-              <summary class="cursor-pointer font-semibold">Debug details</summary>
+            <details
+              class="mt-3 whitespace-pre-wrap bg-black/5 p-3 text-xs leading-5 text-neutral-700"
+            >
+              <summary class="cursor-pointer font-semibold"
+                >Debug details</summary
+              >
               {message.debug}
             </details>
           {/if}
@@ -259,14 +313,15 @@
       bind:value={prompt}
       rows="3"
       class="block w-full resize-y bg-transparent text-base leading-7 text-neutral-950 outline-none placeholder:text-neutral-400"
-      placeholder="Ask about menus or users"
-    ></textarea>
+      placeholder="Ask about menus or users"></textarea>
 
     <div class="flex justify-end border-t border-neutral-100 pt-3">
       <button
         class="bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
         type="submit"
-        disabled={state === "planning" || state === "running" || prompt.trim().length === 0}
+        disabled={state === "planning" ||
+          state === "running" ||
+          prompt.trim().length === 0}
       >
         {state === "planning" || state === "running" ? "Working..." : "Send"}
       </button>

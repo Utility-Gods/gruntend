@@ -1,8 +1,17 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import type { HTMLAnchorAttributes, HTMLButtonAttributes } from "svelte/elements";
+  import type {
+    HTMLAnchorAttributes,
+    HTMLButtonAttributes,
+  } from "svelte/elements";
 
-  type ButtonVariant = "default" | "primary" | "secondary" | "ghost" | "primary-outline" | "danger";
+  type ButtonVariant =
+    | "default"
+    | "primary"
+    | "secondary"
+    | "ghost"
+    | "primary-outline"
+    | "danger";
   type ButtonSize = "xs" | "sm" | "md" | "lg";
   type Props = Omit<HTMLButtonAttributes, "class"> &
     Omit<HTMLAnchorAttributes, "class"> & {
@@ -24,11 +33,18 @@
     ...rest
   }: Props = $props();
 
-  const classes = $derived(`ps-button ps-button-${variant} ps-button-${size} ${className}`.trim());
+  const classes = $derived(
+    `ps-button ps-button-${variant} ps-button-${size} ${className}`.trim(),
+  );
 </script>
 
 {#if href}
-  <a {href} class={classes} aria-disabled={disabled ? "true" : undefined} {...rest}>
+  <a
+    {href}
+    class={classes}
+    aria-disabled={disabled ? "true" : undefined}
+    {...rest}
+  >
     {@render children?.()}
   </a>
 {:else}

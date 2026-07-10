@@ -219,7 +219,11 @@ Framework adapters are thin wrappers over the same DOM primitive. They do not ow
   let { ui }: { ui: GeneratedUiModel } = $props();
 </script>
 
-<GeneratedUi class="agent-generated-ui" {ui} onError={(error) => console.error(error)} />
+<GeneratedUi
+  class="agent-generated-ui"
+  {ui}
+  onError={(error) => console.error(error)}
+/>
 ```
 
 ### React

@@ -1,0 +1,30 @@
+# Dependencies and generated output
+node_modules/
+**/node_modules/
+.svelte-kit/
+**/.svelte-kit/
+dist/
+build/
+out/
+coverage/
+
+# Lockfiles and package-manager metadata
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+bun.lock
+bun.lockb
+
+# Local/generated data
+.env
+.env.*
+!.env.example
+.gruntend/
+**/.gruntend/
+
+# Agent/local project metadata
+.pi/
+
+# Large generated/reference artifacts
+plan/
+doc/sdk.html
