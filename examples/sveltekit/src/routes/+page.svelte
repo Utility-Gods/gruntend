@@ -43,16 +43,18 @@
   ] as const;
 
   const taggedHtml = createHtmlTag();
-  const menusResponse = $derived(getMenusWithItems().current);
-  const usersResponse = $derived(getUsers().current);
-  const menuCount = $derived(menusResponse?.menus.length ?? 0);
+  const menusQuery = getMenusWithItems();
+  const usersQuery = getUsers();
+  const menusResponse = $derived(menusQuery.current);
+  const usersResponse = $derived(usersQuery.current);
+  const menuCount = $derived(menusResponse?.menus.length);
   const itemCount = $derived(
     menusResponse?.menus.reduce(
       (total, menu) => total + menu.items.length,
       0,
-    ) ?? 0,
+    ),
   );
-  const teamCount = $derived(usersResponse?.users.length ?? 0);
+  const teamCount = $derived(usersResponse?.users.length);
 
   let prompt = $state("");
   let state = $state<RunState>("idle");
@@ -198,19 +200,19 @@
           <div class="min-w-24 px-4 py-2.5">
             <dt class="text-[11px] text-neutral-500">Menus</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
-              {menuCount}
+              {menuCount ?? "…"}
             </dd>
           </div>
           <div class="min-w-24 px-4 py-2.5">
             <dt class="text-[11px] text-neutral-500">Items</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
-              {itemCount}
+              {itemCount ?? "…"}
             </dd>
           </div>
           <div class="min-w-24 px-4 py-2.5">
             <dt class="text-[11px] text-neutral-500">Staff</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
-              {teamCount}
+              {teamCount ?? "…"}
             </dd>
           </div>
         </dl>

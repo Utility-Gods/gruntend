@@ -1,0 +1,59 @@
+---
+title: Generate task-specific UI
+description: Return safe, stateful UI from an html tagged template.
+---
+
+When a task needs review, selection, or confirmation, generate a UI projection with the `html` tagged template.
+
+```ts
+const result = await gruntend.runCodePlan(plan.code, {
+  input: plan.input,
+  handlers,
+  ui: { html },
+});
+```
+
+A generated plan can return an `html` template or a render function. A render function keeps local state in ordinary JavaScript closures.
+
+```ts
+var selected = [];
+
+function toggle(item) {
+  selected = selected.includes(item)
+    ? selected.filter(function (candidate) { return candidate !== item; })
+    : selected.concat([item]);
+}
+
+return function render() {
+  return html`<section class="surface-card">
+    <div class="surface-list">
+      ${input.items.map(function (item) {
+        return html`<button
+          class="surface-item"
+          onclick=${function () { return toggle(item); }}
+        >${item.name}</button>`;
+      })}
+    </div>
+  </section>`;
+};
+```
+
+## Confirmation before mutation
+
+For a mutation, first read and calculate a preview. Render the before/after values, then place the mutation behind an explicit confirm control.
+
+```text
+Read current records
+↓
+Render selected records and planned changes
+↓
+Person confirms
+↓
+Call app-owned mutation handler
+↓
+Update local UI state from handler result
+```
+
+The browser never receives real inline `onclick` JavaScript. Function interpolations compile to delegated `data-gr-*` handlers.
+
+Framework adapters for Svelte, React, Vue, and Solid are thin wrappers around the shared DOM mounting primitive.

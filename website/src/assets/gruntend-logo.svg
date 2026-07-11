@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 40" role="img" aria-label="Gruntend">
-  <rect width="40" height="40" rx="8" fill="#f54a00"/>
-  <path d="M12 10v9a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3v-9M17 10v20M30 22V10a6 6 0 0 0-6 6v3a3 3 0 0 0 3 3h3Zm0 0v8" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-  <text x="52" y="27" fill="#0f172a" font-family="Montserrat, sans-serif" font-size="23" font-weight="700" letter-spacing="-.6">Gruntend</text>
-</svg>

@@ -1,54 +1,75 @@
 ---
-title: The code plan format
-description: Why Gruntend uses constrained JavaScript plans instead of a workflow DSL.
+title: Why code plans
+description: Why Gruntend uses constrained JavaScript instead of a workflow DSL.
 ---
 
-Gruntend’s plan format is deliberately small: a JSON envelope with a summary, runtime input, and JavaScript async-function body.
+A Gruntend plan is JavaScript.
 
-```json
-{
-  "summary": "Preview low-priced items",
-  "input": {
-    "priceThreshold": 10,
-    "increasePercent": 0.2
-  },
-  "code": "var menus = await tools.menus.list({});\nreturn menus;"
-}
+```js
+const menus = await tools.menus.list({});
+const items = await Promise.all(
+  menus.menus.map((menu) => tools.menu.items.list({ menuId: menu.menuId })),
+);
+
+return items.flatMap((result) => result.items);
 ```
 
-The runtime receives `input`, registered `tools`, `Promise`, and—in generated UI mode—`html`. It does **not** receive arbitrary imports, `fetch`, `window`, `document`, storage, or application internals.
+It runs as an async function body with a deliberately small environment:
 
-## Why JavaScript?
+```text
+input
+registered tools
+Promise
+console
+html, when generated UI is enabled
+```
 
-Declarative workflow JSON is useful for linear steps. Ordinary admin work is not always linear:
+It does not receive arbitrary imports, `fetch`, `window`, `document`, storage, or application internals.
 
-- filter records using a runtime value
-- branch based on a tool result
+## Why code?
+
+Earlier Gruntend designs used declarative workflow JSON. That works for simple linear steps, but becomes awkward when behavior depends on runtime results:
+
+- filter records using a value discovered at runtime
+- branch based on a previous tool result
 - fan out independent reads with `Promise.all()`
 - loop over a selected set
 - return early when nothing matches
 
-Those are normal programming constructs, so Gruntend treats JavaScript as a constrained orchestration format.
+Those are ordinary programming constructs—not edge cases. A code plan expresses them directly while the tool registry preserves the authority boundary.
 
-```ts
-var menus = await tools.menus.list({});
-var matching = menus.menus.filter(function (menu) {
-  return menu.name.includes(input.query);
-});
+```js
+const menus = await tools.menus.list({});
+const matching = menus.menus.filter((menu) =>
+  menu.name.includes(input.query),
+);
 
 if (matching.length === 0) {
   return html`<p>No matching menus.</p>`;
 }
 
-return html`<ul>${matching.map(function (menu) {
-  return html`<li>${menu.name}</li>`;
-})}</ul>`;
+return html`<ul>${matching.map(
+  (menu) => html`<li>${menu.name}</li>`,
+)}</ul>`;
 ```
 
-The important boundary is not the syntax. It is the capability registry and app-owned handlers.
+## Input is supplied by the app
+
+Runtime input is passed separately from the plan and exposed through the `input` global.
+
+```ts
+const result = await gruntend.runCodePlan(code, {
+  input: {
+    query: "Dinner",
+  },
+  handlers,
+});
+```
 
 ## Generate plans or bring your own
 
-You can generate this envelope with `generateCodePlan()`, or let your own model/agent produce it. In both cases, validate and execute it through the same runtime.
+`generateCodePlan()` can ask a supported model to produce the JavaScript plan. You can also use your own model or agent loop and pass the resulting code into the same runtime.
+
+Generation is optional. The constrained runtime, typed capabilities, app-owned handlers, and generated UI primitives are usable independently.
 
 Next: [Expose application capabilities](/guides/expose-capabilities/).

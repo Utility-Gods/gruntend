@@ -27,6 +27,11 @@ build/
 out/
 .svelte-kit/
 **/.svelte-kit/
+.astro/
+**/.astro/
+
+# Pi local configuration and skills
+.pi/
 
 # Editor/OS
 .DS_Store

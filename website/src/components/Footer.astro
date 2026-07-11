@@ -1,0 +1,18 @@
+---
+import DefaultFooter from "@astrojs/starlight/components/Footer.astro";
+
+const isHomepage = Boolean(Astro.locals.starlightRoute.entry.data.hero);
+---
+
+{isHomepage ? (
+  <footer class="home-footer">
+    <div class="home-footer-inner">
+      <p><strong>Gruntend is a toolkit, not a framework.</strong> Use the runtime directly or mount generated UI through thin Svelte, React, Vue, and Solid adapters.</p>
+      <nav aria-label="Documentation links">
+        <a href="/guides/expose-capabilities/">Get started</a>
+        <a href="/reference/tools/">API reference</a>
+        <a href="https://github.com/Utility-Gods/gruntend" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </nav>
+    </div>
+  </footer>
+) : <DefaultFooter />}

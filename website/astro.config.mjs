@@ -3,25 +3,34 @@ import starlight from "@astrojs/starlight";
 
 export default defineConfig({
   site: "https://gruntend.com",
+  devToolbar: { enabled: false },
   integrations: [
     starlight({
       title: "Gruntend",
       description:
         "A semantic application runtime for safe, capability-driven AI orchestration.",
-      logo: {
-        replacesTitle: true,
-        src: "./src/assets/gruntend-logo.svg",
-      },
       customCss: ["./src/styles/custom.css"],
-      social: {
-        github: "https://github.com/Utility-Gods/gruntend",
+      components: {
+        Header: "./src/components/Header.astro",
+        Hero: "./src/components/Hero.astro",
+        Footer: "./src/components/Footer.astro",
+        Head: "./src/components/Head.astro",
+        ThemeProvider: "./src/components/LightTheme.astro",
+        ThemeSelect: "./src/components/Empty.astro",
       },
+      social: [
+        {
+          icon: "github",
+          label: "GitHub",
+          href: "https://github.com/Utility-Gods/gruntend",
+        },
+      ],
       sidebar: [
         {
           label: "Start here",
           items: [
             { label: "What Gruntend is", slug: "index" },
-            { label: "The code plan format", slug: "code-plan-format" },
+            { label: "Why code plans", slug: "code-plan-format" },
           ],
         },
         {

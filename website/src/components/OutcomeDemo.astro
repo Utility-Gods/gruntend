@@ -1,0 +1,32 @@
+<div class="outcome-demo" aria-label="Restaurant management example">
+  <div class="intent"><span>Intent</span><strong>Show every item under $10 and preview a 20% increase.</strong></div>
+  <div class="arrow" aria-hidden="true">↓</div>
+  <div class="generated-result">
+    <header><span><small>Generated for this task</small><strong>Price review</strong></span><b>3 items</b></header>
+    <div class="row"><span><strong>Truffle Fries</strong><small>Dinner Menu</small></span><span><del>$8.00</del><b>$9.60</b></span></div>
+    <div class="row"><span><strong>Cold Brew</strong><small>Drinks Menu</small></span><span><del>$5.00</del><b>$6.00</b></span></div>
+    <div class="row"><span><strong>Ginger Lemonade</strong><small>Drinks Menu</small></span><span><del>$6.00</del><b>$7.20</b></span></div>
+    <footer><button type="button">Apply all changes</button><span>Executed through app-owned handlers</span></footer>
+  </div>
+</div>
+
+<style>
+  .outcome-demo { display: grid; gap: 1rem; align-items: center; margin-block: 1.5rem; }
+  .intent { border-left: 4px solid #f54a00; background: #f8fafc; padding: 1rem; }
+  .intent span, header small { display: block; color: #f54a00; font-size: .65rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .intent strong { display: block; margin-top: .35rem; color: #0f172a; font-size: .9rem; }
+  .arrow { color: #f54a00; font-size: 1.4rem; font-weight: 700; text-align: center; }
+  .generated-result { border: 1px solid #d9d9d9; background: white; box-shadow: 0 8px 25px rgb(15 23 42 / 8%); }
+  header, footer, .row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem .9rem; }
+  header { border-bottom: 1px solid #e5e5e5; }
+  header strong, .row strong, .row small { display: block; }
+  header > b { background: #ecfdf5; color: #047857; padding: .2rem .45rem; font-size: .65rem; }
+  .row { border-bottom: 1px solid #eeeeee; font-size: .75rem; }
+  .row small { color: #737373; }
+  .row > span:last-child { display: flex; gap: .7rem; }
+  .row del { color: #737373; }
+  .row b { color: #c2410c; }
+  footer button { border: 0; border-radius: 0; background: #f54a00; color: white; padding: .55rem .75rem; font: inherit; font-size: .7rem; font-weight: 650; }
+  footer span { color: #737373; font-size: .62rem; }
+  @media (min-width: 52rem) { .outcome-demo { grid-template-columns: minmax(15rem, .8fr) auto minmax(24rem, 1.2fr); } .arrow { transform: rotate(-90deg); } }
+</style>
