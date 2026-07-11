@@ -87,7 +87,7 @@ export function parseGeneratedCodePlan(text: string): GeneratedCodePlan {
   const extractedText = extractJsonObject(text);
 
   try {
-    return validateGeneratedCodePlan(parseGeneratedJson(extractedText));
+    return validateGeneratedCodePlan(JSON.parse(extractedText));
   } catch (cause) {
     if (!(cause instanceof SyntaxError)) throw cause;
     throw new GeneratedCodePlanParseError({
@@ -159,15 +159,6 @@ export async function generateCodePlan<TApi extends Api>(
     text,
     message,
   };
-}
-
-function parseGeneratedJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch (cause) {
-    if (!(cause instanceof SyntaxError) || !text.includes("\\${")) throw cause;
-    return JSON.parse(text.replaceAll("\\${", "${"));
-  }
 }
 
 function normalizeGeneratedInput(

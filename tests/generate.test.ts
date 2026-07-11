@@ -142,18 +142,6 @@ test("parseGeneratedCodePlan parses and validates an LLM text response", () => {
   ).toThrow('Generated code plan must include a non-empty "code" string.');
 });
 
-test("parseGeneratedCodePlan repairs escaped template interpolation", () => {
-  expect(
-    parseGeneratedCodePlan(
-      String.raw`{"summary":"Render","input":{},"code":"return html\`<p>\${input.name}</p>\`;"}`,
-    ),
-  ).toEqual({
-    summary: "Render",
-    input: {},
-    code: "return html`<p>${input.name}</p>`;",
-  });
-});
-
 test("parseGeneratedCodePlan exposes the raw response when JSON is invalid", () => {
   const text = '{"summary":"Broken","input":{},"code":"bad\\q"}';
 

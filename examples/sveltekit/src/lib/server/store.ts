@@ -199,7 +199,7 @@ export async function createUser(
   if (existing) return rowToUser(existing);
 
   const user: User = {
-    userId: newD1Id("user"),
+    userId: createStoreId("user"),
     name: input.name,
     role: input.role,
     createdAt: new Date().toISOString(),
@@ -260,7 +260,7 @@ export async function createMenu(
   if (existing) return rowToMenu(existing);
 
   const menu: Menu = {
-    menuId: newD1Id("menu"),
+    menuId: createStoreId("menu"),
     name: input.name,
     description: input.description ?? "Created by the Gruntend agent.",
     ownerUserId: input.ownerUserId ?? "user_1",
@@ -338,7 +338,7 @@ export async function createMenuItem(
   if (existing) return rowToMenuItem(existing);
 
   const item: MenuItem = {
-    itemId: newD1Id("item"),
+    itemId: createStoreId("item"),
     menuId: input.menuId,
     name: input.name,
     price: input.price,
@@ -520,11 +520,11 @@ async function ensureD1(db: D1Database): Promise<void> {
   initializedD1.add(db);
 }
 
-function newD1Id(prefix: string): string {
+async function createStoreId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
-async function nextCopyName(
+function nextCopyName(
   menuId: string,
   name: string,
   context: StoreContext,
