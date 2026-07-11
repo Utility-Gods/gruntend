@@ -279,7 +279,12 @@
             <p class="text-inherit">{line}</p>
           {/each}
           {#if message.uiComponent}
-            <div class="mt-3" onclick={handleGeneratedLinkClick}>
+            <div
+              class="mt-3"
+              role="presentation"
+              onclick={handleGeneratedLinkClick}
+              onkeydown={() => undefined}
+            >
               <GeneratedUi
                 class="agent-generated-ui"
                 ui={message.uiComponent}

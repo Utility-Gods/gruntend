@@ -56,7 +56,7 @@
   {#if !menusResponse}
     <LoadingSurface label="Loading menus from the demo database..." rows={5} />
   {:else if selectedMenu}
-    <nav
+    <div
       class="flex gap-7 overflow-x-auto border-b border-neutral-200"
       role="tablist"
       aria-label="Menus"
@@ -79,7 +79,7 @@
           </span>
         </button>
       {/each}
-    </nav>
+    </div>
 
     <section class="bg-white p-6 shadow-sm">
       <div class="space-y-2 border-b border-neutral-100 pb-5">

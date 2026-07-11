@@ -17,7 +17,7 @@ export const getAgentPlannerInfo = query(async () => {
   const mode = resolvePlannerMode();
 
   return {
-    generator: mode === "mock" ? "mock" : "pi-ai",
+    generator: mode === "mock" ? ("mock" as const) : ("pi-ai" as const),
     mode,
     model: mode === "mock" ? "mock-planner" : env.OPENAI_MODEL || "gpt-5.1",
   };
