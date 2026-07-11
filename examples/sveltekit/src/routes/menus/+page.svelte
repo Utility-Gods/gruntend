@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { base } from "$app/paths";
   import LoadingSurface from "$lib/components/photoship/LoadingSurface.svelte";
+  import { BookOpen, Trash2 } from "lucide-svelte";
   import {
     deleteMenuItemCommand,
     getMenusWithItems,
@@ -39,25 +39,17 @@
   }
 </script>
 
-<section class="mx-auto max-w-5xl space-y-6">
-  <header class="space-y-2">
-    <p class="text-xs font-medium uppercase tracking-[0.12em] text-orange-600">
-      Menus
-    </p>
-    <h1 class="text-3xl font-medium tracking-tight text-neutral-950">
-      Restaurant menus
-    </h1>
-    <p class="max-w-2xl text-base leading-7 text-neutral-600">
-      Switch between menus to review the live items created by the app and the
-      agent.
-    </p>
+<section class="space-y-5">
+  <header class="flex items-center gap-3 py-1">
+    <BookOpen class="shrink-0 text-primary-600" size={23} strokeWidth={2.2} />
+    <h1 class="text-xl font-semibold tracking-tight text-slate-950">Menus and pricing</h1>
   </header>
 
   {#if !menusResponse}
     <LoadingSurface label="Loading menus from the demo database..." rows={5} />
   {:else if selectedMenu}
     <div
-      class="flex gap-7 overflow-x-auto border-b border-neutral-200"
+      class="flex overflow-x-auto border border-neutral-200 bg-white p-1 shadow-sm"
       role="tablist"
       aria-label="Menus"
     >
@@ -66,29 +58,21 @@
           type="button"
           role="tab"
           aria-selected={menu.menuId === selectedMenu.menuId}
-          class={`shrink-0 border-b-2 pb-3 text-left transition ${
+          class={`shrink-0 px-4 py-2 text-left text-sm font-semibold transition ${
             menu.menuId === selectedMenu.menuId
-              ? "border-orange-600 text-neutral-950"
-              : "border-transparent text-neutral-500 hover:text-neutral-900"
+              ? "bg-primary-600 text-white"
+              : "text-neutral-600 hover:bg-primary-600 hover:text-white"
           }`}
           onclick={() => (selectedMenuId = menu.menuId)}
         >
-          <span class="block text-sm font-medium">{menu.name}</span>
-          <span class="block text-xs text-neutral-400">
-            {menu.items.length} item{menu.items.length === 1 ? "" : "s"}
-          </span>
+          <span class="block">{menu.name}</span>
         </button>
       {/each}
     </div>
 
-    <section class="bg-white p-6 shadow-sm">
+    <section class="border border-neutral-200 bg-white p-6 shadow-sm">
       <div class="space-y-2 border-b border-neutral-100 pb-5">
-        <p
-          class="text-xs font-medium uppercase tracking-[0.12em] text-orange-600"
-        >
-          Active menu
-        </p>
-        <h2 class="text-2xl font-medium tracking-tight text-neutral-950">
+        <h2 class="text-xl font-semibold tracking-tight text-neutral-950">
           {selectedMenu.name}
         </h2>
         <p class="text-base text-neutral-600">{selectedMenu.description}</p>
@@ -110,15 +94,16 @@
               </p>
             </div>
             <div class="flex shrink-0 items-center gap-3">
-              <strong class="text-sm font-medium text-orange-700"
+              <strong class="text-sm font-semibold text-primary-700"
                 >${item.price.toFixed(2)}</strong
               >
               <button
                 type="button"
-                class="border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:border-red-600 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={deletingItemId === item.itemId}
                 onclick={() => deleteItem(selectedMenu.menuId, item.itemId)}
               >
+                <Trash2 size={13} strokeWidth={2} />
                 {deletingItemId === item.itemId ? "Deleting..." : "Delete"}
               </button>
             </div>
@@ -126,15 +111,7 @@
         {:else}
           <div class="py-8">
             <h3 class="text-base font-medium text-neutral-950">No items yet</h3>
-            <p class="mt-1 text-neutral-600">
-              Ask the agent to add items to this menu.
-            </p>
-            <a
-              class="mt-4 inline-flex bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
-              href={`${base}/agent`}
-            >
-              Open agent
-            </a>
+            <p class="mt-1 text-neutral-600">Use the overview to create or move items into this menu.</p>
           </div>
         {/each}
       </div>

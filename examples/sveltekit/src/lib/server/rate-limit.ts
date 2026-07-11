@@ -1,3 +1,4 @@
+import { dev } from "$app/environment";
 import { env } from "$env/dynamic/private";
 
 export interface RateLimitContext {
@@ -46,6 +47,15 @@ export async function checkAgentPlanRateLimit(input: {
   readonly ip: string;
   readonly context?: RateLimitContext;
 }): Promise<RateLimitResult> {
+  if (dev) {
+    return {
+      allowed: true,
+      count: 0,
+      limit: LIMIT,
+      resetAt: new Date(),
+    };
+  }
+
   const windowStart = currentWindowStart();
   const key = await hashRateLimitKey(input.ip);
   const d1 = input.context?.platform?.env?.GRUNTEND_DB;
