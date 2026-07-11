@@ -4,12 +4,19 @@ import starlight from "@astrojs/starlight";
 export default defineConfig({
   site: "https://gruntend.com",
   devToolbar: { enabled: false },
+  markdown: {
+    shikiConfig: {
+      theme: "github-dark",
+      wrap: true,
+    },
+  },
   integrations: [
     starlight({
       title: "Gruntend",
       description:
         "A semantic application runtime for safe, capability-driven AI orchestration.",
       customCss: ["./src/styles/custom.css"],
+      expressiveCode: false,
       components: {
         Header: "./src/components/Header.astro",
         Hero: "./src/components/Hero.astro",
@@ -27,35 +34,23 @@ export default defineConfig({
       ],
       sidebar: [
         {
-          label: "Start here",
+          label: "Learn",
           items: [
-            { label: "What Gruntend is", slug: "index" },
-            { label: "Why code plans", slug: "code-plan-format" },
+            { label: "How it works", slug: "overview" },
+            { label: "First task", slug: "getting-started" },
+            { label: "Code plans", slug: "code-plan-format" },
           ],
         },
         {
           label: "Guides",
           items: [
-            {
-              label: "Expose application capabilities",
-              slug: "guides/expose-capabilities",
-            },
-            {
-              label: "Run a plan through app handlers",
-              slug: "guides/run-a-plan",
-            },
-            {
-              label: "Generate task-specific UI",
-              slug: "guides/generated-ui",
-            },
+            { label: "Generated UI", slug: "guides/generated-ui" },
+            { label: "Framework adapters", slug: "guides/framework-adapters" },
           ],
         },
         {
           label: "Reference",
-          items: [
-            { label: "Tools and handlers", slug: "reference/tools" },
-            { label: "Generated UI", slug: "reference/generated-ui" },
-          ],
+          items: [{ label: "API", slug: "reference/api" }],
         },
       ],
     }),

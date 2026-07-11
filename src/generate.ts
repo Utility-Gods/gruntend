@@ -35,13 +35,22 @@ export interface CodePlanGenerationUiOptions {
   readonly kind: "tagged-html";
 }
 
-export interface CodePlanGenerationRequest<TApi extends Api = Api> {
-  readonly model: Model<TApi>;
+export interface CodePlanPromptRequest {
   readonly tools: readonly Tool[];
   readonly task: string;
   readonly input?: unknown;
   readonly instructions?: string;
   readonly ui?: CodePlanGenerationUiOptions;
+}
+
+export interface CodePlanPrompt {
+  readonly system: string;
+  readonly user: string;
+}
+
+export interface CodePlanGenerationRequest<TApi extends Api = Api>
+  extends CodePlanPromptRequest {
+  readonly model: Model<TApi>;
   readonly options?: SimpleStreamOptions;
   readonly complete?: CodePlanGenerationComplete<TApi>;
 }
@@ -81,6 +90,24 @@ export function createCodePlanManifest(
     ...(tool.parameters === undefined ? {} : { parameters: tool.parameters }),
     ...(tool.returns === undefined ? {} : { returns: tool.returns }),
   }));
+}
+
+export function createCodePlanPrompt(
+  request: CodePlanPromptRequest,
+): CodePlanPrompt {
+  return {
+    system: codePlanSystemPrompt(request.ui),
+    user: JSON.stringify(
+      {
+        task: request.task,
+        instructions: request.instructions ?? undefined,
+        input: request.input ?? {},
+        tools: createCodePlanManifest(request.tools),
+      },
+      null,
+      2,
+    ),
+  };
 }
 
 export function parseGeneratedCodePlan(text: string): GeneratedCodePlan {
@@ -184,21 +211,14 @@ async function defaultComplete<TApi extends Api>(
 function createPiAiContext<TApi extends Api>(
   request: CodePlanGenerationRequest<TApi>,
 ): Context {
+  const prompt = createCodePlanPrompt(request);
+
   return {
-    systemPrompt: codePlanSystemPrompt(request.ui),
+    systemPrompt: prompt.system,
     messages: [
       {
         role: "user",
-        content: JSON.stringify(
-          {
-            task: request.task,
-            instructions: request.instructions ?? undefined,
-            input: request.input ?? {},
-            tools: createCodePlanManifest(request.tools),
-          },
-          null,
-          2,
-        ),
+        content: prompt.user,
         timestamp: Date.now(),
       },
     ],

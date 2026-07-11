@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   createCodePlanManifest,
+  createCodePlanPrompt,
   generateCodePlan,
   GeneratedCodePlanParseError,
   parseGeneratedCodePlan,
@@ -114,6 +115,27 @@ test("createCodePlanManifest emits explicit model-facing tool data", () => {
       },
     },
   ]);
+});
+
+test("createCodePlanPrompt exposes provider-neutral prompts for custom model calls", () => {
+  const prompt = createCodePlanPrompt({
+    tools,
+    task: "Create a lunch menu",
+    input: { currentMenus: [] },
+    instructions: "Reuse an existing menu when possible.",
+    ui: { kind: "tagged-html" },
+  });
+
+  expect(prompt.system).toContain(
+    "You generate Gruntend JavaScript code plans",
+  );
+  expect(prompt.system).toContain("Tagged HTML UI mode");
+  expect(JSON.parse(prompt.user)).toEqual({
+    task: "Create a lunch menu",
+    instructions: "Reuse an existing menu when possible.",
+    input: { currentMenus: [] },
+    tools: createCodePlanManifest(tools),
+  });
 });
 
 test("parseGeneratedCodePlan parses and validates an LLM text response", () => {

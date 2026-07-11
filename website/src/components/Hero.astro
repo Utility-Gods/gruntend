@@ -1,6 +1,7 @@
 ---
 const { data } = Astro.locals.starlightRoute.entry;
 const { title = data.title, tagline } = data.hero || {};
+const isHomepage = Astro.url.pathname === "/";
 ---
 
 <section class="product-hero">
@@ -9,10 +10,10 @@ const { title = data.title, tagline } = data.hero || {};
     <h1 id="_top" data-page-title set:html={title} />
     {tagline && <p class="tagline" set:html={tagline} />}
     <div class="hero-actions">
-      <a class="primary-action" href="/code-plan-format/">Understand how it works <span>→</span></a>
+      <a class="primary-action" href="/overview/">Understand how it works <span>→</span></a>
       <a class="secondary-action" href="https://demo.gruntend.com/" target="_blank" rel="noreferrer">Open the demo <span>↗</span></a>
     </div>
-    <p class="runtime-note">Plans are interpreted with <a href="https://github.com/badlogic/jailjs" target="_blank" rel="noreferrer">JailJS</a>, not <code>eval</code> or <code>Function</code>.</p>
+    {isHomepage && <p class="runtime-note">Plans are interpreted with <a href="https://github.com/badlogic/jailjs" target="_blank" rel="noreferrer">JailJS</a>, not <code>eval</code> or <code>Function</code>.</p>}
   </div>
 </section>
 

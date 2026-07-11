@@ -1,11 +1,59 @@
 ---
-title: Generate task-specific UI
-description: Return safe, stateful UI from an html tagged template.
+title: Generated UI
+description: Let a code plan return an html template or stateful render function.
 ---
 
-When a task needs review, selection, or confirmation, generate a UI projection with the `html` tagged template.
+<p class="doc-lead">
+  A plan normally returns data. A UI plan returns an <code>html</code> template
+  or render function instead.
+</p>
+
+There are two separate operations:
+
+- `generateCodePlan(...)` calls a model and returns JavaScript plan code. It does not run that code or call handlers. Generation is optional because you may write or obtain the plan elsewhere.
+- `runCodePlan(...)` takes existing plan code, evaluates it in the interpreter, and dispatches its tool calls to your handlers. It does not call a model.
+
+For generated UI, first ask the model for a UI plan, then run that plan with the `html` function available.
+
+## Generate a UI plan
 
 ```ts
+import { generateCodePlan } from "gruntend/generate";
+
+const { plan } = await generateCodePlan({
+  model,
+  tools,
+  task,
+  input,
+  ui: { kind: "tagged-html" },
+});
+```
+
+`generateCodePlan()` returns a `GeneratedCodePlan`:
+
+```ts
+interface GeneratedCodePlan {
+  readonly summary: string;
+  readonly input: Record<string, unknown>;
+  readonly code: string;
+}
+```
+
+- `summary` describes what the model generated.
+- `input` is passed to the interpreter as `input`.
+- `code` is the JavaScript function body passed to `runCodePlan()`.
+
+`ui: { kind: "tagged-html" }` changes the generation instructions so `code` returns UI. It does not create or execute the UI.
+
+If you write the plan yourself, skip this generation step and pass your code string directly to `runCodePlan()`.
+
+## Provide `html` at runtime
+
+```ts
+import { createHtmlTag } from "gruntend/ui";
+
+const html = createHtmlTag();
+
 const result = await gruntend.runCodePlan(plan.code, {
   input: plan.input,
   handlers,
@@ -13,47 +61,90 @@ const result = await gruntend.runCodePlan(plan.code, {
 });
 ```
 
-A generated plan can return an `html` template or a render function. A render function keeps local state in ordinary JavaScript closures.
+`ui: { html }` makes the tagged-template function available inside the interpreter. The plan can now use `html` alongside `input` and `tools`.
 
-```ts
-var selected = [];
+## Return UI from the plan
 
-function toggle(item) {
-  selected = selected.includes(item)
-    ? selected.filter(function (candidate) { return candidate !== item; })
-    : selected.concat([item]);
+A plan may return a template:
+
+```js
+const { items } = await tools.menu.items.list({
+  menuId: input.menuId,
+});
+
+return html`<ul>
+  ${items.map((item) => html`<li>${item.name}: $${item.price}</li>`)}
+</ul>`;
+```
+
+For local state, return a render function. State is an ordinary JavaScript closure:
+
+```js
+var count = 0;
+function increment() {
+  count += 1;
 }
 
 return function render() {
-  return html`<section class="surface-card">
-    <div class="surface-list">
-      ${input.items.map(function (item) {
-        return html`<button
-          class="surface-item"
-          onclick=${function () { return toggle(item); }}
-        >${item.name}</button>`;
-      })}
-    </div>
-  </section>`;
+  return html`<button type="button" onclick=${increment}>
+    Count: ${count}
+  </button>`;
 };
 ```
 
-## Confirmation before mutation
+After a handler runs, the surface renders again.
 
-For a mutation, first read and calculate a preview. Render the before/after values, then place the mutation behind an explicit confirm control.
+## Mount the result
 
-```text
-Read current records
-↓
-Render selected records and planned changes
-↓
-Person confirms
-↓
-Call app-owned mutation handler
-↓
-Update local UI state from handler result
+Choose a normal DOM element where the generated interface should appear:
+
+```html
+<div id="generated-ui"></div>
 ```
 
-The browser never receives real inline `onclick` JavaScript. Function interpolations compile to delegated `data-gr-*` handlers.
+Then create and mount the generated UI:
 
-Framework adapters for Svelte, React, Vue, and Solid are thin wrappers around the shared DOM mounting primitive.
+```ts
+import { createGeneratedUi } from "gruntend/ui";
+import { mountGeneratedUi } from "gruntend/ui/dom";
+
+if (result.status !== "done") throw new Error(result.error);
+
+const element = document.querySelector("#generated-ui");
+if (!(element instanceof HTMLElement)) {
+  throw new Error("Generated UI host not found.");
+}
+
+const ui = createGeneratedUi(result.result).unwrap();
+const mount = mountGeneratedUi(element, ui);
+
+// when the host is removed
+mount.destroy();
+```
+
+`createGeneratedUi()` turns the plan result into a small interface with `render()` and `runHandler()`. `mountGeneratedUi()` then:
+
+1. renders the template into `element`
+2. listens for `click`, `submit`, `input`, and `change` events on that element
+3. finds the delegated handler created by expressions such as `onclick=${handler}`
+4. runs the original closure handler with a restricted event payload
+5. renders again after the handler finishes, so closure state appears in the DOM
+
+The returned `mount` handle controls that connection:
+
+- `mount.render()` renders the current state again
+- `mount.update(nextUi)` replaces the generated UI and renders it
+- `mount.runHandler(id)` invokes a generated handler programmatically
+- `mount.destroy()` removes event listeners and stops future rendering
+
+Framework adapters perform this same mounting and cleanup through their component lifecycle. See [Framework adapters](/guides/framework-adapters/).
+
+## Event safety
+
+`onclick=${handler}` is compiled to a delegated `data-gr-click` identifier. Executable inline event strings are rejected. Text and attribute interpolations are escaped.
+
+Generated handlers receive a restricted event payload, not broad DOM access.
+
+## Mutations
+
+A mutation UI should first render the proposed change. Call mutation tools only after explicit confirmation from the person using the interface. Permissions and persistence still belong to the app-owned handler.

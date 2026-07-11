@@ -49,10 +49,7 @@
   const usersResponse = $derived(usersQuery.current);
   const menuCount = $derived(menusResponse?.menus.length);
   const itemCount = $derived(
-    menusResponse?.menus.reduce(
-      (total, menu) => total + menu.items.length,
-      0,
-    ),
+    menusResponse?.menus.reduce((total, menu) => total + menu.items.length, 0),
   );
   const teamCount = $derived(usersResponse?.users.length);
 

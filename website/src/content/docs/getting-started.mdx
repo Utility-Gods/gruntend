@@ -1,0 +1,177 @@
+---
+title: Run your first task
+description: Define one typed capability, implement its handler, run a JavaScript plan, and inspect the exact result.
+---
+
+<p class="doc-lead">
+  This guide builds one complete read operation. The name{" "}
+  <code>menu.item.get</code> remains unchanged from the tool definition through
+  the plan and handler.
+</p>
+
+:::note[Pre-release]
+Gruntend is currently pre-release. This guide documents the public SDK contract used inside this repository; a package installation command will be added when the package is published.
+:::
+
+## Define the capability
+
+`defineTools()` is contract-only. It describes the operation, validates its input and output, and produces its registered name. It does not access application data.
+
+```ts
+import { defineTools } from "gruntend/tool";
+import * as v from "valibot";
+
+export const tools = defineTools({
+  menu: {
+    item: {
+      get: {
+        description: "Get one menu item by id.",
+        input: v.object({
+          itemId: v.string(),
+        }),
+        output: v.object({
+          item: v.object({
+            itemId: v.string(),
+            name: v.string(),
+            price: v.number(),
+          }),
+        }),
+      },
+    },
+  },
+});
+```
+
+The nested path creates exactly one registered tool:
+
+```text
+menu.item.get
+```
+
+## Implement the app-owned handler
+
+A handler is an async runtime closure owned by the application. It may access repositories, authorization state, secrets, and services that the generated plan cannot access.
+
+For this first task, use a small in-memory application repository:
+
+```ts
+const menuRepository = {
+  async get(itemId: string) {
+    if (itemId !== "item_1") return undefined;
+
+    return {
+      itemId: "item_1",
+      name: "Truffle Fries",
+      price: 8,
+    };
+  },
+};
+```
+
+Now implement the handler:
+
+```ts
+import type { ToolHandlerMap } from "gruntend/tool";
+import { tools } from "./tools.ts";
+
+const handlers = {
+  "menu.item.get": async ({ input, ok, err }) => {
+    const item = await menuRepository.get(input.itemId);
+
+    if (!item) {
+      return err({
+        code: "ITEM_NOT_FOUND",
+        message: "The menu item does not exist.",
+        retryable: false,
+      });
+    }
+
+    return ok({ item });
+  },
+} satisfies ToolHandlerMap<typeof tools>;
+```
+
+### Why the handler must return `ok` or `err`
+
+`ToolHandlerMap<typeof tools>` derives every handler type from the tool contracts. In this example, TypeScript checks that:
+
+- the key is exactly `"menu.item.get"`
+- `input` has the type produced by the input schema
+- `ok(...)` accepts only data matching the output schema
+- the handler returns either `ok(...)` or `err(...)`
+
+Returning the output object directly is a type error:
+
+```ts
+return { item }; // TypeScript error
+return ok({ item }); // valid handler result
+```
+
+`ok` and `err` are supplied in the handler context, so they are not imported.
+
+- `return ok(output)` completes the tool call. Gruntend validates and unwraps `output`, so the plan receives the plain `{ item }` value.
+- `return err(error)` reports an expected failure with a stable `code` and `message`. The optional `retryable` flag controls whether Gruntend may try the call again.
+- Throw only for an unexpected fault.
+
+TypeScript checks the application code while runtime schemas protect the boundary from generated plan values.
+
+## Write the plan
+
+A plan calls the tool through the namespace implied by its registered name.
+
+```ts
+const plan = `
+  const result = await tools.menu.item.get({
+    itemId: input.itemId,
+  });
+
+  return {
+    name: result.item.name,
+    price: result.item.price,
+  };
+`;
+```
+
+The runtime unwraps the successful handler result before returning it to the plan. The plan receives `{ item }`, not the internal `Result` wrapper.
+
+## Run the plan
+
+```ts
+import { createGruntendClient } from "gruntend/client";
+import { tools } from "./tools.ts";
+
+const gruntend = createGruntendClient({ tools });
+
+const result = await gruntend.runCodePlan(plan, {
+  input: { itemId: "item_1" },
+  handlers,
+});
+```
+
+For an existing item, `result` has this exact shape:
+
+```ts
+{
+  status: "done",
+  result: {
+    name: "Truffle Fries",
+    price: 8,
+  },
+  errors: {},
+}
+```
+
+## Understand the validation boundary
+
+The runtime validates both sides of the handler:
+
+1. The plan passes `{ itemId }`.
+2. The runtime validates that value with the tool input schema.
+3. Only valid input reaches `handlers["menu.item.get"]`.
+4. The handler returns `ok({ item })`.
+5. The runtime validates `{ item }` with the output schema.
+6. Only valid output returns to the plan.
+
+If input validation fails, the handler is never called. If output validation fails, the plan fails instead of receiving data that violates the contract.
+
+Next: [Code plans](/code-plan-format/), [Generated UI](/guides/generated-ui/), or the [API reference](/reference/api/).

@@ -1,0 +1,70 @@
+---
+title: How Gruntend works
+description: Gruntend interprets JavaScript plans against a small set of application-owned capabilities.
+---
+
+<p class="doc-lead">
+  Gruntend runs JavaScript plans without giving those plans direct access to
+  your application.
+</p>
+
+## The interpreter is the boundary
+
+A plan runs inside an AST interpreter. It receives only the values Gruntend supplies:
+
+- `input` — task data supplied when the plan runs
+- `tools` — the application capabilities registered with Gruntend
+- `Promise` — standard promise support, including `Promise.all()`
+- `console` — logging for diagnostics
+- `html` — the tagged-template function, only when generated UI is enabled
+
+It does not receive imports, `fetch`, `window`, `document`, storage, or your application services.
+
+This is the central idea: the plan has the expressiveness of JavaScript, but its useful authority comes only from registered `tools`.
+
+Gruntend currently interprets plans with <a href="https://github.com/badlogic/jailjs" target="_blank" rel="noreferrer">JailJS</a>, a JavaScript AST interpreter.
+
+## Plans compose; handlers perform
+
+A plan is ordinary JavaScript, not a fixed list of steps. It can use values returned at runtime to choose what happens next: branch with `if`, transform collections, loop over results, return early, or run independent tool calls with `Promise.all()`.
+
+```js
+const { items } = await tools.menu.items.list({
+  menuId: input.menuId,
+});
+
+return items.filter((item) => item.price < 10);
+```
+
+When the plan calls `menu.items.list`, Gruntend:
+
+1. finds the registered tool contract
+2. validates the supplied input
+3. calls `handlers["menu.items.list"]`
+4. validates the successful output
+5. returns that output to the plan
+
+The application handler owns permissions, persistence, network access, and business rules. The plan never receives those dependencies.
+
+The dotted tool name connects every part:
+
+```text
+tool definition   menu.items.list
+plan call         tools.menu.items.list(...)
+handler key       handlers["menu.items.list"]
+runtime event     event.tool === "menu.items.list"
+```
+
+That separation is the product:
+
+> Plans decide how capabilities are composed. Applications decide what each capability is allowed to do.
+
+## Data or UI
+
+A plan normally returns data. When the application enables the `html` runtime value, it may instead return a tagged HTML template or render function.
+
+Generated UI uses the same tool boundary. Browser interactions do not bypass app-owned handlers.
+
+## What to read next
+
+[Run your first task](/getting-started/) for the complete API in one example. Then read [Code plans](/code-plan-format/) for the interpreted JavaScript contract.
