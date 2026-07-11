@@ -3,6 +3,10 @@ import { env } from "$env/dynamic/private";
 import * as v from "valibot";
 import { createMockPlan } from "$lib/agent/mock-plan";
 import { appTools } from "$lib/agent/tools";
+import {
+  checkAgentPlanRateLimit,
+  readClientIp,
+} from "$lib/server/rate-limit";
 import { listMenus, listUsers } from "$lib/server/store";
 import { generateCodePlan, getModel, type Model } from "gruntend/generate";
 
@@ -37,6 +41,16 @@ export const generateAgentPlan = command(
         usage: undefined,
         responseId: `mock_${Date.now()}`,
       };
+    }
+
+    const rateLimit = await checkAgentPlanRateLimit({
+      ip: readClientIp(event.request),
+      context: { platform: event.platform },
+    });
+    if (!rateLimit.allowed) {
+      throw new Error(
+        `Too many planner requests. Try again after ${rateLimit.resetAt.toLocaleTimeString()}.`,
+      );
     }
 
     const apiKey = env.OPENAI_API_KEY;
