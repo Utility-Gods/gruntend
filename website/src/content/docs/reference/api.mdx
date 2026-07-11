@@ -5,7 +5,7 @@ description: Public Gruntend signatures and types.
 
 ## `gruntend/tool`
 
-### `Tool`
+### `ToolSpec` and `Tool`
 
 ```ts
 interface ToolSpec<
@@ -101,12 +101,29 @@ interface ToolExecutionError {
 }
 ```
 
+## `gruntend/registry`
+
+```ts
+interface ToolRegistry<TTool extends Tool = Tool> {
+  tools(): readonly TTool[];
+  get(name: string): TTool | undefined;
+}
+
+function createToolRegistry<const TTools extends readonly Tool[]>(
+  tools?: TTools,
+): ToolRegistry<TTools[number]>;
+```
+
+Duplicate names throw `Error`.
+
 ## `gruntend/client`
 
 ### `createGruntendClient(options)`
 
 ```ts
-interface GruntendClientOptions<TTools extends readonly Tool[]> {
+interface GruntendClientOptions<
+  TTools extends readonly Tool[] = readonly Tool[],
+> {
   readonly tools?: TTools;
   readonly registry?: ToolRegistry<TTools[number]>;
 }
@@ -123,22 +140,49 @@ const gruntend = createGruntendClient({ tools });
 ### `client.runCodePlan(code, options)`
 
 ```ts
-runCodePlan(
-  code: string,
-  options: GruntendClientCodePlanRunOptions<TTools>,
-): Promise<CodePlanRunResult>;
+interface GruntendClient<TTools extends readonly Tool[] = readonly Tool[]> {
+  readonly registry: ToolRegistry<TTools[number]>;
+  runCodePlan(
+    code: string,
+    options: GruntendClientCodePlanRunOptions<TTools>,
+  ): Promise<CodePlanRunResult>;
+}
 
 interface GruntendClientCodePlanRunOptions<
-  TTools extends readonly Tool[],
+  TTools extends readonly Tool[] = readonly Tool[],
 > {
   readonly input?: unknown;
   readonly handlers: ToolHandlerMap<TTools>;
   readonly id?: string;
   readonly signal?: AbortSignal;
   readonly retry?: RetryPolicy;
-  readonly ui?: { readonly html: HtmlTag };
+  readonly ui?: CodePlanUiRuntimeOptions;
   readonly onEvent?: (event: RuntimeEvent) => void;
 }
+```
+
+## `gruntend/code-plan`
+
+```ts
+interface CodePlanUiRuntimeOptions {
+  readonly html: HtmlTag;
+}
+
+interface CodePlanRunOptions<TTool extends Tool = Tool> {
+  readonly code: string;
+  readonly input?: unknown;
+  readonly registry: ToolRegistry<TTool>;
+  readonly handlers: ToolHandlerMapFor<TTool>;
+  readonly id?: string;
+  readonly signal?: AbortSignal;
+  readonly retry?: RetryPolicy;
+  readonly ui?: CodePlanUiRuntimeOptions;
+  readonly onEvent?: (event: RuntimeEvent) => void;
+}
+
+function runCodePlan<TTool extends Tool>(
+  options: CodePlanRunOptions<TTool>,
+): Promise<CodePlanRunResult>;
 
 interface CodePlanRunResult {
   readonly status: "done" | "failed";
@@ -148,13 +192,7 @@ interface CodePlanRunResult {
 }
 ```
 
-The lower-level form is exported from `gruntend/code-plan`:
-
-```ts
-runCodePlan({ code, input, registry, handlers, ...options });
-```
-
-### Runtime types
+## `gruntend/runtime`
 
 ```ts
 type RetryPolicy = {
@@ -168,6 +206,16 @@ type ToolRunErrorType =
   | "invalid_input"
   | "invalid_output"
   | "handler_error";
+
+interface ToolRunError {
+  readonly type: ToolRunErrorType;
+  readonly callId: string;
+  readonly tool: string;
+  readonly message: string;
+  readonly code?: string;
+  readonly retryable?: boolean;
+  readonly details?: Record<string, unknown>;
+}
 
 type RuntimeEvent =
   | PlanStartedEvent
@@ -236,19 +284,29 @@ function generateCodePlan<TApi extends Api>(
 ### Parsing and manifests
 
 ```ts
-createCodePlanManifest(tools): readonly CodePlanToolManifest[];
-parseGeneratedCodePlan(text): GeneratedCodePlan;
-validateGeneratedCodePlan(value): GeneratedCodePlan;
+interface CodePlanToolManifest {
+  readonly name: string;
+  readonly description: string;
+  readonly parameters?: unknown;
+  readonly returns?: unknown;
+}
+
+function createCodePlanManifest(
+  tools: readonly Tool[],
+): readonly CodePlanToolManifest[];
+
+function parseGeneratedCodePlan(text: string): GeneratedCodePlan;
+function validateGeneratedCodePlan(value: unknown): GeneratedCodePlan;
 ```
 
-Invalid generated JSON throws `GeneratedCodePlanParseError`.
+Unparseable extracted JSON throws `GeneratedCodePlanParseError`. A missing JSON object or invalid response shape throws `Error`.
 
 ## `gruntend/ui`
 
 ```ts
-createHtmlTag(): HtmlTag;
-createGeneratedUi(value: unknown): GeneratedUiCreateOutcome;
-compileHtmlTemplate(template: HtmlTemplate): GeneratedUiRenderOutcome;
+function createHtmlTag(): HtmlTag;
+function createGeneratedUi(value: unknown): GeneratedUiCreateOutcome;
+function compileHtmlTemplate(template: HtmlTemplate): GeneratedUiRenderOutcome;
 
 interface GeneratedUi {
   render(): GeneratedUiRenderOutcome;
@@ -259,7 +317,9 @@ interface GeneratedUi {
 ## `gruntend/ui/dom`
 
 ```ts
-mountGeneratedUi(
+type GeneratedUiEventName = "click" | "submit" | "input" | "change";
+
+function mountGeneratedUi(
   element: GeneratedUiMountElement,
   ui: GeneratedUi,
   options?: GeneratedUiMountOptions,
@@ -267,7 +327,11 @@ mountGeneratedUi(
 
 interface GeneratedUiMountHandle {
   render(): void;
-  runHandler(id: string, event?: unknown): Promise<void>;
+  runHandler(
+    handlerId: string,
+    event?: unknown,
+    eventName?: GeneratedUiEventName,
+  ): Promise<void>;
   update(nextUi: GeneratedUi): void;
   destroy(): void;
 }
