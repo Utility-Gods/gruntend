@@ -33,9 +33,14 @@ type RateLimitRow = {
   readonly window_start: number;
 };
 
+type MemoryCounter = {
+  windowStart: number;
+  count: number;
+};
+
 const WINDOW_SECONDS = 10 * 60;
 const LIMIT = 5;
-const memoryCounters = new Map<string, { windowStart: number; count: number }>();
+const memoryCounters = new Map<string, MemoryCounter>();
 
 export async function checkAgentPlanRateLimit(input: {
   readonly ip: string;
@@ -123,7 +128,8 @@ function currentWindowStart(): number {
 }
 
 async function hashRateLimitKey(ip: string): Promise<string> {
-  const secret = env.GRUNTEND_RATE_LIMIT_SECRET || env.OPENAI_API_KEY || "local";
+  const secret =
+    env.GRUNTEND_RATE_LIMIT_SECRET || env.OPENAI_API_KEY || "local";
   const bytes = new TextEncoder().encode(`agent-plan:${secret}:${ip}`);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   const hex = [...new Uint8Array(digest)]

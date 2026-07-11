@@ -3,10 +3,7 @@ import { env } from "$env/dynamic/private";
 import * as v from "valibot";
 import { createMockPlan } from "$lib/agent/mock-plan";
 import { appTools } from "$lib/agent/tools";
-import {
-  checkAgentPlanRateLimit,
-  readClientIp,
-} from "$lib/server/rate-limit";
+import { checkAgentPlanRateLimit, readClientIp } from "$lib/server/rate-limit";
 import { listMenus, listUsers } from "$lib/server/store";
 import { generateCodePlan, getModel, type Model } from "gruntend/generate";
 
