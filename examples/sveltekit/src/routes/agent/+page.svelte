@@ -126,14 +126,14 @@
     } catch (caught) {
       state = "error";
       updateMessage(workingId, {
-        text: `Something failed: ${caught instanceof Error ? caught.message : String(caught)}`,
+        text: `Something failed: ${readErrorMessage(caught)}`,
         tone: "error",
         uiComponent: errorComponent(),
         debug: [
           debugDetails,
           caught instanceof Error
             ? caught.stack || caught.message
-            : String(caught),
+            : JSON.stringify(caught, null, 2),
         ]
           .filter(Boolean)
           .join("\n\n"),
@@ -214,6 +214,16 @@
 
   function reportUiError(error: unknown) {
     console.error("[gruntend example] tagged UI failed", error);
+  }
+
+  function readErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "string") return error;
+    if (error && typeof error === "object" && "message" in error) {
+      const message = (error as { readonly message?: unknown }).message;
+      if (typeof message === "string") return message;
+    }
+    return "Unknown error";
   }
 
   function handleGeneratedLinkClick(event: MouseEvent) {

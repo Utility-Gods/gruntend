@@ -77,24 +77,27 @@ async function incrementD1Counter(
 ): Promise<number> {
   await ensureRateLimitTable(db);
 
-  const row = await db
-    .prepare(
-      `INSERT INTO agent_rate_limits (key, window_start, count, updated_at)
-       VALUES (?, ?, 1, ?)
-       ON CONFLICT(key) DO UPDATE SET
-         window_start = excluded.window_start,
-         count = CASE
-           WHEN agent_rate_limits.window_start = excluded.window_start
-           THEN agent_rate_limits.count + 1
-           ELSE 1
-         END,
-         updated_at = excluded.updated_at
-       RETURNING count, window_start`,
-    )
-    .bind(key, windowStart, new Date().toISOString())
+  const existing = await db
+    .prepare("SELECT count, window_start FROM agent_rate_limits WHERE key = ?")
+    .bind(key)
     .first<RateLimitRow>();
 
-  return row?.count ?? 1;
+  const count =
+    existing?.window_start === windowStart ? existing.count + 1 : 1;
+
+  await db
+    .prepare(
+      `INSERT INTO agent_rate_limits (key, window_start, count, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET
+         window_start = excluded.window_start,
+         count = excluded.count,
+         updated_at = excluded.updated_at`,
+    )
+    .bind(key, windowStart, count, new Date().toISOString())
+    .run();
+
+  return count;
 }
 
 async function ensureRateLimitTable(db: D1Database): Promise<void> {

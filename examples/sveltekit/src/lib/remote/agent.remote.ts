@@ -1,5 +1,6 @@
 import { command, getRequestEvent, query } from "$app/server";
 import { env } from "$env/dynamic/private";
+import { error } from "@sveltejs/kit";
 import * as v from "valibot";
 import { createMockPlan } from "$lib/agent/mock-plan";
 import { appTools } from "$lib/agent/tools";
@@ -45,7 +46,8 @@ export const generateAgentPlan = command(
       context: { platform: event.platform },
     });
     if (!rateLimit.allowed) {
-      throw new Error(
+      error(
+        429,
         `Too many planner requests. Try again after ${rateLimit.resetAt.toLocaleTimeString()}.`,
       );
     }
