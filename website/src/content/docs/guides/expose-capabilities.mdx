@@ -1,0 +1,51 @@
+---
+title: Expose application capabilities
+description: Give a model a small, typed surface instead of your application internals.
+---
+
+Start with the operations your application already owns. Describe each operation with a name, input schema, output schema, and human-readable description.
+
+```ts
+import { defineTools } from "gruntend/tool";
+import * as v from "valibot";
+
+export const tools = defineTools({
+  menus: {
+    list: {
+      description: "List restaurant menus.",
+      input: v.object({}),
+      output: v.object({
+        menus: v.array(v.object({
+          menuId: v.string(),
+          name: v.string(),
+        })),
+      }),
+    },
+  },
+});
+```
+
+Keep the contract focused. A model should see what an operation means, what it accepts, and what it returns—not your persistence layer or routes.
+
+## Use domain-shaped tools
+
+Prefer a capability that represents an application operation:
+
+```text
+menu.item.update
+menu.item.duplicate
+user.assignRole
+invoice.send
+```
+
+Avoid exposing broad mechanical access:
+
+```text
+sql.query
+api.fetch
+model.writeAnything
+```
+
+A focused tool surface gives the model useful authority while keeping the app in control.
+
+Next: [Run a plan through app handlers](/guides/run-a-plan/).

@@ -1,0 +1,101 @@
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/montserrat-latin.woff2") format("woff2");
+}
+
+:root {
+  --sl-font: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --sl-font-system: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --sl-color-accent-low: #ffedd5;
+  --sl-color-accent: #f54a00;
+  --sl-color-accent-high: #9a3412;
+  --sl-color-white: #0f172a;
+  --sl-color-gray-1: #1e293b;
+  --sl-color-gray-2: #475569;
+  --sl-color-gray-3: #64748b;
+  --sl-color-gray-4: #cbd5e1;
+  --sl-color-gray-5: #e2e8f0;
+  --sl-color-gray-6: #f8fafc;
+  --sl-color-black: #ffffff;
+  --sl-text-5xl: 2.5rem;
+  --sl-text-4xl: 2rem;
+  --sl-text-3xl: 1.6rem;
+  --sl-border-radius: 0;
+}
+
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #7c2d12;
+  --sl-color-accent: #fb923c;
+  --sl-color-accent-high: #ffedd5;
+}
+
+body {
+  background: #f7f6f3;
+  font-weight: 450;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+header.header {
+  border-bottom: 1px solid #fed7aa;
+  background: #fff;
+}
+
+.sidebar-pane,
+.main-frame {
+  background: #fff;
+}
+
+.sidebar-pane {
+  border-right: 1px solid #e2e8f0;
+}
+
+.site-title {
+  font-weight: 700;
+}
+
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3 {
+  color: #0f172a;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.sl-markdown-content h1 {
+  border-top: 4px solid #f54a00;
+  padding-top: 1.1rem;
+}
+
+.sl-markdown-content :not(a) > code {
+  border-radius: 0;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.sl-markdown-content pre {
+  border: 1px solid #e2e8f0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sl-markdown-content :is(.starlight-aside, .starlight-aside__content) {
+  border-radius: 0;
+}
+
+a {
+  text-underline-offset: 0.18em;
+}
+
+.pagination-links a,
+.sidebar-content a {
+  border-radius: 0;
+}
+
+.pagination-links a:hover,
+.sidebar-content a[aria-current="page"] {
+  background: #fff7ed;
+}

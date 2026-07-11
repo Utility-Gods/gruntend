@@ -1,0 +1,51 @@
+---
+title: What Gruntend is
+description: A semantic runtime layer for application capabilities.
+template: splash
+hero:
+  title: Make application capabilities usable by agents.
+  tagline: Gruntend is a toolkit for defining app-owned capabilities, generating orchestration plans, and projecting task-specific UI.
+  actions:
+    - text: Understand the format
+      link: /code-plan-format/
+      icon: right-arrow
+    - text: View the demo
+      link: https://demo.gruntend.com/
+      icon: external
+---
+
+Gruntend is not a chatbot framework, a component catalog, or a replacement for application logic.
+
+It is a toolkit for applications that already have meaningful capabilities—validation, workflows, permissions, entities, and handlers—and want an intelligent system to safely compose them.
+
+```text
+Application exposes semantic capabilities
+↓
+LLM generates orchestration logic
+↓
+Gruntend validates and executes through app-owned handlers
+↓
+UI projects the task state, choices, previews, and confirmation
+```
+
+## The application remains authoritative
+
+The model receives a limited tool surface. It does not receive arbitrary access to your database, internal APIs, browser APIs, or business logic.
+
+- `defineTools()` describes available capabilities and their typed contracts.
+- App-owned handlers perform the real work.
+- Generated JavaScript is a plan format, not trusted application code.
+- Generated UI is a projection of a task, not a replacement application.
+
+## Start from an outcome
+
+Most integrations begin with an outcome a person already needs:
+
+- Review every item below a price threshold and confirm a bulk change.
+- Copy selected records from one collection to another.
+- Turn a multi-screen administrative operation into a reviewable task.
+- Build an interface around the exact records and decisions involved.
+
+The [guides](/guides/expose-capabilities/) show how to compose the toolkit for those outcomes. The [reference](/reference/tools/) documents the lower-level primitives.
+
+> Gruntend is pre-release. Public npm installation instructions will be added before the first package release.

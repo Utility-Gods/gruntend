@@ -1,0 +1,54 @@
+---
+title: The code plan format
+description: Why Gruntend uses constrained JavaScript plans instead of a workflow DSL.
+---
+
+Gruntend’s plan format is deliberately small: a JSON envelope with a summary, runtime input, and JavaScript async-function body.
+
+```json
+{
+  "summary": "Preview low-priced items",
+  "input": {
+    "priceThreshold": 10,
+    "increasePercent": 0.2
+  },
+  "code": "var menus = await tools.menus.list({});\nreturn menus;"
+}
+```
+
+The runtime receives `input`, registered `tools`, `Promise`, and—in generated UI mode—`html`. It does **not** receive arbitrary imports, `fetch`, `window`, `document`, storage, or application internals.
+
+## Why JavaScript?
+
+Declarative workflow JSON is useful for linear steps. Ordinary admin work is not always linear:
+
+- filter records using a runtime value
+- branch based on a tool result
+- fan out independent reads with `Promise.all()`
+- loop over a selected set
+- return early when nothing matches
+
+Those are normal programming constructs, so Gruntend treats JavaScript as a constrained orchestration format.
+
+```ts
+var menus = await tools.menus.list({});
+var matching = menus.menus.filter(function (menu) {
+  return menu.name.includes(input.query);
+});
+
+if (matching.length === 0) {
+  return html`<p>No matching menus.</p>`;
+}
+
+return html`<ul>${matching.map(function (menu) {
+  return html`<li>${menu.name}</li>`;
+})}</ul>`;
+```
+
+The important boundary is not the syntax. It is the capability registry and app-owned handlers.
+
+## Generate plans or bring your own
+
+You can generate this envelope with `generateCodePlan()`, or let your own model/agent produce it. In both cases, validate and execute it through the same runtime.
+
+Next: [Expose application capabilities](/guides/expose-capabilities/).
