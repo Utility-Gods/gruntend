@@ -30,13 +30,31 @@
 </script>
 
 <div class="flex min-h-screen flex-col bg-[#f7f6f3] text-neutral-900">
-  <header class="border-b border-primary-200 bg-white shadow-[0_1px_0_rgba(245,74,0,0.05)]">
-    <div class="mx-auto flex h-16 max-w-6xl items-stretch justify-between px-4 md:px-5">
-      <a class="flex items-center gap-3" href={`${base}/`} aria-label="Juniper home">
-        <Utensils class="shrink-0 text-primary-600" size={24} strokeWidth={2.4} />
+  <header
+    class="border-b border-primary-200 bg-white shadow-[0_1px_0_rgba(245,74,0,0.05)]"
+  >
+    <div
+      class="mx-auto flex h-16 max-w-6xl items-stretch justify-between px-4 md:px-5"
+    >
+      <a
+        class="flex items-center gap-3"
+        href={`${base}/`}
+        aria-label="Juniper home"
+      >
+        <Utensils
+          class="shrink-0 text-primary-600"
+          size={24}
+          strokeWidth={2.4}
+        />
         <span>
-          <strong class="block text-sm font-bold tracking-[-0.025em] text-slate-950">Juniper</strong>
-          <span class="block text-[10px] font-medium tracking-wide text-neutral-500">Restaurant manager</span>
+          <strong
+            class="block text-sm font-bold tracking-[-0.025em] text-slate-950"
+            >Juniper</strong
+          >
+          <span
+            class="block text-[10px] font-medium tracking-wide text-neutral-500"
+            >Restaurant manager</span
+          >
         </span>
       </a>
 
@@ -64,10 +82,17 @@
   </main>
 
   <footer class="border-t border-neutral-200 bg-white">
-    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-5 gap-y-2 px-4 py-4 text-xs text-neutral-500 md:px-5">
+    <div
+      class="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-5 gap-y-2 px-4 py-4 text-xs text-neutral-500 md:px-5"
+    >
       <p>
         Powered by
-        <a class="font-semibold text-slate-700 hover:text-primary-600" href="https://gruntend.com/" target="_blank" rel="noreferrer">Gruntend</a>
+        <a
+          class="font-semibold text-slate-700 hover:text-primary-600"
+          href="https://gruntend.com/"
+          target="_blank"
+          rel="noreferrer">Gruntend</a
+        >
       </p>
       <a
         class="inline-flex items-center gap-1.5 font-medium text-neutral-600 hover:text-primary-600"

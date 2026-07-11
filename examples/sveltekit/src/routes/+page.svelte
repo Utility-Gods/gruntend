@@ -34,7 +34,10 @@
   const usersResponse = $derived(getUsers().current);
   const menuCount = $derived(menusResponse?.menus.length ?? 0);
   const itemCount = $derived(
-    menusResponse?.menus.reduce((total, menu) => total + menu.items.length, 0) ?? 0,
+    menusResponse?.menus.reduce(
+      (total, menu) => total + menu.items.length,
+      0,
+    ) ?? 0,
   );
   const teamCount = $derived(usersResponse?.users.length ?? 0);
 
@@ -69,7 +72,9 @@
     toolCallCount = 0;
 
     try {
-      const envelope = (await generateAgentPlan({ prompt: task })) as AgentGenerationEnvelope;
+      const envelope = (await generateAgentPlan({
+        prompt: task,
+      })) as AgentGenerationEnvelope;
       const plan = envelope.plan;
       resultTitle = plan.summary;
       debugDetails = JSON.stringify(
@@ -146,26 +151,46 @@
 </script>
 
 <div class="space-y-7">
-  <section class="overflow-hidden border border-neutral-200 border-t-4 border-t-primary-600 bg-white shadow-sm">
+  <section
+    class="overflow-hidden border border-neutral-200 border-t-4 border-t-primary-600 bg-white shadow-sm"
+  >
     <div class="flex flex-col gap-5 px-6 py-6 md:px-8">
-      <div class="flex flex-col justify-between gap-5 md:flex-row md:items-start">
+      <div
+        class="flex flex-col justify-between gap-5 md:flex-row md:items-start"
+      >
         <div class="max-w-2xl">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600">Restaurant operations</p>
-          <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">What needs to happen today?</h1>
-          <p class="mt-2 text-sm leading-6 text-neutral-600">Describe the change you need.</p>
+          <p
+            class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600"
+          >
+            Restaurant operations
+          </p>
+          <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+            What needs to happen today?
+          </h1>
+          <p class="mt-2 text-sm leading-6 text-neutral-600">
+            Describe the change you need.
+          </p>
         </div>
-        <dl class="flex divide-x divide-neutral-200 border border-neutral-200 bg-[#faf9f6]">
+        <dl
+          class="flex divide-x divide-neutral-200 border border-neutral-200 bg-[#faf9f6]"
+        >
           <div class="min-w-24 px-4 py-2.5">
             <dt class="text-[11px] text-neutral-500">Menus</dt>
-            <dd class="mt-0.5 text-lg font-semibold text-slate-950">{menuCount}</dd>
+            <dd class="mt-0.5 text-lg font-semibold text-slate-950">
+              {menuCount}
+            </dd>
           </div>
           <div class="min-w-24 px-4 py-2.5">
             <dt class="text-[11px] text-neutral-500">Items</dt>
-            <dd class="mt-0.5 text-lg font-semibold text-slate-950">{itemCount}</dd>
+            <dd class="mt-0.5 text-lg font-semibold text-slate-950">
+              {itemCount}
+            </dd>
           </div>
           <div class="min-w-24 px-4 py-2.5">
             <dt class="text-[11px] text-neutral-500">Staff</dt>
-            <dd class="mt-0.5 text-lg font-semibold text-slate-950">{teamCount}</dd>
+            <dd class="mt-0.5 text-lg font-semibold text-slate-950">
+              {teamCount}
+            </dd>
           </div>
         </dl>
       </div>
@@ -182,13 +207,18 @@
             bind:value={prompt}
             rows="1"
             class="min-h-12 flex-1 resize-none border border-neutral-300 bg-white px-3.5 py-3 text-sm leading-6 text-slate-950 outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
-            placeholder="Move selected dinner items to a new seasonal menu..."></textarea>
+            placeholder="Move selected dinner items to a new seasonal menu..."
+          ></textarea>
           <button
             type="submit"
             class="h-12 bg-primary-600 px-5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-wait disabled:opacity-60"
             disabled={state === "planning" || state === "running"}
           >
-            {state === "planning" ? "Working..." : state === "running" ? "Preparing..." : "Run"}
+            {state === "planning"
+              ? "Working..."
+              : state === "running"
+                ? "Preparing..."
+                : "Run"}
           </button>
         </div>
         <div class="mt-3 grid gap-2 lg:grid-cols-2">
@@ -210,67 +240,107 @@
 
     {#if state !== "idle"}
       <div class="border-t border-neutral-200 bg-white" aria-live="polite">
-      {#if state === "done" || state === "error"}
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-[#faf9f6] px-6 py-3 md:px-8">
-          <h2 class="text-base font-semibold text-slate-950">{resultTitle}</h2>
-          {#if state === "done"}
-            <span class="bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-              Ready · {toolCallCount} operation{toolCallCount === 1 ? "" : "s"}
-            </span>
-          {/if}
-        </header>
-      {/if}
-
-      <div class="p-5 md:p-6">
-        {#if state === "planning" || state === "running"}
-          <div class="mx-auto flex max-w-2xl items-start gap-4 py-5">
-            <Loader class="mt-0.5 shrink-0 animate-spin text-primary-600" size={24} strokeWidth={2.3} />
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center justify-between gap-4">
-                <p class="text-sm font-semibold text-slate-900">
-                  {state === "planning" ? "Working on your request" : "Preparing the result"}
-                </p>
-                <span class="text-xs font-medium tabular-nums text-neutral-500">
-                  {state === "planning" ? "35%" : "75%"}
-                </span>
-              </div>
-              <div class="mt-2.5 h-2 overflow-hidden rounded-full bg-neutral-100" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={state === "planning" ? 35 : 75}>
-                <div class={`h-full rounded-full bg-primary-600 transition-[width] duration-700 ease-out ${state === "planning" ? "w-[35%]" : "w-3/4"}`}></div>
-              </div>
-
-            </div>
-          </div>
-        {:else if state === "error"}
-          <div class="border-l-4 border-red-500 bg-red-50 p-4">
-            <h3 class="font-semibold text-red-900">This task could not be prepared</h3>
-            <p class="mt-1 text-sm text-red-700">{errorMessage}</p>
-          </div>
-          {#if debugDetails}
-            <details class="mt-4 bg-neutral-50 p-3 text-xs leading-5 text-neutral-600">
-              <summary class="cursor-pointer font-semibold">Technical details</summary>
-              <pre class="mt-3 overflow-auto whitespace-pre-wrap">{debugDetails}</pre>
-            </details>
-          {/if}
-        {:else if resultUi}
-          <div
-            class="generated-workspace"
-            role="presentation"
-            onclick={handleGeneratedLinkClick}
-            onkeydown={() => undefined}
+        {#if state === "done" || state === "error"}
+          <header
+            class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-[#faf9f6] px-6 py-3 md:px-8"
           >
-            <GeneratedUi ui={resultUi} onError={(error) => console.error("Generated UI failed", error)} />
-          </div>
+            <h2 class="text-base font-semibold text-slate-950">
+              {resultTitle}
+            </h2>
+            {#if state === "done"}
+              <span
+                class="bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+              >
+                Ready · {toolCallCount} operation{toolCallCount === 1
+                  ? ""
+                  : "s"}
+              </span>
+            {/if}
+          </header>
         {/if}
-      </div>
+
+        <div class="p-5 md:p-6">
+          {#if state === "planning" || state === "running"}
+            <div class="mx-auto flex max-w-2xl items-start gap-4 py-5">
+              <Loader
+                class="mt-0.5 shrink-0 animate-spin text-primary-600"
+                size={24}
+                strokeWidth={2.3}
+              />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-4">
+                  <p class="text-sm font-semibold text-slate-900">
+                    {state === "planning"
+                      ? "Working on your request"
+                      : "Preparing the result"}
+                  </p>
+                  <span
+                    class="text-xs font-medium tabular-nums text-neutral-500"
+                  >
+                    {state === "planning" ? "35%" : "75%"}
+                  </span>
+                </div>
+                <div
+                  class="mt-2.5 h-2 overflow-hidden rounded-full bg-neutral-100"
+                  role="progressbar"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow={state === "planning" ? 35 : 75}
+                >
+                  <div
+                    class={`h-full rounded-full bg-primary-600 transition-[width] duration-700 ease-out ${state === "planning" ? "w-[35%]" : "w-3/4"}`}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          {:else if state === "error"}
+            <div class="border-l-4 border-red-500 bg-red-50 p-4">
+              <h3 class="font-semibold text-red-900">
+                This task could not be prepared
+              </h3>
+              <p class="mt-1 text-sm text-red-700">{errorMessage}</p>
+            </div>
+            {#if debugDetails}
+              <details
+                class="mt-4 bg-neutral-50 p-3 text-xs leading-5 text-neutral-600"
+              >
+                <summary class="cursor-pointer font-semibold"
+                  >Technical details</summary
+                >
+                <pre
+                  class="mt-3 overflow-auto whitespace-pre-wrap">{debugDetails}</pre>
+              </details>
+            {/if}
+          {:else if resultUi}
+            <div
+              class="generated-workspace"
+              role="presentation"
+              onclick={handleGeneratedLinkClick}
+              onkeydown={() => undefined}
+            >
+              <GeneratedUi
+                ui={resultUi}
+                onError={(error) => console.error("Generated UI failed", error)}
+              />
+            </div>
+          {/if}
+        </div>
       </div>
     {/if}
   </section>
 </div>
 
 {#if notice}
-  <div class="fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,34rem)] -translate-x-1/2 items-center justify-between gap-4 border border-primary-200 bg-white px-4 py-3 shadow-lg" role="status">
+  <div
+    class="fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,34rem)] -translate-x-1/2 items-center justify-between gap-4 border border-primary-200 bg-white px-4 py-3 shadow-lg"
+    role="status"
+  >
     <p class="text-sm font-medium text-slate-800">{notice}</p>
-    <button type="button" class="shrink-0 text-xs font-semibold text-primary-700 hover:text-primary-900" onclick={() => (notice = "")}>Dismiss</button>
+    <button
+      type="button"
+      class="shrink-0 text-xs font-semibold text-primary-700 hover:text-primary-900"
+      onclick={() => (notice = "")}>Dismiss</button
+    >
   </div>
 {/if}
 

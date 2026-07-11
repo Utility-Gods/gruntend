@@ -92,8 +92,7 @@ async function incrementD1Counter(
     .bind(key)
     .first<RateLimitRow>();
 
-  const count =
-    existing?.window_start === windowStart ? existing.count + 1 : 1;
+  const count = existing?.window_start === windowStart ? existing.count + 1 : 1;
 
   await db
     .prepare(

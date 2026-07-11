@@ -42,7 +42,9 @@
 <section class="space-y-5">
   <header class="flex items-center gap-3 py-1">
     <BookOpen class="shrink-0 text-primary-600" size={23} strokeWidth={2.2} />
-    <h1 class="text-xl font-semibold tracking-tight text-slate-950">Menus and pricing</h1>
+    <h1 class="text-xl font-semibold tracking-tight text-slate-950">
+      Menus and pricing
+    </h1>
   </header>
 
   {#if !menusResponse}
@@ -111,7 +113,9 @@
         {:else}
           <div class="py-8">
             <h3 class="text-base font-medium text-neutral-950">No items yet</h3>
-            <p class="mt-1 text-neutral-600">Use the overview to create or move items into this menu.</p>
+            <p class="mt-1 text-neutral-600">
+              Use the overview to create or move items into this menu.
+            </p>
           </div>
         {/each}
       </div>
