@@ -1,0 +1,82 @@
+---
+title: Framework adapters
+description: Mount the same GeneratedUi controller in Svelte, React, Vue, or Solid.
+---
+
+<p class="doc-lead">
+  Each adapter is a thin wrapper around <code>mountGeneratedUi()</code>.
+  Generated plans never contain framework syntax.
+</p>
+
+Create the controller once from a successful UI plan result:
+
+```ts
+import { createGeneratedUi } from "gruntend/ui";
+
+if (result.status !== "done") throw new Error(result.error);
+const ui = createGeneratedUi(result.result).unwrap();
+```
+
+## Svelte
+
+```svelte
+<script lang="ts">
+  import GeneratedUi from "gruntend/ui/svelte";
+
+  let { ui } = $props();
+</script>
+
+<GeneratedUi {ui} onError={console.error} />
+```
+
+## React
+
+```tsx
+import GeneratedUi from "gruntend/ui/react";
+
+export function TaskSurface({ ui }) {
+  return <GeneratedUi ui={ui} onError={console.error} />;
+}
+```
+
+## Vue
+
+```vue
+<script setup>
+import GeneratedUi from "gruntend/ui/vue";
+
+function onError(error) {
+  console.error(error);
+}
+</script>
+
+<template>
+  <GeneratedUi :ui="ui" @error="onError" />
+</template>
+```
+
+## Solid
+
+```tsx
+import GeneratedUi from "gruntend/ui/solid";
+
+export function TaskSurface(props) {
+  return <GeneratedUi ui={props.ui} onError={console.error} />;
+}
+```
+
+## Shared callbacks
+
+Svelte, React, and Solid accept:
+
+```text
+onError · onRender · onActionStart · onActionEnd
+```
+
+Vue emits the matching events:
+
+```text
+error · render · action-start · action-end
+```
+
+Changing `ui` updates the existing mount. Unmounting the component removes delegated listeners. All adapters expose `generated-ui-shell`, `generated-ui`, `generated-ui-status`, and `generated-ui-error` classes for host styling.

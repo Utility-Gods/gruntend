@@ -1,0 +1,113 @@
+---
+title: Code plans
+description: Write a plan directly or generate the same JavaScript format with any model.
+---
+
+<p class="doc-lead">
+  A code plan is an async JavaScript function body. It composes registered tools
+  and returns data or optional UI.
+</p>
+
+## Plan code
+
+```js
+const { items } = await tools.menu.items.list({
+  menuId: input.menuId,
+});
+
+return items.filter((item) => item.price < input.maximumPrice);
+```
+
+The interpreter provides:
+
+- `input` — the task data supplied by the application
+- `tools` — registered application capabilities
+- `Promise` — promises and `Promise.all()` for asynchronous calls
+- `console` — diagnostic logging
+- `html` — available only when generated UI is enabled
+
+It does not provide imports, `fetch`, `window`, `document`, storage, or application services.
+
+Use ordinary JavaScript for runtime decisions. Independent calls can use `Promise.all()`; dependent calls should be awaited in order.
+
+## Plan input
+
+Input is supplied separately from code:
+
+```ts
+await gruntend.runCodePlan(code, {
+  input: { menuId: "menu_1", maximumPrice: 10 },
+  handlers,
+});
+```
+
+The plan reads those values from `input`. Keeping values out of generated source makes a plan easier to inspect and reuse.
+
+## Where types apply
+
+Gruntend is typed at the application boundary, but the generated plan is JavaScript, not TypeScript.
+
+- `defineTools()` preserves tool names and infers handler input and output types from the schemas.
+- `ToolHandlerMap<typeof tools>` type-checks handler keys and return values in application code.
+- The model sees the optional `parameters` and `returns` descriptions in the tool manifest.
+- At runtime, Gruntend validates every plan-supplied tool input and every successful handler output.
+
+The plan itself is not trusted to satisfy TypeScript types. Runtime schemas enforce the contract when interpreted JavaScript crosses into a handler.
+
+## Generated plan format
+
+A model-generated plan uses a small JSON envelope:
+
+```json
+{
+  "summary": "List inexpensive menu items",
+  "input": {
+    "menuId": "menu_1",
+    "maximumPrice": 10
+  },
+  "code": "const { items } = await tools.menu.items.list({ menuId: input.menuId }); return items.filter((item) => item.price < input.maximumPrice);"
+}
+```
+
+- `summary` is a non-empty human-readable description.
+- `input` becomes the runtime `input` value.
+- `code` is the JavaScript function body.
+
+## Generate with Gruntend
+
+```ts
+import { generateCodePlan, getModel } from "gruntend/generate";
+
+const { plan } = await generateCodePlan({
+  model: getModel("openai", "model-id"),
+  tools,
+  task,
+  input,
+});
+```
+
+Generation returns the envelope. It does not execute it.
+
+## Bring your own model
+
+```ts
+import {
+  createCodePlanPrompt,
+  parseGeneratedCodePlan,
+} from "gruntend/generate";
+
+const prompt = createCodePlanPrompt({ tools, task, input });
+const text = await myModel.complete({
+  system: prompt.system,
+  user: prompt.user,
+});
+const plan = parseGeneratedCodePlan(text);
+```
+
+`myModel.complete(...)` is application code; Gruntend only requires the returned text. Invalid generated JSON is rejected rather than silently repaired.
+
+## Tagged HTML plans
+
+Pass `ui: { kind: "tagged-html" }` while building or generating a plan that should return UI. The interpreter must also receive `ui: { html }` when that plan runs.
+
+See [Generated UI](/guides/generated-ui/).

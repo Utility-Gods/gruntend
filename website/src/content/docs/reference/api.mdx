@@ -1,0 +1,340 @@
+---
+title: API reference
+description: Public Gruntend signatures and types.
+---
+
+## `gruntend/tool`
+
+### `ToolSpec` and `Tool`
+
+```ts
+interface ToolSpec<
+  InputSchema extends StandardSchemaV1 = StandardSchemaV1,
+  OutputSchema extends StandardSchemaV1 = StandardSchemaV1,
+> {
+  readonly description: string;
+  readonly input: InputSchema;
+  readonly output: OutputSchema;
+  readonly parameters?: unknown;
+  readonly returns?: unknown;
+}
+
+interface Tool<
+  Name extends string = string,
+  InputSchema extends StandardSchemaV1 = StandardSchemaV1,
+  OutputSchema extends StandardSchemaV1 = StandardSchemaV1,
+> {
+  readonly name: Name;
+  readonly description: string;
+  readonly input: InputSchema;
+  readonly output: OutputSchema;
+  readonly parameters?: unknown;
+  readonly returns?: unknown;
+}
+```
+
+`ToolSpec` is a leaf passed to `defineTools()`. `Tool` is the registered value returned by `defineTools()`. `input` and `output` are runtime schemas; `parameters` and `returns` are optional model-facing data.
+
+### `defineTools(namespace)`
+
+```ts
+function defineTools<const TNamespace extends Record<string, unknown>>(
+  namespace: TNamespace,
+): readonly ToolsFromNamespace<TNamespace>[];
+```
+
+```ts
+const tools = defineTools({
+  menu: {
+    item: {
+      get: {
+        description: "Get one menu item.",
+        input: inputSchema,
+        output: outputSchema,
+      },
+    },
+  },
+});
+```
+
+For this definition, TypeScript infers:
+
+```ts
+type Tools = typeof tools;
+// readonly Tool<
+//   "menu.item.get",
+//   typeof inputSchema,
+//   typeof outputSchema
+// >[]
+```
+
+### `ToolHandlerMap<TTools>`
+
+```ts
+const handlers = {
+  "menu.item.get": async ({ input, ok, err }) => {
+    const item = await getItem(input.itemId);
+    return item
+      ? ok({ item })
+      : err({ code: "ITEM_NOT_FOUND", message: "Item not found." });
+  },
+} satisfies ToolHandlerMap<typeof tools>;
+```
+
+`input` and `ok(...)` are inferred from the tool schemas.
+
+```ts
+interface ToolHandlerContext<Input, Output> {
+  readonly input: Input;
+  readonly signal?: AbortSignal;
+  readonly attempt: number;
+  readonly maxAttempts: number;
+  readonly ok: (output: Output) => ToolResult<Output>;
+  readonly err: (error: ToolExecutionError) => ToolResult<never>;
+}
+
+interface ToolExecutionError {
+  readonly code: string;
+  readonly message: string;
+  readonly retryable?: boolean;
+  readonly details?: Record<string, unknown>;
+}
+```
+
+## `gruntend/registry`
+
+```ts
+interface ToolRegistry<TTool extends Tool = Tool> {
+  tools(): readonly TTool[];
+  get(name: string): TTool | undefined;
+}
+
+function createToolRegistry<const TTools extends readonly Tool[]>(
+  tools?: TTools,
+): ToolRegistry<TTools[number]>;
+```
+
+Duplicate names throw `Error`.
+
+## `gruntend/client`
+
+### `createGruntendClient(options)`
+
+```ts
+interface GruntendClientOptions<
+  TTools extends readonly Tool[] = readonly Tool[],
+> {
+  readonly tools?: TTools;
+  readonly registry?: ToolRegistry<TTools[number]>;
+}
+
+function createGruntendClient<const TTools extends readonly Tool[]>(
+  options: GruntendClientOptions<TTools>,
+): GruntendClient<TTools>;
+```
+
+```ts
+const gruntend = createGruntendClient({ tools });
+```
+
+### `client.runCodePlan(code, options)`
+
+```ts
+interface GruntendClient<TTools extends readonly Tool[] = readonly Tool[]> {
+  readonly registry: ToolRegistry<TTools[number]>;
+  runCodePlan(
+    code: string,
+    options: GruntendClientCodePlanRunOptions<TTools>,
+  ): Promise<CodePlanRunResult>;
+}
+
+interface GruntendClientCodePlanRunOptions<
+  TTools extends readonly Tool[] = readonly Tool[],
+> {
+  readonly input?: unknown;
+  readonly handlers: ToolHandlerMap<TTools>;
+  readonly id?: string;
+  readonly signal?: AbortSignal;
+  readonly retry?: RetryPolicy;
+  readonly ui?: CodePlanUiRuntimeOptions;
+  readonly onEvent?: (event: RuntimeEvent) => void;
+}
+```
+
+## `gruntend/code-plan`
+
+```ts
+interface CodePlanUiRuntimeOptions {
+  readonly html: HtmlTag;
+}
+
+interface CodePlanRunOptions<TTool extends Tool = Tool> {
+  readonly code: string;
+  readonly input?: unknown;
+  readonly registry: ToolRegistry<TTool>;
+  readonly handlers: ToolHandlerMapFor<TTool>;
+  readonly id?: string;
+  readonly signal?: AbortSignal;
+  readonly retry?: RetryPolicy;
+  readonly ui?: CodePlanUiRuntimeOptions;
+  readonly onEvent?: (event: RuntimeEvent) => void;
+}
+
+function runCodePlan<TTool extends Tool>(
+  options: CodePlanRunOptions<TTool>,
+): Promise<CodePlanRunResult>;
+
+interface CodePlanRunResult {
+  readonly status: "done" | "failed";
+  readonly result?: unknown;
+  readonly errors: Record<string, ToolRunError>;
+  readonly error?: string;
+}
+```
+
+## `gruntend/runtime`
+
+```ts
+type RetryPolicy = {
+  readonly maxAttempts?: number;
+  readonly delayMs?: number;
+};
+
+type ToolRunErrorType =
+  | "unknown_tool"
+  | "missing_handler"
+  | "invalid_input"
+  | "invalid_output"
+  | "handler_error";
+
+interface ToolRunError {
+  readonly type: ToolRunErrorType;
+  readonly callId: string;
+  readonly tool: string;
+  readonly message: string;
+  readonly code?: string;
+  readonly retryable?: boolean;
+  readonly details?: Record<string, unknown>;
+}
+
+type RuntimeEvent =
+  | PlanStartedEvent
+  | PlanCompletedEvent
+  | PlanFailedEvent
+  | ToolStartedEvent
+  | ToolRetryingEvent
+  | ToolCompletedEvent
+  | ToolFailedEvent;
+```
+
+## `gruntend/generate`
+
+### `GeneratedCodePlan`
+
+```ts
+interface GeneratedCodePlan {
+  readonly summary: string;
+  readonly input: Record<string, unknown>;
+  readonly code: string;
+}
+```
+
+### `createCodePlanPrompt(request)`
+
+```ts
+interface CodePlanPromptRequest {
+  readonly tools: readonly Tool[];
+  readonly task: string;
+  readonly input?: unknown;
+  readonly instructions?: string;
+  readonly ui?: { readonly kind: "tagged-html" };
+}
+
+interface CodePlanPrompt {
+  readonly system: string;
+  readonly user: string;
+}
+
+function createCodePlanPrompt(request: CodePlanPromptRequest): CodePlanPrompt;
+```
+
+Returns provider-neutral prompt text without calling a model.
+
+### `generateCodePlan(request)`
+
+```ts
+interface CodePlanGenerationRequest<TApi extends Api = Api>
+  extends CodePlanPromptRequest {
+  readonly model: Model<TApi>;
+  readonly options?: SimpleStreamOptions;
+  readonly complete?: CodePlanGenerationComplete<TApi>;
+}
+
+interface CodePlanGenerationResponse {
+  readonly plan: GeneratedCodePlan;
+  readonly text: string;
+  readonly message: AssistantMessage;
+}
+
+function generateCodePlan<TApi extends Api>(
+  request: CodePlanGenerationRequest<TApi>,
+): Promise<CodePlanGenerationResponse>;
+```
+
+### Parsing and manifests
+
+```ts
+interface CodePlanToolManifest {
+  readonly name: string;
+  readonly description: string;
+  readonly parameters?: unknown;
+  readonly returns?: unknown;
+}
+
+function createCodePlanManifest(
+  tools: readonly Tool[],
+): readonly CodePlanToolManifest[];
+
+function parseGeneratedCodePlan(text: string): GeneratedCodePlan;
+function validateGeneratedCodePlan(value: unknown): GeneratedCodePlan;
+```
+
+Unparseable extracted JSON throws `GeneratedCodePlanParseError`. A missing JSON object or invalid response shape throws `Error`.
+
+## `gruntend/ui`
+
+```ts
+function createHtmlTag(): HtmlTag;
+function createGeneratedUi(value: unknown): GeneratedUiCreateOutcome;
+function compileHtmlTemplate(template: HtmlTemplate): GeneratedUiRenderOutcome;
+
+interface GeneratedUi {
+  render(): GeneratedUiRenderOutcome;
+  runHandler(handlerId: string, ...args: readonly unknown[]): unknown;
+}
+```
+
+## `gruntend/ui/dom`
+
+```ts
+type GeneratedUiEventName = "click" | "submit" | "input" | "change";
+
+function mountGeneratedUi(
+  element: GeneratedUiMountElement,
+  ui: GeneratedUi,
+  options?: GeneratedUiMountOptions,
+): GeneratedUiMountHandle;
+
+interface GeneratedUiMountHandle {
+  render(): void;
+  runHandler(
+    handlerId: string,
+    event?: unknown,
+    eventName?: GeneratedUiEventName,
+  ): Promise<void>;
+  update(nextUi: GeneratedUi): void;
+  destroy(): void;
+}
+```
+
+Adapters are exported from `gruntend/ui/svelte`, `gruntend/ui/react`, `gruntend/ui/vue`, and `gruntend/ui/solid`.
