@@ -52,6 +52,26 @@ export interface CodePlanGenerationResponse {
   readonly message: AssistantMessage;
 }
 
+export class GeneratedCodePlanParseError extends Error {
+  readonly responseText: string;
+  readonly extractedText: string;
+
+  constructor(input: {
+    readonly cause: unknown;
+    readonly responseText: string;
+    readonly extractedText: string;
+  }) {
+    const detail =
+      input.cause instanceof Error ? input.cause.message : String(input.cause);
+    super(`Could not parse generated code plan JSON: ${detail}`, {
+      cause: input.cause,
+    });
+    this.name = "GeneratedCodePlanParseError";
+    this.responseText = input.responseText;
+    this.extractedText = input.extractedText;
+  }
+}
+
 export function createCodePlanManifest(
   tools: readonly Tool[],
 ): readonly CodePlanToolManifest[] {
@@ -64,7 +84,18 @@ export function createCodePlanManifest(
 }
 
 export function parseGeneratedCodePlan(text: string): GeneratedCodePlan {
-  return validateGeneratedCodePlan(JSON.parse(extractJsonObject(text)));
+  const extractedText = extractJsonObject(text);
+
+  try {
+    return validateGeneratedCodePlan(parseGeneratedJson(extractedText));
+  } catch (cause) {
+    if (!(cause instanceof SyntaxError)) throw cause;
+    throw new GeneratedCodePlanParseError({
+      cause,
+      responseText: text,
+      extractedText,
+    });
+  }
 }
 
 export function validateGeneratedCodePlan(value: unknown): GeneratedCodePlan {
@@ -128,6 +159,15 @@ export async function generateCodePlan<TApi extends Api>(
     text,
     message,
   };
+}
+
+function parseGeneratedJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (cause) {
+    if (!(cause instanceof SyntaxError) || !text.includes("\\${")) throw cause;
+    return JSON.parse(text.replaceAll("\\${", "${"));
+  }
 }
 
 function normalizeGeneratedInput(

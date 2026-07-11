@@ -199,7 +199,7 @@ export async function createUser(
   if (existing) return rowToUser(existing);
 
   const user: User = {
-    userId: await nextD1Id(d1, "users", "user_id", "user"),
+    userId: newD1Id("user"),
     name: input.name,
     role: input.role,
     createdAt: new Date().toISOString(),
@@ -260,7 +260,7 @@ export async function createMenu(
   if (existing) return rowToMenu(existing);
 
   const menu: Menu = {
-    menuId: await nextD1Id(d1, "menus", "menu_id", "menu"),
+    menuId: newD1Id("menu"),
     name: input.name,
     description: input.description ?? "Created by the Gruntend agent.",
     ownerUserId: input.ownerUserId ?? "user_1",
@@ -338,7 +338,7 @@ export async function createMenuItem(
   if (existing) return rowToMenuItem(existing);
 
   const item: MenuItem = {
-    itemId: await nextD1Id(d1, "menu_items", "item_id", "item"),
+    itemId: newD1Id("item"),
     menuId: input.menuId,
     name: input.name,
     price: input.price,
@@ -520,23 +520,8 @@ async function ensureD1(db: D1Database): Promise<void> {
   initializedD1.add(db);
 }
 
-async function nextD1Id(
-  db: D1Database,
-  table: string,
-  column: string,
-  prefix: string,
-): Promise<string> {
-  const rows = await db
-    .prepare(`SELECT ${column} as id FROM ${table}`)
-    .all<{ readonly id: string }>();
-  let max = 0;
-
-  for (const row of rows.results ?? []) {
-    const value = Number(row.id.replace(`${prefix}_`, ""));
-    if (Number.isFinite(value) && value > max) max = value;
-  }
-
-  return `${prefix}_${max + 1}`;
+function newD1Id(prefix: string): string {
+  return `${prefix}_${crypto.randomUUID()}`;
 }
 
 async function nextCopyName(

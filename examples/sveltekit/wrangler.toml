@@ -17,5 +17,5 @@ migrations_dir = "migrations"
 [vars]
 GRUNTEND_AGENT_MODE = "openai"
 GRUNTEND_EXAMPLE_BASE_PATH = ""
-OPENAI_MODEL = "gpt-5.1"
+OPENAI_MODEL = "gpt-5.5"
 

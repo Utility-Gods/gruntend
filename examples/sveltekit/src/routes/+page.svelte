@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
-  import { Loader } from "lucide-svelte";
+  import { Copy, Loader, Salad, Tags, TrendingUp } from "lucide-svelte";
   import { gruntend } from "$lib/agent/client";
   import { createBrowserHandlers } from "$lib/agent/handlers";
   import { generateAgentPlan } from "$lib/remote/agent.remote";
@@ -23,11 +23,24 @@
   };
 
   const suggestions = [
-    "Show items below $10 and let me preview a 20% price increase",
-    "Create a seasonal menu from vegetarian items",
-    "Show every menu and highlight its most expensive item",
-    "Give me options to duplicate popular dinner items into brunch",
-  ];
+    {
+      kind: "price",
+      prompt:
+        "Show every item under $10 and preview a 20% price increase for each item",
+    },
+    {
+      kind: "menu",
+      prompt: "Build a Vegetarian Specials menu from vegetarian items",
+    },
+    {
+      kind: "tags",
+      prompt: "Add a seasonal tag to drinks under $7",
+    },
+    {
+      kind: "copy",
+      prompt: "Copy popular Dinner items into the Brunch menu",
+    },
+  ] as const;
 
   const taggedHtml = createHtmlTag();
   const menusResponse = $derived(getMenusWithItems().current);
@@ -49,6 +62,13 @@
   let debugDetails = $state("");
   let toolCallCount = $state(0);
   let notice = $state("");
+  let promptInput: HTMLTextAreaElement;
+
+  function chooseSuggestion(suggestion: string) {
+    prompt = suggestion;
+    notice = "";
+    promptInput.focus();
+  }
 
   function submitTask() {
     const task = prompt.trim();
@@ -125,6 +145,7 @@
   }
 
   function recordEvent(event: RuntimeEvent) {
+    console.debug("[juniper operation]", event);
     if (event.type === "tool.started") toolCallCount += 1;
   }
 
@@ -204,6 +225,7 @@
       >
         <div class="flex flex-col gap-2 sm:flex-row">
           <textarea
+            bind:this={promptInput}
             bind:value={prompt}
             rows="1"
             class="min-h-12 flex-1 resize-none border border-neutral-300 bg-white px-3.5 py-3 text-sm leading-6 text-slate-950 outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
@@ -225,13 +247,29 @@
           {#each suggestions as suggestion}
             <button
               type="button"
-              class="w-full border border-neutral-200 bg-[#faf9f6] px-3 py-2 text-left text-xs font-medium leading-5 text-neutral-600 transition hover:border-primary-600 hover:bg-white hover:text-primary-600"
-              onclick={() => {
-                notice = "";
-                void runTask(suggestion);
-              }}
+              class="group flex w-full items-center gap-3 border border-neutral-200 bg-[#faf9f6] px-3 py-3 text-left transition hover:border-primary-600 hover:bg-white"
+              onclick={() => chooseSuggestion(suggestion.prompt)}
             >
-              {suggestion}
+              <span class="text-primary-600">
+                {#if suggestion.kind === "price"}
+                  <TrendingUp size={19} strokeWidth={2.1} />
+                {:else if suggestion.kind === "menu"}
+                  <Salad size={19} strokeWidth={2.1} />
+                {:else if suggestion.kind === "tags"}
+                  <Tags size={19} strokeWidth={2.1} />
+                {:else}
+                  <Copy size={19} strokeWidth={2.1} />
+                {/if}
+              </span>
+              <strong
+                class="min-w-0 flex-1 text-xs font-semibold leading-5 text-slate-900 group-hover:text-primary-600"
+              >
+                {suggestion.prompt}
+              </strong>
+              <span
+                class="text-[10px] font-semibold uppercase tracking-wide text-neutral-400 group-hover:text-primary-600"
+                >Review</span
+              >
             </button>
           {/each}
         </div>

@@ -96,7 +96,7 @@ const generated = await generateCodePlan({
     menus: await listMenus(),
   },
   ui: { kind: "tagged-html" },
-  model: getModel("openai", "gpt-5.1"),
+  model: getModel("openai", "gpt-5.5"),
   options: {
     apiKey: process.env.OPENAI_API_KEY,
     reasoning: "low",
@@ -333,7 +333,7 @@ Use real LLM mode with `examples/sveltekit/.env`:
 ```env
 GRUNTEND_AGENT_MODE=openai
 OPENAI_API_KEY=your_key_here
-OPENAI_MODEL=gpt-5.1
+OPENAI_MODEL=gpt-5.5
 ```
 
 Then open:

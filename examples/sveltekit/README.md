@@ -32,7 +32,7 @@ Then route `https://gruntend.com/example` to this app through your host or rever
 ```env
 GRUNTEND_AGENT_MODE=openai
 OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-5.1
+OPENAI_MODEL=gpt-5.5
 ```
 
 For a public demo, set an LLM provider spend cap and consider Cloudflare rate limiting or Turnstile before allowing planning requests.

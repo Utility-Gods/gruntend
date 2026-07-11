@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import {
   createCodePlanManifest,
   generateCodePlan,
+  GeneratedCodePlanParseError,
   parseGeneratedCodePlan,
   type CodePlanGenerationComplete,
   type CodePlanGenerationRequest,
@@ -139,6 +140,33 @@ test("parseGeneratedCodePlan parses and validates an LLM text response", () => {
   expect(() =>
     parseGeneratedCodePlan('{"summary":"Missing code","input":{}}'),
   ).toThrow('Generated code plan must include a non-empty "code" string.');
+});
+
+test("parseGeneratedCodePlan repairs escaped template interpolation", () => {
+  expect(
+    parseGeneratedCodePlan(
+      String.raw`{"summary":"Render","input":{},"code":"return html\`<p>\${input.name}</p>\`;"}`,
+    ),
+  ).toEqual({
+    summary: "Render",
+    input: {},
+    code: "return html`<p>${input.name}</p>`;",
+  });
+});
+
+test("parseGeneratedCodePlan exposes the raw response when JSON is invalid", () => {
+  const text = '{"summary":"Broken","input":{},"code":"bad\\q"}';
+
+  try {
+    parseGeneratedCodePlan(text);
+    throw new Error("Expected parsing to fail.");
+  } catch (error) {
+    expect(error).toBeInstanceOf(GeneratedCodePlanParseError);
+    expect((error as GeneratedCodePlanParseError).responseText).toBe(text);
+    expect((error as GeneratedCodePlanParseError).message).toContain(
+      "Could not parse generated code plan JSON",
+    );
+  }
 });
 
 test("generateCodePlan enables tagged-html UI mode", async () => {
