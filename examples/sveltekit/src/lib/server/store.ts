@@ -524,7 +524,7 @@ async function createStoreId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
-function nextCopyName(
+async function nextCopyName(
   menuId: string,
   name: string,
   context: StoreContext,
