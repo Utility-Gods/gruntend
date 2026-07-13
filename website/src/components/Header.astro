@@ -1,5 +1,6 @@
 ---
 import Search from "virtual:starlight/components/Search";
+import { sdkVersion } from "../data/sdk";
 const pathname = Astro.url.pathname;
 const links = [
   { label: "How it works", href: "/overview/" },
@@ -9,7 +10,7 @@ const links = [
 ---
 
 <header class="app-header">
-  <a class="brand" href="/">Gruntend <span>v0.1.0 beta</span></a>
+  <a class="brand" href="/">Gruntend <span>v{sdkVersion} beta</span></a>
   <nav aria-label="Primary navigation">
     {links.map((link) => (
       <a class:list={{ active: pathname.startsWith(link.href.split('/').slice(0, -1).join('/')) && pathname !== '/' }} href={link.href}>

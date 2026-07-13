@@ -1,4 +1,6 @@
 ---
+import { sdkVersion } from "../data/sdk";
+
 const { data } = Astro.locals.starlightRoute.entry;
 const { title = data.title, tagline } = data.hero || {};
 const isHomepage = Astro.url.pathname === "/";
@@ -6,7 +8,7 @@ const isHomepage = Astro.url.pathname === "/";
 
 <section class="product-hero">
   <div class="hero-copy">
-    <p class="eyebrow">Semantic application runtime · v0.1.0 beta</p>
+    <p class="eyebrow">Semantic application runtime · v{sdkVersion} beta</p>
     <h1 id="_top" data-page-title set:html={title} />
     {tagline && <p class="tagline" set:html={tagline} />}
     <div class="hero-actions">

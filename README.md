@@ -2,7 +2,7 @@
 
 Typed tool namespaces and generated UI for app-owned capabilities.
 
-Current beta: `0.1.0`
+[![npm version](https://img.shields.io/npm/v/gruntend-sdk.svg)](https://www.npmjs.com/package/gruntend-sdk)
 
 Gruntend lets an app expose a small capability surface to an LLM, receive a JavaScript code plan, and execute that plan through app-owned handlers. In UI mode, the plan can return safe `html` tagged-template UI with local component state.
 
