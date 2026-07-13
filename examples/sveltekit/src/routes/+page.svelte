@@ -43,10 +43,8 @@
   ] as const;
 
   const taggedHtml = createHtmlTag();
-  const menusQuery = getMenusWithItems();
-  const usersQuery = getUsers();
-  const menusResponse = $derived(menusQuery.current);
-  const usersResponse = $derived(usersQuery.current);
+  const menusResponse = $derived(getMenusWithItems().current);
+  const usersResponse = $derived(getUsers().current);
   const menuCount = $derived(menusResponse?.menus.length);
   const itemCount = $derived(
     menusResponse?.menus.reduce((total, menu) => total + menu.items.length, 0),
