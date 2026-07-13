@@ -381,6 +381,7 @@ Returns provider-neutral prompt text without calling a model.
 interface CodePlanGenerationRequest<TApi extends Api = Api>
   extends CodePlanPromptRequest {
   readonly model: Model<TApi>;
+  readonly prompt?: CodePlanPrompt;
   readonly options?: SimpleStreamOptions;
   readonly complete?: CodePlanGenerationComplete<TApi>;
 }
@@ -395,6 +396,8 @@ function generateCodePlan<TApi extends Api>(
   request: CodePlanGenerationRequest<TApi>,
 ): Promise<CodePlanGenerationResponse>;
 ```
+
+When `prompt` is present, `generateCodePlan()` sends that exact `system` and `user` text to the configured completion function. Otherwise it builds the default with `createCodePlanPrompt(request)`.
 
 ### Parsing and manifests
 

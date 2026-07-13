@@ -6,10 +6,10 @@
 </script>
 
 <svelte:head>
-  <title>Gruntend Kitchen | AI Agent UI Demo</title>
+  <title>Gruntend Kitchen | Generated UI Demo</title>
   <meta
     name="description"
-    content="Explore Gruntend tools, workflows, and agent-driven UI in this interactive demo."
+    content="Try interpreted JavaScript plans, typed application capabilities, and task-specific generated UI with Gruntend."
   />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="application-name" content="Gruntend Kitchen" />
@@ -19,10 +19,10 @@
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="en_US" />
   <meta property="og:site_name" content="Gruntend" />
-  <meta property="og:title" content="Gruntend Kitchen | AI Agent UI Demo" />
+  <meta property="og:title" content="Gruntend Kitchen | Generated UI Demo" />
   <meta
     property="og:description"
-    content="Explore Gruntend tools, workflows, and agent-driven UI in this interactive demo."
+    content="Try interpreted JavaScript plans, typed application capabilities, and task-specific generated UI with Gruntend."
   />
   <meta property="og:url" content="https://demo.gruntend.com/" />
   <meta property="og:image" content="https://demo.gruntend.com/og-image.png" />
@@ -39,10 +39,10 @@
   />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Gruntend Kitchen | AI Agent UI Demo" />
+  <meta name="twitter:title" content="Gruntend Kitchen | Generated UI Demo" />
   <meta
     name="twitter:description"
-    content="Explore Gruntend tools, workflows, and agent-driven UI in this interactive demo."
+    content="Try interpreted JavaScript plans, typed application capabilities, and task-specific generated UI with Gruntend."
   />
   <meta name="twitter:image" content="https://demo.gruntend.com/og-image.png" />
   <meta

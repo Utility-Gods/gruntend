@@ -100,6 +100,30 @@ const { plan } = await generateCodePlan({
 
 Generation returns the envelope. It does not execute it.
 
+### Pass an application-owned prompt
+
+Build on the default or replace it completely, then pass the prompt as a first-class value:
+
+```ts
+import { createCodePlanPrompt, generateCodePlan } from "gruntend-sdk/generate";
+
+const defaults = createCodePlanPrompt({ tools, task, input });
+const prompt = {
+  system: `${defaults.system}\n\n${applicationPlanningPolicy}`,
+  user: defaults.user,
+};
+
+const { plan } = await generateCodePlan({
+  model,
+  tools,
+  task,
+  input,
+  prompt,
+});
+```
+
+When `prompt` is supplied, Gruntend sends its exact `system` and `user` text. Model choice, domain instructions, examples, and generation quality remain application-owned.
+
 ## Bring your own model
 
 ```ts

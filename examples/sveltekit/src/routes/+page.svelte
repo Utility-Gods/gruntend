@@ -1,7 +1,14 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { base } from "$app/paths";
-  import { Copy, Loader, Salad, Tags, TrendingUp } from "lucide-svelte";
+  import {
+    Activity,
+    CheckCircle2,
+    Copy,
+    Salad,
+    Tags,
+    TrendingUp,
+  } from "lucide-svelte";
   import { gruntend } from "$lib/agent/client";
   import { createBrowserHandlers } from "$lib/agent/handlers";
   import { generateAgentPlan } from "$lib/remote/agent.remote";
@@ -16,31 +23,74 @@
   import GeneratedUi from "gruntend-sdk/ui/svelte";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
+  type ShowcaseTaskKind = "price" | "menu" | "tags" | "copy";
+  type ShowcaseTask = {
+    readonly id: string;
+    readonly kind: ShowcaseTaskKind;
+    readonly label: string;
+    readonly outcome: string;
+    readonly prompt: string;
+    readonly requiresAction: boolean;
+  };
+  type AppliedAction = {
+    readonly mutationCount: number;
+    readonly tools: readonly string[];
+    readonly itemIds: readonly string[];
+    readonly menuIds: readonly string[];
+  };
   type AgentGenerationEnvelope = {
     readonly generator: "mock" | "pi-ai";
     readonly model?: string;
     readonly plan: GeneratedCodePlan;
   };
 
-  const suggestions = [
+  const showcaseTasks = [
     {
+      id: "price-review",
       kind: "price",
+      label: "Review low-price increases",
+      outcome: "Preview each price, then confirm the update.",
       prompt:
-        "Show every item under $10 and preview a 20% price increase for each item",
+        "Find every item under $10, preview a 20% price increase, and let me confirm before applying it",
+      requiresAction: true,
     },
     {
+      id: "vegetarian-menu",
       kind: "menu",
-      prompt: "Build a Vegetarian Specials menu from vegetarian items",
+      label: "Build a vegetarian menu",
+      outcome: "Review matching items before creating the menu.",
+      prompt:
+        "Create a Vegetarian Specials menu by copying existing vegetarian items, and let me confirm before creating it",
+      requiresAction: true,
     },
     {
+      id: "seasonal-tags",
       kind: "tags",
-      prompt: "Add a seasonal tag to drinks under $7",
+      label: "Tag seasonal drinks",
+      outcome: "Review drinks under $7 before changing their tags.",
+      prompt:
+        "Find drinks under $7, preview adding a seasonal tag, and let me confirm before applying it",
+      requiresAction: true,
     },
     {
+      id: "copy-popular",
       kind: "copy",
-      prompt: "Copy popular Dinner items into the Brunch menu",
+      label: "Copy popular dinner items",
+      outcome: "Choose what moves into Brunch, then confirm.",
+      prompt:
+        "Copy popular Dinner items into the Brunch menu after I review and confirm the items",
+      requiresAction: true,
     },
-  ] as const;
+  ] as const satisfies readonly ShowcaseTask[];
+
+  const mutationTools = new Set([
+    "menus.create",
+    "menu.item.create",
+    "menu.item.duplicate",
+    "menu.item.update",
+    "menu.item.delete",
+    "users.create",
+  ]);
 
   const taggedHtml = createHtmlTag();
   const menusResponse = $derived(getMenusWithItems().current);
@@ -58,7 +108,18 @@
   let errorMessage = $state("");
   let debugDetails = $state("");
   let toolCallCount = $state(0);
+  let completedToolCallCount = $state(0);
+  let runtimeActivity = $state(
+    "Waiting for the model to return a JavaScript plan",
+  );
   let notice = $state("");
+  let generatedActionError = $state("");
+  let generatedActionRunning = $state(false);
+  let actionMutationCount = $state(0);
+  let actionTools = $state<string[]>([]);
+  let actionItemIds = $state<string[]>([]);
+  let actionMenuIds = $state<string[]>([]);
+  let lastAction = $state<AppliedAction>();
   let promptInput: HTMLTextAreaElement;
 
   function chooseSuggestion(suggestion: string) {
@@ -87,6 +148,10 @@
     errorMessage = "";
     debugDetails = "";
     toolCallCount = 0;
+    completedToolCallCount = 0;
+    runtimeActivity = "Waiting for the model to return a JavaScript plan";
+    lastAction = undefined;
+    generatedActionError = "";
 
     try {
       const envelope = (await generateAgentPlan({
@@ -107,11 +172,14 @@
       );
 
       state = "running";
+      runtimeActivity = "Starting the controlled interpreter";
       const result = await gruntend.runCodePlan(plan.code, {
         id: "restaurant-dashboard-plan",
         input: plan.input,
         retry: { maxAttempts: 2 },
-        handlers: createBrowserHandlers(),
+        handlers: createBrowserHandlers({
+          canMutate: () => generatedActionRunning,
+        }),
         ui: { html: taggedHtml },
         onEvent: recordEvent,
       });
@@ -123,6 +191,23 @@
       const ui = createGeneratedUi(result.result);
       if (ui.status !== "ok") {
         throw new Error("The request did not produce a result.");
+      }
+
+      const frame = ui.value.render();
+      if (frame.status !== "ok") {
+        throw new Error(frame.unwrapError().message);
+      }
+
+      const showcaseTask = showcaseTasks.find(
+        (candidate) => candidate.prompt === task,
+      );
+      if (
+        showcaseTask?.requiresAction &&
+        Object.keys(frame.value.handlers).length === 0
+      ) {
+        throw new Error(
+          "The generated plan did not provide the required confirmation action. Please run the task again.",
+        );
       }
 
       resultUi = ui.value;
@@ -143,7 +228,104 @@
 
   function recordEvent(event: RuntimeEvent) {
     console.debug("[juniper operation]", event);
-    if (event.type === "tool.started") toolCallCount += 1;
+
+    if (event.type === "plan.started") {
+      runtimeActivity = "Interpreter started with registered application tools";
+    } else if (event.type === "tool.started") {
+      toolCallCount += 1;
+      runtimeActivity = `Calling ${event.tool}`;
+    } else if (event.type === "tool.retrying") {
+      runtimeActivity = `Retrying ${event.tool} · attempt ${event.nextAttempt} of ${event.maxAttempts}`;
+    } else if (event.type === "tool.completed") {
+      completedToolCallCount += 1;
+      runtimeActivity = `${event.tool} returned validated output`;
+    } else if (event.type === "tool.failed") {
+      runtimeActivity = `${event.tool} failed`;
+    } else if (event.type === "plan.completed") {
+      runtimeActivity = "Plan completed · preparing the generated interface";
+    } else if (event.type === "plan.failed") {
+      runtimeActivity = "Plan execution failed";
+    }
+
+    if (
+      event.type !== "tool.completed" ||
+      !generatedActionRunning ||
+      !mutationTools.has(event.tool)
+    ) {
+      return;
+    }
+
+    actionMutationCount += 1;
+    actionTools = unique([...actionTools, event.tool]);
+
+    const output = event.output.value as {
+      readonly item?: { readonly itemId?: string; readonly menuId?: string };
+      readonly menu?: { readonly menuId?: string };
+    };
+    if (output.item?.itemId) {
+      actionItemIds = unique([...actionItemIds, output.item.itemId]);
+    }
+    if (output.item?.menuId) {
+      actionMenuIds = unique([...actionMenuIds, output.item.menuId]);
+    }
+    if (output.menu?.menuId) {
+      actionMenuIds = unique([...actionMenuIds, output.menu.menuId]);
+    }
+  }
+
+  function beginGeneratedAction() {
+    generatedActionRunning = true;
+    generatedActionError = "";
+    actionMutationCount = 0;
+    actionTools = [];
+    actionItemIds = [];
+    actionMenuIds = [];
+    notice = "";
+  }
+
+  function finishGeneratedAction(
+    status: "done" | "error",
+    error: unknown = undefined,
+  ) {
+    generatedActionRunning = false;
+
+    if (status === "error") {
+      generatedActionError = readErrorMessage(error);
+      notice =
+        "The generated action failed. Review the error below and try again.";
+      return;
+    }
+
+    if (actionMutationCount === 0) return;
+
+    lastAction = {
+      mutationCount: actionMutationCount,
+      tools: actionTools,
+      itemIds: actionItemIds,
+      menuIds: actionMenuIds,
+    };
+    notice = `${actionMutationCount} confirmed ${actionMutationCount === 1 ? "change is" : "changes are"} now visible in the application.`;
+    void refreshDashboardData();
+  }
+
+  async function refreshDashboardData() {
+    await Promise.all([getMenusWithItems().refresh(), getUsers().refresh()]);
+  }
+
+  function changedMenusHref() {
+    if (!lastAction) return `${base}/menus`;
+
+    const parameters = new URLSearchParams();
+    if (lastAction.menuIds[0]) parameters.set("menu", lastAction.menuIds[0]);
+    if (lastAction.itemIds.length > 0) {
+      parameters.set("changed", lastAction.itemIds.join(","));
+    }
+    const query = parameters.toString();
+    return `${base}/menus${query ? `?${query}` : ""}`;
+  }
+
+  function unique(values: readonly string[]): string[] {
+    return [...new Set(values)];
   }
 
   function readErrorMessage(error: unknown): string {
@@ -186,7 +368,8 @@
             What needs to happen today?
           </h1>
           <p class="mt-2 text-sm leading-6 text-neutral-600">
-            Describe the change you need.
+            Describe an outcome. Gruntend prepares a task-specific review before
+            any change.
           </p>
         </div>
         <dl
@@ -241,31 +424,41 @@
           </button>
         </div>
         <div class="mt-3 grid gap-2 lg:grid-cols-2">
-          {#each suggestions as suggestion}
+          {#each showcaseTasks as task (task.id)}
             <button
               type="button"
-              class="group flex w-full items-center gap-3 border border-neutral-200 bg-[#faf9f6] px-3 py-3 text-left transition hover:border-primary-600 hover:bg-white"
-              onclick={() => chooseSuggestion(suggestion.prompt)}
+              aria-pressed={prompt === task.prompt}
+              class={`group flex w-full items-center gap-3 border px-3 py-3 text-left transition ${
+                prompt === task.prompt
+                  ? "border-primary-600 bg-white"
+                  : "border-neutral-200 bg-[#faf9f6] hover:border-primary-600 hover:bg-white"
+              }`}
+              onclick={() => chooseSuggestion(task.prompt)}
             >
               <span class="text-primary-600">
-                {#if suggestion.kind === "price"}
+                {#if task.kind === "price"}
                   <TrendingUp size={19} strokeWidth={2.1} />
-                {:else if suggestion.kind === "menu"}
+                {:else if task.kind === "menu"}
                   <Salad size={19} strokeWidth={2.1} />
-                {:else if suggestion.kind === "tags"}
+                {:else if task.kind === "tags"}
                   <Tags size={19} strokeWidth={2.1} />
                 {:else}
                   <Copy size={19} strokeWidth={2.1} />
                 {/if}
               </span>
-              <strong
-                class="min-w-0 flex-1 text-xs font-semibold leading-5 text-slate-900 group-hover:text-primary-600"
-              >
-                {suggestion.prompt}
-              </strong>
+              <span class="min-w-0 flex-1">
+                <strong
+                  class="block text-xs font-semibold leading-5 text-slate-900 group-hover:text-primary-600"
+                >
+                  {task.label}
+                </strong>
+                <span class="block text-[11px] leading-4 text-neutral-500">
+                  {task.outcome}
+                </span>
+              </span>
               <span
                 class="text-[10px] font-semibold uppercase tracking-wide text-neutral-400 group-hover:text-primary-600"
-                >Review</span
+                >Select</span
               >
             </button>
           {/each}
@@ -286,7 +479,7 @@
               <span
                 class="bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
               >
-                Ready · {toolCallCount} operation{toolCallCount === 1
+                Ready · {toolCallCount} tool call{toolCallCount === 1
                   ? ""
                   : "s"}
               </span>
@@ -297,8 +490,8 @@
         <div class="p-5 md:p-6">
           {#if state === "planning" || state === "running"}
             <div class="mx-auto flex max-w-2xl items-start gap-4 py-5">
-              <Loader
-                class="mt-0.5 shrink-0 animate-spin text-primary-600"
+              <Activity
+                class="mt-0.5 shrink-0 text-primary-600"
                 size={24}
                 strokeWidth={2.3}
               />
@@ -306,24 +499,34 @@
                 <div class="flex items-center justify-between gap-4">
                   <p class="text-sm font-semibold text-slate-900">
                     {state === "planning"
-                      ? "Working on your request"
-                      : "Preparing the result"}
+                      ? "Generating a JavaScript plan"
+                      : "Interpreting the plan"}
                   </p>
                   <span
                     class="text-xs font-medium tabular-nums text-neutral-500"
                   >
-                    {state === "planning" ? "35%" : "75%"}
+                    {state === "planning"
+                      ? "Model generation"
+                      : `${completedToolCallCount}/${toolCallCount} tool calls`}
                   </span>
                 </div>
+                {#key runtimeActivity}
+                  <p
+                    class="live-event mt-1 font-mono text-[11px] leading-5 text-neutral-500"
+                    aria-live="polite"
+                  >
+                    {runtimeActivity}
+                  </p>
+                {/key}
                 <div
-                  class="mt-2.5 h-2 overflow-hidden rounded-full bg-neutral-100"
+                  class="mt-2 h-1.5 overflow-hidden bg-neutral-100"
                   role="progressbar"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                  aria-valuenow={state === "planning" ? 35 : 75}
+                  aria-label={state === "planning"
+                    ? "Generating the code plan"
+                    : runtimeActivity}
                 >
                   <div
-                    class={`h-full rounded-full bg-primary-600 transition-[width] duration-700 ease-out ${state === "planning" ? "w-[35%]" : "w-3/4"}`}
+                    class="live-progress-indicator h-full bg-primary-600"
                   ></div>
                 </div>
               </div>
@@ -355,8 +558,76 @@
             >
               <GeneratedUi
                 ui={resultUi}
-                onError={(error) => console.error("Generated UI failed", error)}
+                onActionStart={beginGeneratedAction}
+                onActionEnd={(event) =>
+                  finishGeneratedAction(event.status, event.error)}
+                onError={(error) => {
+                  console.error("Generated UI failed", error);
+                  generatedActionError = readErrorMessage(error);
+                  notice =
+                    "The generated action failed. Review the error below and try again.";
+                }}
               />
+              {#if generatedActionError}
+                <div
+                  class="mt-4 border-l-4 border-red-600 bg-red-50 px-4 py-3"
+                  role="alert"
+                >
+                  <h3 class="text-sm font-semibold text-red-950">
+                    Generated action failed
+                  </h3>
+                  <p class="mt-1 text-xs leading-5 text-red-800">
+                    {generatedActionError}
+                  </p>
+                </div>
+              {/if}
+              {#if lastAction}
+                <aside
+                  class="mt-5 flex flex-col gap-4 border border-emerald-200 bg-emerald-50 px-4 py-4 sm:flex-row sm:items-center"
+                  aria-live="polite"
+                >
+                  <CheckCircle2
+                    class="shrink-0 text-emerald-700"
+                    size={22}
+                    strokeWidth={2.2}
+                  />
+                  <div class="min-w-0 flex-1">
+                    <h3 class="text-sm font-semibold text-emerald-950">
+                      Application data updated
+                    </h3>
+                    <p class="mt-0.5 text-xs leading-5 text-emerald-800">
+                      {lastAction.mutationCount} confirmed handler
+                      {lastAction.mutationCount === 1
+                        ? " call has"
+                        : " calls have"}
+                      completed. Mutation handlers were enabled only for this generated
+                      action, and the application records now reflect the result.
+                    </p>
+                    <p
+                      class="mt-1 font-mono text-[10px] leading-4 text-emerald-700"
+                    >
+                      {lastAction.tools.join(" · ")}
+                    </p>
+                  </div>
+                  <a
+                    class="shrink-0 border border-emerald-700 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                    href={changedMenusHref()}
+                  >
+                    View updated menus →
+                  </a>
+                </aside>
+              {/if}
+              {#if debugDetails}
+                <details class="mt-5 border-t border-neutral-200 pt-4">
+                  <summary
+                    class="cursor-pointer text-xs font-semibold text-neutral-600 hover:text-primary-700"
+                  >
+                    Inspect the generated JavaScript plan
+                  </summary>
+                  <pre
+                    class="mt-3 max-h-96 overflow-auto bg-slate-950 p-4 text-xs leading-5 text-slate-200">{debugDetails}</pre>
+                </details>
+              {/if}
             </div>
           {/if}
         </div>
@@ -380,6 +651,37 @@
 {/if}
 
 <style>
+  .live-event {
+    animation: live-event-in 180ms ease-out;
+  }
+  .live-progress-indicator {
+    width: 36%;
+    animation: live-progress 1.4s ease-in-out infinite;
+  }
+  @keyframes live-event-in {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+  }
+  @keyframes live-progress {
+    from {
+      transform: translateX(-110%);
+    }
+    to {
+      transform: translateX(310%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live-event,
+    .live-progress-indicator {
+      animation: none;
+    }
+    .live-progress-indicator {
+      width: 100%;
+      opacity: 0.65;
+    }
+  }
   :global(.generated-workspace .surface-card) {
     display: grid;
     gap: 1rem;

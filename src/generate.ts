@@ -51,6 +51,7 @@ export interface CodePlanPrompt {
 export interface CodePlanGenerationRequest<TApi extends Api = Api>
   extends CodePlanPromptRequest {
   readonly model: Model<TApi>;
+  readonly prompt?: CodePlanPrompt;
   readonly options?: SimpleStreamOptions;
   readonly complete?: CodePlanGenerationComplete<TApi>;
 }
@@ -211,7 +212,7 @@ async function defaultComplete<TApi extends Api>(
 function createPiAiContext<TApi extends Api>(
   request: CodePlanGenerationRequest<TApi>,
 ): Context {
-  const prompt = createCodePlanPrompt(request);
+  const prompt = request.prompt ?? createCodePlanPrompt(request);
 
   return {
     systemPrompt: prompt.system,

@@ -3,6 +3,60 @@ import type { GeneratedCodePlan } from "gruntend-sdk/generate";
 export function createMockPlan(task: string): GeneratedCodePlan {
   const normalized = task.toLowerCase();
 
+  if (normalized.includes("price") && normalized.includes("20%")) {
+    return {
+      summary: "Preview and confirm a 20% increase for items under $10.",
+      input: { maximumPrice: 10, multiplier: 1.2 },
+      code: `
+var menusResult = await tools.menus.list({});
+var previewItems = [];
+for (var menuIndex = 0; menuIndex < menusResult.menus.length; menuIndex = menuIndex + 1) {
+  var menu = menusResult.menus[menuIndex];
+  var itemsResult = await tools.menu.items.list({ menuId: menu.menuId });
+  for (var itemIndex = 0; itemIndex < itemsResult.items.length; itemIndex = itemIndex + 1) {
+    var item = itemsResult.items[itemIndex];
+    if (item.price < input.maximumPrice) {
+      previewItems.push({
+        menuName: menu.name,
+        item: item,
+        beforePrice: item.price,
+        afterPrice: Math.round(item.price * input.multiplier * 100) / 100,
+        updated: null
+      });
+    }
+  }
+}
+var status = "Preview only. No prices have changed.";
+var confirmed = false;
+async function confirmPriceIncrease() {
+  status = "Applying confirmed price changes...";
+  var updated = await Promise.all(previewItems.map(function (entry) {
+    return tools.menu.item.update({
+      menuId: entry.item.menuId,
+      itemId: entry.item.itemId,
+      price: entry.afterPrice
+    });
+  }));
+  previewItems = previewItems.map(function (entry, index) {
+    return {
+      menuName: entry.menuName,
+      item: entry.item,
+      beforePrice: entry.beforePrice,
+      afterPrice: entry.afterPrice,
+      updated: updated[index].item
+    };
+  });
+  confirmed = true;
+  status = updated.length + " confirmed price " + (updated.length === 1 ? "change" : "changes") + " applied.";
+}
+return function render() {
+  return html\`<section class="surface-card"><h2 class="surface-title">Items under $10: 20% price review</h2><p class="surface-muted">\${status}</p><table class="surface-table"><thead><tr><th>Menu</th><th>Item</th><th>Before</th><th>After</th></tr></thead><tbody>\${previewItems.map(function (entry) {
+    return html\`<tr><td>\${entry.menuName}</td><td>\${entry.item.name}</td><td>\${"$" + entry.beforePrice.toFixed(2)}</td><td>\${"$" + entry.afterPrice.toFixed(2)}</td></tr>\`;
+  })}</tbody></table>\${confirmed || previewItems.length === 0 ? "" : html\`<div class="surface-actions"><button type="button" onclick=\${confirmPriceIncrease}>Confirm and update \${previewItems.length} prices</button></div>\`}</section>\`;
+};`,
+    };
+  }
+
   if (normalized.includes("selectable") || normalized.includes("menu page")) {
     return {
       summary: "Render a selectable Dinner Menu page with tagged HTML.",
@@ -70,40 +124,167 @@ return function render() {
 
   if (normalized.includes("sam rivera") || normalized.includes("user")) {
     return {
-      summary: "Create or reuse Sam Rivera as a manager.",
+      summary: "Preview and confirm Sam Rivera as a manager.",
       input: { name: "Sam Rivera", role: "manager" },
       code: `
-var created = await tools.users.create({ name: input.name, role: input.role });
-return html\`<section class="surface-card"><p class="surface-text">Created or reused \${created.user.name} as \${created.user.role}.</p><div class="surface-actions"><a class="surface-action" href="/users">Open users</a></div></section>\`;`,
+var createdUser = null;
+var status = "Review the staff record before creating it.";
+async function confirmCreateUser() {
+  var created = await tools.users.create({ name: input.name, role: input.role });
+  createdUser = created.user;
+  status = createdUser.name + " is available as " + createdUser.role + ".";
+}
+return function render() {
+  return html\`<section class="surface-card"><h2 class="surface-title">Create staff member</h2><p class="surface-text">\${input.name} · \${input.role}</p><p class="surface-muted">\${status}</p>\${createdUser ? html\`<div class="surface-actions"><a class="surface-action" href="/users">Open staff</a></div>\` : html\`<div class="surface-actions"><button type="button" onclick=\${confirmCreateUser}>Confirm staff member</button></div>\`}</section>\`;
+};`,
     };
   }
 
-  if (normalized.includes("vegetarian") || normalized.includes("brunch")) {
+  if (normalized.includes("vegetarian")) {
     return {
-      summary: "Add vegetarian items to the Brunch Menu.",
-      input: {
-        menuName: "Brunch Menu",
-        items: [
-          { name: "Garden Frittata", price: 15, tags: ["vegetarian", "eggs"] },
-          { name: "Mushroom Hash", price: 14, tags: ["vegetarian", "savory"] },
-        ],
-      },
+      summary: "Preview and confirm a Vegetarian Specials menu.",
+      input: { targetMenuName: "Vegetarian Specials" },
       code: `
-var menuResult = await tools.menus.create({ name: input.menuName, description: "Weekend brunch specials." });
-var createdItems = [];
-for (var index = 0; index < input.items.length; index = index + 1) {
-  var item = input.items[index];
-  var created = await tools.menu.item.create({
-    menuId: menuResult.menu.menuId,
-    name: item.name,
-    price: item.price,
-    tags: item.tags,
-  });
-  createdItems.push(created.item);
+var menusResult = await tools.menus.list({});
+var vegetarianItems = [];
+for (var menuIndex = 0; menuIndex < menusResult.menus.length; menuIndex = menuIndex + 1) {
+  var menu = menusResult.menus[menuIndex];
+  if (menu.name !== input.targetMenuName) {
+    var itemsResult = await tools.menu.items.list({ menuId: menu.menuId });
+    for (var itemIndex = 0; itemIndex < itemsResult.items.length; itemIndex = itemIndex + 1) {
+      var item = itemsResult.items[itemIndex];
+      if (item.tags.indexOf("vegetarian") !== -1) {
+        vegetarianItems.push({ sourceMenu: menu.name, item: item });
+      }
+    }
+  }
 }
-return html\`<section class="surface-card"><p class="surface-text">Created vegetarian menu items in \${menuResult.menu.name}.</p><div class="surface-list">\${createdItems.map(function (item) {
-  return html\`<div class="surface-item"><span><strong>\${item.name}</strong><span>\${"$" + item.price.toFixed(2) + " · " + (item.tags.join(", ") || "no tags")}</span></span></div>\`;
-})}</div><div class="surface-actions"><a class="surface-action" href="/menus">Open menus</a></div></section>\`;`,
+var createdItems = [];
+var targetMenu = null;
+var confirmed = false;
+var status = "Review the matching items before creating the menu.";
+async function confirmCreateMenu() {
+  status = "Creating the confirmed menu...";
+  var menuResult = await tools.menus.create({
+    name: input.targetMenuName,
+    description: "Vegetarian favorites collected from existing menus."
+  });
+  targetMenu = menuResult.menu;
+  for (var index = 0; index < vegetarianItems.length; index = index + 1) {
+    var source = vegetarianItems[index].item;
+    var created = await tools.menu.item.create({
+      menuId: targetMenu.menuId,
+      name: source.name,
+      price: source.price,
+      tags: source.tags
+    });
+    createdItems.push(created.item);
+  }
+  confirmed = true;
+  status = targetMenu.name + " is ready with " + createdItems.length + " items.";
+}
+return function render() {
+  return html\`<section class="surface-card"><h2 class="surface-title">Create Vegetarian Specials</h2><p class="surface-muted">\${status}</p><div class="surface-list">\${vegetarianItems.map(function (entry) {
+    return html\`<article class="surface-item"><span><strong>\${entry.item.name}</strong><span>From \${entry.sourceMenu} · \${"$" + entry.item.price.toFixed(2)}</span></span></article>\`;
+  })}</div>\${confirmed || vegetarianItems.length === 0 ? "" : html\`<div class="surface-actions"><button type="button" onclick=\${confirmCreateMenu}>Confirm and create menu</button></div>\`}</section>\`;
+};`,
+    };
+  }
+
+  if (normalized.includes("seasonal") && normalized.includes("tag")) {
+    return {
+      summary: "Preview and confirm seasonal tags for drinks under $7.",
+      input: { menuName: "Drinks Menu", maximumPrice: 7, tag: "seasonal" },
+      code: `
+var menusResult = await tools.menus.list({});
+var drinksMenu = null;
+for (var menuIndex = 0; menuIndex < menusResult.menus.length; menuIndex = menuIndex + 1) {
+  if (menusResult.menus[menuIndex].name === input.menuName) {
+    drinksMenu = menusResult.menus[menuIndex];
+  }
+}
+var previewItems = [];
+if (drinksMenu) {
+  var itemsResult = await tools.menu.items.list({ menuId: drinksMenu.menuId });
+  previewItems = itemsResult.items.filter(function (item) {
+    return item.price < input.maximumPrice;
+  }).map(function (item) {
+    var nextTags = item.tags.indexOf(input.tag) === -1 ? item.tags.concat([input.tag]) : item.tags;
+    return { item: item, beforeTags: item.tags, afterTags: nextTags, updated: null };
+  });
+}
+var confirmed = false;
+var status = drinksMenu ? "Review the tag changes before applying them." : "Drinks Menu was not found.";
+async function confirmTags() {
+  status = "Applying confirmed tags...";
+  var updated = await Promise.all(previewItems.map(function (entry) {
+    return tools.menu.item.update({
+      menuId: entry.item.menuId,
+      itemId: entry.item.itemId,
+      tags: entry.afterTags
+    });
+  }));
+  previewItems = previewItems.map(function (entry, index) {
+    return { item: entry.item, beforeTags: entry.beforeTags, afterTags: entry.afterTags, updated: updated[index].item };
+  });
+  confirmed = true;
+  status = updated.length + " confirmed tag " + (updated.length === 1 ? "change" : "changes") + " applied.";
+}
+return function render() {
+  return html\`<section class="surface-card"><h2 class="surface-title">Seasonal drink tags</h2><p class="surface-muted">\${status}</p><div class="surface-list">\${previewItems.map(function (entry) {
+    return html\`<article class="surface-item"><span><strong>\${entry.item.name}</strong><span>Before: \${entry.beforeTags.join(", ") || "no tags"} · After: \${entry.afterTags.join(", ")}</span></span></article>\`;
+  })}</div>\${confirmed || previewItems.length === 0 ? "" : html\`<div class="surface-actions"><button type="button" onclick=\${confirmTags}>Confirm and update tags</button></div>\`}</section>\`;
+};`,
+    };
+  }
+
+  if (
+    normalized.includes("copy") &&
+    normalized.includes("dinner") &&
+    normalized.includes("brunch")
+  ) {
+    return {
+      summary: "Preview and confirm popular Dinner items for Brunch.",
+      input: { sourceMenuName: "Dinner Menu", targetMenuName: "Brunch Menu" },
+      code: `
+var menusResult = await tools.menus.list({});
+var sourceMenu = null;
+var targetMenu = null;
+for (var menuIndex = 0; menuIndex < menusResult.menus.length; menuIndex = menuIndex + 1) {
+  var menu = menusResult.menus[menuIndex];
+  if (menu.name === input.sourceMenuName) sourceMenu = menu;
+  if (menu.name === input.targetMenuName) targetMenu = menu;
+}
+var popularItems = [];
+if (sourceMenu) {
+  var itemsResult = await tools.menu.items.list({ menuId: sourceMenu.menuId });
+  popularItems = itemsResult.items.filter(function (item) {
+    return item.tags.indexOf("popular") !== -1;
+  });
+}
+var copiedItems = [];
+var confirmed = false;
+var status = sourceMenu && targetMenu ? "Review the items before copying them." : "The source or target menu was not found.";
+async function confirmCopy() {
+  status = "Copying confirmed items...";
+  for (var index = 0; index < popularItems.length; index = index + 1) {
+    var item = popularItems[index];
+    var copied = await tools.menu.item.create({
+      menuId: targetMenu.menuId,
+      name: item.name,
+      price: item.price,
+      tags: item.tags
+    });
+    copiedItems.push(copied.item);
+  }
+  confirmed = true;
+  status = copiedItems.length + " popular " + (copiedItems.length === 1 ? "item" : "items") + " copied into " + targetMenu.name + ".";
+}
+return function render() {
+  return html\`<section class="surface-card"><h2 class="surface-title">Copy popular Dinner items</h2><p class="surface-muted">\${status}</p><div class="surface-list">\${popularItems.map(function (item) {
+    return html\`<article class="surface-item"><span><strong>\${item.name}</strong><span>\${"$" + item.price.toFixed(2) + " · " + item.tags.join(", ")}</span></span></article>\`;
+  })}</div>\${confirmed || popularItems.length === 0 || !targetMenu ? "" : html\`<div class="surface-actions"><button type="button" onclick=\${confirmCopy}>Confirm copy to Brunch</button></div>\`}</section>\`;
+};`,
     };
   }
 
@@ -125,44 +306,11 @@ return html\`<section class="surface-card"><p class="surface-text">Restaurant su
   }
 
   return {
-    summary: "Copy Dinner Menu items into Lunch Menu while skipping burgers.",
-    input: {
-      sourceMenuName: "Dinner Menu",
-      targetMenuName: "Lunch Menu",
-      excludedItemName: "Smash Burger",
-    },
+    summary: "Show the current restaurant data available in mock mode.",
+    input: { task },
     code: `
 var menusResult = await tools.menus.list({});
-var sourceMenu = null;
-for (var menuIndex = 0; menuIndex < menusResult.menus.length; menuIndex = menuIndex + 1) {
-  var menu = menusResult.menus[menuIndex];
-  if (menu.name === input.sourceMenuName) {
-    sourceMenu = menu;
-  }
-}
-if (!sourceMenu) {
-  return html\`<section class="surface-card"><p class="surface-text">Could not find source menu \${input.sourceMenuName}.</p></section>\`;
-}
-var targetResult = await tools.menus.create({
-  name: input.targetMenuName,
-  description: "Copied from Dinner Menu by the mock planner.",
-});
-var itemsResult = await tools.menu.items.list({ menuId: sourceMenu.menuId });
-var copiedItems = [];
-for (var itemIndex = 0; itemIndex < itemsResult.items.length; itemIndex = itemIndex + 1) {
-  var item = itemsResult.items[itemIndex];
-  if (item.name !== input.excludedItemName) {
-    var created = await tools.menu.item.create({
-      menuId: targetResult.menu.menuId,
-      name: item.name,
-      price: item.price,
-      tags: item.tags,
-    });
-    copiedItems.push(created.item);
-  }
-}
-return html\`<section class="surface-card"><p class="surface-text">Copied menu items into \${targetResult.menu.name}.</p><div class="surface-list">\${copiedItems.map(function (item) {
-  return html\`<div class="surface-item"><span><strong>\${item.name}</strong><span>\${"$" + item.price.toFixed(2) + " · " + (item.tags.join(", ") || "no tags")}</span></span></div>\`;
-})}</div><div class="surface-actions"><a class="surface-action" href="/menus">Open menus</a></div></section>\`;`,
+var usersResult = await tools.users.list({});
+return html\`<section class="surface-card"><h2 class="surface-title">Mock planner</h2><p class="surface-text">This custom request is not one of the deterministic local showcase tasks.</p><p class="surface-muted">Current data: \${menusResult.menus.length} menus and \${usersResult.users.length} staff members.</p><div class="surface-actions"><a class="surface-action" href="/menus">Open menus</a><a class="surface-action" href="/users">Open staff</a></div></section>\`;`,
   };
 }

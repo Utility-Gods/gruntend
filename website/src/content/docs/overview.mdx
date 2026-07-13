@@ -13,7 +13,7 @@ description: Gruntend interprets JavaScript plans against a small set of applica
 - **Tool contract** — describes one operation and validates its input and output.
 - **Handler** — application code that performs the operation with your permissions and services.
 - **Plan** — JavaScript that composes tool calls and returns data or UI.
-- **Runtime** — interprets the plan and routes each call through its matching handler.
+- **Interpreter** — evaluates the plan and routes each call through its matching handler.
 
 In a conventional tool-calling loop, the host repeatedly asks a model what to call next. Gruntend instead lets a model produce one small program. That program can transform results, branch on runtime values, and coordinate several calls while the application retains control of every operation.
 

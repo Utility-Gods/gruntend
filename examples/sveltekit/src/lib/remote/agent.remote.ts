@@ -4,10 +4,12 @@ import { env } from "$env/dynamic/private";
 import { error } from "@sveltejs/kit";
 import * as v from "valibot";
 import { createMockPlan } from "$lib/agent/mock-plan";
+import { restaurantPlannerInstructions } from "$lib/agent/planner-instructions";
 import { appTools } from "$lib/agent/tools";
 import { checkAgentPlanRateLimit, readClientIp } from "$lib/server/rate-limit";
 import { listMenus, listUsers } from "$lib/server/store";
 import {
+  createCodePlanPrompt,
   generateCodePlan,
   GeneratedCodePlanParseError,
   getModel,
@@ -74,17 +76,24 @@ export const generateAgentPlan = command(
 
     const model = resolveOpenAiModel(env.OPENAI_MODEL || "gpt-5.5");
     const context = { platform: event.platform };
+    const promptRequest = {
+      tools: appTools,
+      task: prompt.trim(),
+      input: {
+        menus: await listMenus(context),
+        users: await listUsers(context),
+      },
+      ui: { kind: "tagged-html" as const },
+    };
+    const defaultPrompt = createCodePlanPrompt(promptRequest);
+    const codePlanPrompt = {
+      system: `${defaultPrompt.system}\n\nApplication-owned planning policy:\n${restaurantPlannerInstructions}`,
+      user: defaultPrompt.user,
+    };
     const generated = await generateWithDiagnostics(async () =>
       generateCodePlan({
-        tools: appTools,
-        task: prompt.trim(),
-        input: {
-          menus: await listMenus(context),
-          users: await listUsers(context),
-        },
-        instructions:
-          "This is a restaurant admin app. Prefer reusing existing menus and users when names match. Read current app data with tools before mutating when the task depends on existing state.",
-        ui: { kind: "tagged-html" },
+        ...promptRequest,
+        prompt: codePlanPrompt,
         model,
         options: {
           apiKey,

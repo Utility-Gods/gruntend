@@ -366,6 +366,12 @@ a {
   color: #c2410c;
 }
 
+.home-footer .npm-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 html[data-has-hero] header.header {
   position: static;
 }

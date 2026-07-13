@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { page } from "$app/state";
   import LoadingSurface from "$lib/components/photoship/LoadingSurface.svelte";
-  import { BookOpen, Trash2 } from "lucide-svelte";
+  import { BookOpen, CheckCircle2, Search, Trash2 } from "lucide-svelte";
   import {
     deleteMenuItemCommand,
     getMenusWithItems,
@@ -10,12 +11,30 @@
   const menus = $derived(menusResponse?.menus ?? []);
 
   let selectedMenuId = $state<string | undefined>();
+  let search = $state("");
   let deletingItemId = $state("");
   let deleteError = $state("");
+  const requestedMenuId = $derived(
+    page.url.searchParams.get("menu") ?? undefined,
+  );
+  const changedItemIds = $derived(
+    new Set(
+      (page.url.searchParams.get("changed") ?? "").split(",").filter(Boolean),
+    ),
+  );
   const selectedMenu = $derived(
-    selectedMenuId
-      ? (menus.find((menu) => menu.menuId === selectedMenuId) ?? menus[0])
-      : menus[0],
+    menus.find((menu) => menu.menuId === (selectedMenuId ?? requestedMenuId)) ??
+      menus[0],
+  );
+  const visibleItems = $derived(
+    selectedMenu?.items.filter((item) => {
+      const query = search.trim().toLowerCase();
+      return (
+        !query ||
+        item.name.toLowerCase().includes(query) ||
+        item.tags.some((tag) => tag.toLowerCase().includes(query))
+      );
+    }) ?? [],
   );
 
   async function deleteItem(menuId: string, itemId: string) {
@@ -40,11 +59,36 @@
 </script>
 
 <section class="space-y-5">
-  <header class="flex items-center gap-3 py-1">
-    <BookOpen class="shrink-0 text-primary-600" size={23} strokeWidth={2.2} />
-    <h1 class="text-xl font-semibold tracking-tight text-slate-950">
-      Menus and pricing
-    </h1>
+  <header
+    class="flex flex-col justify-between gap-3 py-1 sm:flex-row sm:items-center"
+  >
+    <div class="flex items-center gap-3">
+      <BookOpen class="shrink-0 text-primary-600" size={23} strokeWidth={2.2} />
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight text-slate-950">
+          Menus and pricing
+        </h1>
+        <p class="mt-0.5 text-xs text-neutral-500">
+          {menus.length} menus · {menus.reduce(
+            (total, menu) => total + menu.items.length,
+            0,
+          )} items
+        </p>
+      </div>
+    </div>
+    <label class="relative block w-full sm:w-72">
+      <span class="sr-only">Search the selected menu</span>
+      <Search
+        class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+        size={16}
+        strokeWidth={2}
+      />
+      <input
+        bind:value={search}
+        class="h-10 w-full border border-neutral-300 bg-white pl-9 pr-3 text-sm text-slate-950 outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+        placeholder="Search items or tags"
+      />
+    </label>
   </header>
 
   {#if !menusResponse}
@@ -68,6 +112,15 @@
           onclick={() => (selectedMenuId = menu.menuId)}
         >
           <span class="block">{menu.name}</span>
+          <span class="mt-0.5 block text-[10px] opacity-75">
+            {#if menu.items.some((item) => changedItemIds.has(item.itemId))}
+              {menu.items.filter((item) => changedItemIds.has(item.itemId))
+                .length}
+              updated
+            {:else}
+              {menu.items.length} item{menu.items.length === 1 ? "" : "s"}
+            {/if}
+          </span>
         </button>
       {/each}
     </div>
@@ -85,12 +138,28 @@
           <p class="py-3 text-sm font-medium text-red-700">{deleteError}</p>
         {/if}
 
-        {#each selectedMenu.items as item}
-          <article class="flex items-center justify-between gap-4 py-4">
+        {#each visibleItems as item}
+          <article
+            class={`flex items-center justify-between gap-4 py-4 ${
+              changedItemIds.has(item.itemId)
+                ? "-mx-3 border-l-4 border-l-emerald-600 bg-emerald-50 px-3"
+                : ""
+            }`}
+          >
             <div class="min-w-0">
-              <h3 class="truncate text-base font-medium text-neutral-950">
-                {item.name}
-              </h3>
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="truncate text-base font-medium text-neutral-950">
+                  {item.name}
+                </h3>
+                {#if changedItemIds.has(item.itemId)}
+                  <span
+                    class="inline-flex items-center gap-1 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800"
+                  >
+                    <CheckCircle2 size={11} strokeWidth={2.4} />
+                    Updated by task
+                  </span>
+                {/if}
+              </div>
               <p class="truncate text-sm text-neutral-500">
                 {item.tags.join(" · ") || "No tags"}
               </p>
@@ -112,9 +181,13 @@
           </article>
         {:else}
           <div class="py-8">
-            <h3 class="text-base font-medium text-neutral-950">No items yet</h3>
+            <h3 class="text-base font-medium text-neutral-950">
+              {search ? "No matching items" : "No items yet"}
+            </h3>
             <p class="mt-1 text-neutral-600">
-              Use the overview to create or move items into this menu.
+              {search
+                ? "Try another item name or tag."
+                : "Use the overview to create or move items into this menu."}
             </p>
           </div>
         {/each}
