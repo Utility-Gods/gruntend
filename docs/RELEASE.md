@@ -54,31 +54,29 @@ node --input-type=module -e 'await Promise.all(["gruntend-sdk/client","gruntend-
 
 Framework adapter exports (`gruntend-sdk/ui/react`, `gruntend-sdk/ui/solid`, `gruntend-sdk/ui/svelte`, and `gruntend-sdk/ui/vue`) are source-backed and should be verified by the consuming framework build.
 
-## First npm release
+## Initial `0.1.0` release
 
-The first release is already versioned as `0.1.0`, so it does not need a changeset. When the release-prep commit lands on `main` with no pending changesets, the Changesets action publishes the current package version.
+`gruntend-sdk@0.1.0` was published manually to npm. The release branch does not need a changeset because no new package version should be created when it merges.
 
-1. Commit the release-prep changes.
+After the release branch lands on `main`, create the initial GitHub release from the merge commit:
 
-   ```bash
-   git commit -m "Prepare v0.1.0 release"
-   ```
+```text
+Tag: gruntend-sdk@0.1.0
+Title: gruntend-sdk v0.1.0 — Initial beta
+Target: main
+```
 
-2. Push the branch and merge it to `main`.
+Mark the GitHub release as a pre-release while the SDK remains beta. Link to the published package in the release notes:
 
-3. The release workflow runs on `main`.
+```text
+https://www.npmjs.com/package/gruntend-sdk
+```
 
-4. If `gruntend-sdk@0.1.0` is not already published, Changesets publishes it to npm using `NPM_TOKEN`.
-
-5. Confirm the published version:
-
-   ```bash
-   npm view gruntend-sdk version
-   ```
+The release workflow will detect that `0.1.0` already exists on npm and skip publishing it again.
 
 ## Future releases
 
-For every user-facing package change, add a changeset:
+The next patch release after `0.1.0` is `0.1.1`. For every user-facing package change, add a changeset:
 
 ```bash
 pnpm changeset

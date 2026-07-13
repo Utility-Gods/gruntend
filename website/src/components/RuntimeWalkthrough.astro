@@ -180,7 +180,12 @@ return render;`;
 
     private start() {
       if (this.dataset.manual || window.matchMedia('(prefers-reduced-motion: reduce)').matches || this.timer) return;
-      this.timer = window.setInterval(() => this.show((this.current + 1) % this.buttons.length), 3500);
+      const delay = this.current === 0 ? 20_000 : 3_500;
+      this.timer = window.setTimeout(() => {
+        this.timer = undefined;
+        this.show((this.current + 1) % this.buttons.length);
+        this.start();
+      }, delay);
     }
 
     private stop() {

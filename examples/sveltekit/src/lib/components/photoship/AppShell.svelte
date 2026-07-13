@@ -95,6 +95,14 @@
         >
       </p>
       <a
+        class="font-medium text-neutral-600 hover:text-primary-600"
+        href="https://www.npmjs.com/package/gruntend-sdk"
+        target="_blank"
+        rel="noreferrer"
+      >
+        gruntend-sdk on npm
+      </a>
+      <a
         class="inline-flex items-center gap-1.5 font-medium text-neutral-600 hover:text-primary-600"
         href="https://github.com/Utility-Gods/gruntend"
         target="_blank"

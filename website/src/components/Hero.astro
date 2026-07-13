@@ -13,7 +13,7 @@ const isHomepage = Astro.url.pathname === "/";
       <a class="primary-action" href="/overview/">Understand how it works <span>→</span></a>
       <a class="secondary-action" href="https://demo.gruntend.com/" target="_blank" rel="noreferrer">Open the demo <span>↗</span></a>
     </div>
-    {isHomepage && <p class="runtime-note">The default executor uses <a href="https://github.com/badlogic/jailjs" target="_blank" rel="noreferrer">JailJS</a>, not <code>eval</code> or <code>Function</code>.</p>}
+    {isHomepage && <p class="runtime-note">Plans run through the built-in <a href="https://github.com/badlogic/jailjs" target="_blank" rel="noreferrer">JailJS</a> interpreter, not <code>eval</code> or <code>Function</code>.</p>}
   </div>
 </section>
 

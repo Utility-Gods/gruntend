@@ -20,6 +20,7 @@ const links = [
   </nav>
   <div class="header-tools">
     <Search />
+    <a class="npm-link" href="https://www.npmjs.com/package/gruntend-sdk" target="_blank" rel="noreferrer" aria-label="gruntend-sdk on npm">npm</a>
     <a class="github-link" href="https://github.com/Utility-Gods/gruntend" target="_blank" rel="noreferrer" aria-label="Gruntend on GitHub">
       <img src="/github.svg" width="16" height="16" alt="" />
     </a>
@@ -35,6 +36,8 @@ const links = [
   nav a:hover, nav a.active { background: #f54a00; color: white; }
   .header-tools { display: flex; align-items: center; gap: 1rem; }
   .header-tools :global(site-search) { width: min(16rem, 26vw); }
+  .npm-link { color: #64748b; font-size: .68rem; font-weight: 750; text-decoration: none; }
+  .npm-link:hover { color: #f54a00; }
   .github-link { display: flex; opacity: .78; }
   .github-link:hover { opacity: 1; }
   .github-link img { display: block; }
