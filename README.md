@@ -109,6 +109,28 @@ const generated = await generateCodePlan({
 const { summary, input, code } = generated.plan;
 ```
 
+Applications may pass an exact first-class prompt instead of using the default:
+
+```ts
+import { createCodePlanPrompt } from "gruntend-sdk/generate";
+
+const defaults = createCodePlanPrompt({ tools, task, input });
+const prompt = {
+  system: `${defaults.system}\n\n${applicationPlanningPolicy}`,
+  user: defaults.user,
+};
+
+const generated = await generateCodePlan({
+  model,
+  tools,
+  task,
+  input,
+  prompt,
+});
+```
+
+Model selection, prompt policy, and generation quality remain application-owned. Gruntend executes and validates the resulting code plan.
+
 `ui: { kind: "tagged-html" }` tells the model to return UI using the provided `html` tagged template, not string-built HTML or UI JSON.
 
 Generated UI should return either a template:

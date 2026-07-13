@@ -520,7 +520,7 @@ async function ensureD1(db: D1Database): Promise<void> {
   initializedD1.add(db);
 }
 
-async function createStoreId(prefix: string): string {
+function createStoreId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 

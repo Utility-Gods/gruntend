@@ -179,6 +179,29 @@ test("parseGeneratedCodePlan exposes the raw response when JSON is invalid", () 
   }
 });
 
+test("generateCodePlan accepts an application-owned prompt", async () => {
+  const prompt = {
+    system: "You are the application-owned planner.",
+    user: "Return the lunch-menu code plan.",
+  };
+  const complete: CodePlanGenerationComplete<"openai-responses"> = async (
+    _receivedModel,
+    context,
+  ) => {
+    expect(context.systemPrompt).toBe(prompt.system);
+    expect(context.messages[0].content).toBe(prompt.user);
+    return message;
+  };
+
+  await generateCodePlan({
+    model,
+    tools,
+    task: "Create a lunch menu",
+    prompt,
+    complete,
+  });
+});
+
 test("generateCodePlan enables tagged-html UI mode", async () => {
   const complete: CodePlanGenerationComplete<"openai-responses"> = async (
     _receivedModel,

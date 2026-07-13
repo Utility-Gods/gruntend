@@ -2,22 +2,34 @@
   import { base } from "$app/paths";
   import { page } from "$app/state";
   import { Utensils } from "lucide-svelte";
+  import { getMenusWithItems, getUsers } from "$lib/remote/example.remote";
   import type { Snippet } from "svelte";
 
   type NavItem = {
     readonly href: string;
     readonly label: string;
+    readonly count?: number;
   };
 
   type Props = {
     readonly children?: Snippet;
   };
 
-  const navItems: NavItem[] = [
+  const menusResponse = $derived(getMenusWithItems().current);
+  const usersResponse = $derived(getUsers().current);
+  const navItems = $derived<NavItem[]>([
     { href: `${base}/`, label: "Overview" },
-    { href: `${base}/menus`, label: "Menus" },
-    { href: `${base}/users`, label: "Staff" },
-  ];
+    {
+      href: `${base}/menus`,
+      label: "Menus",
+      count: menusResponse?.menus.length,
+    },
+    {
+      href: `${base}/users`,
+      label: "Staff",
+      count: usersResponse?.users.length,
+    },
+  ]);
 
   let { children }: Props = $props();
 
@@ -69,6 +81,13 @@
             href={item.href}
           >
             {item.label}
+            {#if item.count !== undefined}
+              <span
+                class="ml-1.5 hidden min-w-5 bg-neutral-100 px-1.5 py-0.5 text-center text-[10px] tabular-nums text-neutral-600 sm:inline-block"
+              >
+                {item.count}
+              </span>
+            {/if}
           </a>
         {/each}
       </nav>
@@ -95,12 +114,13 @@
         >
       </p>
       <a
-        class="font-medium text-neutral-600 hover:text-primary-600"
+        class="inline-flex items-center gap-2 font-medium text-neutral-600 hover:text-primary-600"
         href="https://www.npmjs.com/package/gruntend-sdk"
         target="_blank"
         rel="noreferrer"
       >
-        gruntend-sdk on npm
+        <img class="h-3.5 w-auto" src="/npm.svg" alt="" />
+        gruntend-sdk
       </a>
       <a
         class="inline-flex items-center gap-1.5 font-medium text-neutral-600 hover:text-primary-600"
