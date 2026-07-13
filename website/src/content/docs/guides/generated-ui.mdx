@@ -18,7 +18,7 @@ For generated UI, first ask the model for a UI plan, then run that plan with the
 ## Generate a UI plan
 
 ```ts
-import { generateCodePlan } from "gruntend/generate";
+import { generateCodePlan } from "gruntend-sdk/generate";
 
 const { plan } = await generateCodePlan({
   model,
@@ -50,7 +50,7 @@ If you write the plan yourself, skip this generation step and pass your code str
 ## Provide `html` at runtime
 
 ```ts
-import { createHtmlTag } from "gruntend/ui";
+import { createHtmlTag } from "gruntend-sdk/ui";
 
 const html = createHtmlTag();
 
@@ -105,8 +105,8 @@ Choose a normal DOM element where the generated interface should appear:
 Then create and mount the generated UI:
 
 ```ts
-import { createGeneratedUi } from "gruntend/ui";
-import { mountGeneratedUi } from "gruntend/ui/dom";
+import { createGeneratedUi } from "gruntend-sdk/ui";
+import { mountGeneratedUi } from "gruntend-sdk/ui/dom";
 
 if (result.status !== "done") throw new Error(result.error);
 
@@ -148,3 +148,7 @@ Generated handlers receive a restricted event payload, not broad DOM access.
 ## Mutations
 
 A mutation UI should first render the proposed change. Call mutation tools only after explicit confirmation from the person using the interface. Permissions and persistence still belong to the app-owned handler.
+
+:::caution[Confirmation is application policy]
+Gruntend's generation prompt asks the model to put mutations behind confirmation, but the runtime does not enforce that interaction pattern. A handwritten or nonconforming plan can call any registered mutation tool immediately. Enforce important rules in application code—for example, expose separate preview and apply capabilities, require a confirmation token, and always authorize the operation inside the handler.
+:::

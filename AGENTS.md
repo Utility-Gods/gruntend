@@ -9,7 +9,7 @@
   - `pnpm check`
   - `pnpm --filter gruntend-sveltekit-example build` when the example changes
 - Keep the public SDK thin, object-based, and explicit.
-- Do not add barrel files. Prefer explicit subpath imports such as `gruntend/tool`, `gruntend/client`, and local `../src/tool.ts` imports in tests.
+- Do not add barrel files. Prefer explicit subpath imports such as `gruntend-sdk/tool`, `gruntend-sdk/client`, and local `../src/tool.ts` imports in tests.
 - Keep `defineTools()` contract-only.
 - Handlers are async runtime closures owned by the app.
 - Expected failures use `err(...)`, not throwing. Throwing remains fallback for unexpected failures.

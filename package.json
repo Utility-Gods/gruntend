@@ -1,26 +1,98 @@
 {
-  "name": "gruntend",
+  "name": "gruntend-sdk",
   "version": "0.1.0",
   "type": "module",
   "description": "Typed tool namespaces and code-plan execution for application-owned capabilities.",
   "license": "MIT",
+  "homepage": "https://www.gruntend.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Utility-Gods/gruntend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Utility-Gods/gruntend/issues"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "generative-ui",
+    "llm",
+    "tools",
+    "typescript"
+  ],
   "packageManager": "pnpm@10.18.1",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "exports": {
-    "./client": "./src/client.ts",
-    "./code-plan": "./src/code-plan.ts",
-    "./generate": "./src/generate.ts",
-    "./ui": "./src/ui/index.ts",
-    "./ui/dom": "./src/ui/dom.ts",
-    "./ui/react": "./src/ui/react/GeneratedUi.tsx",
-    "./ui/solid": "./src/ui/solid/GeneratedUi.tsx",
-    "./ui/svelte": "./src/ui/svelte/GeneratedUi.svelte",
-    "./ui/vue": "./src/ui/vue/GeneratedUi.vue",
-    "./ui-runtime": "./src/ui-runtime.ts",
-    "./registry": "./src/registry.ts",
-    "./runtime": "./src/runtime.ts",
-    "./tool": "./src/tool.ts"
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    },
+    "./code-plan": {
+      "types": "./dist/code-plan.d.ts",
+      "import": "./dist/code-plan.js"
+    },
+    "./generate": {
+      "types": "./dist/generate.d.ts",
+      "import": "./dist/generate.js"
+    },
+    "./ui": {
+      "types": "./dist/ui/index.d.ts",
+      "import": "./dist/ui/index.js"
+    },
+    "./ui/dom": {
+      "types": "./dist/ui/dom.d.ts",
+      "import": "./dist/ui/dom.js"
+    },
+    "./ui/react": {
+      "types": "./src/ui/react/GeneratedUi.tsx",
+      "import": "./src/ui/react/GeneratedUi.tsx"
+    },
+    "./ui/solid": {
+      "types": "./src/ui/solid/GeneratedUi.tsx",
+      "import": "./src/ui/solid/GeneratedUi.tsx"
+    },
+    "./ui/svelte": {
+      "types": "./src/ui/svelte/GeneratedUi.svelte",
+      "import": "./src/ui/svelte/GeneratedUi.svelte"
+    },
+    "./ui/vue": {
+      "types": "./src/ui/vue/GeneratedUi.vue",
+      "import": "./src/ui/vue/GeneratedUi.vue"
+    },
+    "./ui-runtime": {
+      "types": "./dist/ui-runtime.d.ts",
+      "import": "./dist/ui-runtime.js"
+    },
+    "./registry": {
+      "types": "./dist/registry.d.ts",
+      "import": "./dist/registry.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js"
+    },
+    "./tool": {
+      "types": "./dist/tool.d.ts",
+      "import": "./dist/tool.js"
+    }
   },
   "scripts": {
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && node scripts/rewrite-dts-imports.mjs",
+    "prepack": "pnpm build",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish",
     "test": "vitest run",
     "check": "tsc --noEmit",
     "lint": "pnpm check",
@@ -30,11 +102,31 @@
   "dependencies": {
     "@mariozechner/jailjs": "0.1.1",
     "@earendil-works/pi-ai": "0.74.0",
-    "@opentelemetry/api": "1.9.0",
     "better-result": "2.7.0",
     "valibot": "1.4.0"
   },
+  "peerDependencies": {
+    "react": "19.2.7",
+    "solid-js": "1.9.14",
+    "svelte": "5.56.4",
+    "vue": "3.5.39"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@changesets/cli": "2.30.0",
     "@types/node": "24.0.8",
     "prettier": "3.6.2",
     "prettier-plugin-svelte": "4.1.1",

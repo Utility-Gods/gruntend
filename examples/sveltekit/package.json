@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm --dir ../.. build",
     "dev": "vite --host 0.0.0.0",
+    "prebuild": "pnpm --dir ../.. build",
     "build": "vite build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "deploy": "pnpm build && wrangler deploy",
@@ -15,7 +17,7 @@
     "@sveltejs/adapter-cloudflare": "7.2.9",
     "@sveltejs/kit": "2.57.0",
     "@sveltejs/vite-plugin-svelte": "6.0.0",
-    "gruntend": "workspace:*",
+    "gruntend-sdk": "workspace:*",
     "lucide-svelte": "1.0.1",
     "svelte": "5.49.1",
     "valibot": "1.4.0",

@@ -1,5 +1,9 @@
 import { expect, test } from "vitest";
-import { runCodePlan } from "../src/code-plan.ts";
+import {
+  createJailJsCodePlanExecutor,
+  runCodePlan,
+  type CodePlanExecutor,
+} from "../src/code-plan.ts";
 import { createGruntendClient } from "../src/client.ts";
 import { createToolRegistry } from "../src/registry.ts";
 import { defineTools, type ToolHandlerMap } from "../src/tool.ts";
@@ -259,4 +263,118 @@ test("Gruntend client runs a code plan with the registered tool handlers", async
     result: { value: 42 },
     errors: {},
   });
+});
+
+test("runCodePlan can use a custom executor", async () => {
+  const tools = defineTools({});
+  const registry = createToolRegistry(tools);
+  const controller = new AbortController();
+  const executor: CodePlanExecutor = ({ code, globals, signal }) => {
+    expect(code).toContain("return input.value");
+    return {
+      input: globals.input,
+      hasTools: typeof globals.tools === "object",
+      hasSignal: signal === controller.signal,
+      hasPromiseGlobal: "Promise" in globals,
+      usesHostConsole: globals.console === console,
+    };
+  };
+
+  const result = await runCodePlan({
+    code: "return input.value;",
+    input: { value: 7 },
+    registry,
+    handlers: {},
+    executor,
+    signal: controller.signal,
+  });
+
+  expect(result).toEqual({
+    status: "done",
+    result: {
+      input: { value: 7 },
+      hasTools: true,
+      hasSignal: true,
+      hasPromiseGlobal: false,
+      usesHostConsole: false,
+    },
+    errors: {},
+  });
+});
+
+test("runCodePlan emits console calls through the lifecycle stream", async () => {
+  const tools = defineTools({});
+  const registry = createToolRegistry(tools);
+  const events: unknown[] = [];
+
+  const result = await runCodePlan({
+    code: `
+      console.log("hello", input.value);
+      return "done";
+    `,
+    input: { value: 7 },
+    registry,
+    handlers: {},
+    onEvent: (event) => events.push(event),
+  });
+
+  expect(result.status).toBe("done");
+  expect(events).toContainEqual({
+    type: "plan.console",
+    planId: "code-plan",
+    level: "log",
+    args: ["hello", 7],
+  });
+});
+
+test("runCodePlan does not execute when the signal is already aborted", async () => {
+  const tools = defineTools({});
+  const registry = createToolRegistry(tools);
+  const controller = new AbortController();
+  const events: unknown[] = [];
+  let executed = false;
+  controller.abort();
+
+  const result = await runCodePlan({
+    code: "return 1;",
+    registry,
+    handlers: {},
+    signal: controller.signal,
+    executor: () => {
+      executed = true;
+      return 1;
+    },
+    onEvent: (event) => events.push(event),
+  });
+
+  expect(executed).toBe(false);
+  expect(events).toEqual([
+    {
+      type: "plan.failed",
+      planId: "code-plan",
+      error: "Code plan execution aborted.",
+      errors: {},
+    },
+  ]);
+  expect(result).toEqual({
+    status: "failed",
+    errors: {},
+    error: "Code plan execution aborted.",
+  });
+});
+
+test("runCodePlan applies a configured interpreter operation budget", async () => {
+  const tools = defineTools({});
+  const registry = createToolRegistry(tools);
+
+  const result = await runCodePlan({
+    code: "while (true) {}",
+    registry,
+    handlers: {},
+    executor: createJailJsCodePlanExecutor(),
+    maxOps: 100,
+  });
+
+  expect(result.status).toBe("failed");
+  expect(result.error).toContain("maximum operations exceeded");
 });

@@ -9,7 +9,7 @@ const links = [
 ---
 
 <header class="app-header">
-  <a class="brand" href="/">Gruntend <span>Beta</span></a>
+  <a class="brand" href="/">Gruntend <span>v0.1.0 beta</span></a>
   <nav aria-label="Primary navigation">
     {links.map((link) => (
       <a class:list={{ active: pathname.startsWith(link.href.split('/').slice(0, -1).join('/')) && pathname !== '/' }} href={link.href}>
@@ -29,7 +29,7 @@ const links = [
 <style>
   .app-header { display: flex; height: 100%; align-items: stretch; justify-content: space-between; gap: 1.25rem; }
   .brand { display: flex; align-items: center; gap: .45rem; color: #0f172a; font-size: 1rem; font-weight: 750; letter-spacing: -.03em; text-decoration: none; }
-  .brand span { border: 1px solid #f54a00; padding: .12rem .28rem; color: #c2410c; font-size: .48rem; font-weight: 750; letter-spacing: .08em; line-height: 1; text-transform: uppercase; }
+  .brand span { border: 1px solid #f54a00; padding: .12rem .28rem; color: #c2410c; font-size: .48rem; font-weight: 750; letter-spacing: .08em; line-height: 1; text-transform: uppercase; white-space: nowrap; }
   nav { display: none; align-items: stretch; gap: .2rem; }
   nav a { display: flex; align-items: center; margin-block: .65rem; padding: .4rem .7rem; color: #64748b; font-size: .72rem; font-weight: 650; text-decoration: none; }
   nav a:hover, nav a.active { background: #f54a00; color: white; }

@@ -8,14 +8,14 @@
     generateAgentPlan,
     getAgentPlannerInfo,
   } from "$lib/remote/agent.remote";
-  import type { GeneratedCodePlan } from "gruntend/generate";
-  import type { RuntimeEvent } from "gruntend/runtime";
+  import type { GeneratedCodePlan } from "gruntend-sdk/generate";
+  import type { RuntimeEvent } from "gruntend-sdk/runtime";
   import {
     createGeneratedUi,
     createHtmlTag,
     type GeneratedUi as GeneratedUiModel,
-  } from "gruntend/ui";
-  import GeneratedUi from "gruntend/ui/svelte";
+  } from "gruntend-sdk/ui";
+  import GeneratedUi from "gruntend-sdk/ui/svelte";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
   type ChatMessage = {

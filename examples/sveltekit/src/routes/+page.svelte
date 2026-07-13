@@ -6,14 +6,14 @@
   import { createBrowserHandlers } from "$lib/agent/handlers";
   import { generateAgentPlan } from "$lib/remote/agent.remote";
   import { getMenusWithItems, getUsers } from "$lib/remote/example.remote";
-  import type { GeneratedCodePlan } from "gruntend/generate";
-  import type { RuntimeEvent } from "gruntend/runtime";
+  import type { GeneratedCodePlan } from "gruntend-sdk/generate";
+  import type { RuntimeEvent } from "gruntend-sdk/runtime";
   import {
     createGeneratedUi,
     createHtmlTag,
     type GeneratedUi as GeneratedUiModel,
-  } from "gruntend/ui";
-  import GeneratedUi from "gruntend/ui/svelte";
+  } from "gruntend-sdk/ui";
+  import GeneratedUi from "gruntend-sdk/ui/svelte";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
   type AgentGenerationEnvelope = {
@@ -43,10 +43,8 @@
   ] as const;
 
   const taggedHtml = createHtmlTag();
-  const menusQuery = getMenusWithItems();
-  const usersQuery = getUsers();
-  const menusResponse = $derived(menusQuery.current);
-  const usersResponse = $derived(usersQuery.current);
+  const menusResponse = $derived(getMenusWithItems().current);
+  const usersResponse = $derived(getUsers().current);
   const menuCount = $derived(menusResponse?.menus.length);
   const itemCount = $derived(
     menusResponse?.menus.reduce((total, menu) => total + menu.items.length, 0),

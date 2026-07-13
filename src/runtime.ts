@@ -5,6 +5,8 @@ export type RetryPolicy = {
   readonly delayMs?: number;
 };
 
+export type RuntimeConsoleLevel = "debug" | "log" | "info" | "warn" | "error";
+
 export type ToolRunErrorType =
   | "unknown_tool"
   | "missing_handler"
@@ -24,6 +26,7 @@ export interface ToolRunError {
 
 export type RuntimeEvent =
   | PlanStartedEvent
+  | PlanConsoleEvent
   | PlanCompletedEvent
   | PlanFailedEvent
   | ToolStartedEvent
@@ -34,6 +37,13 @@ export type RuntimeEvent =
 export interface PlanStartedEvent {
   readonly type: "plan.started";
   readonly planId: string;
+}
+
+export interface PlanConsoleEvent {
+  readonly type: "plan.console";
+  readonly planId: string;
+  readonly level: RuntimeConsoleLevel;
+  readonly args: readonly unknown[];
 }
 
 export interface PlanCompletedEvent {

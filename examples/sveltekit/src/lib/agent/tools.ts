@@ -1,4 +1,4 @@
-import { defineTools } from "gruntend/tool";
+import { defineTools } from "gruntend-sdk/tool";
 import * as v from "valibot";
 
 const roleSchema = v.picklist(["owner", "chef", "manager"]);

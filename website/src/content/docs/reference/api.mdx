@@ -3,7 +3,7 @@ title: API reference
 description: Public Gruntend signatures and types.
 ---
 
-## `gruntend/tool`
+## `gruntend-sdk/tool`
 
 ### `ToolSpec` and `Tool`
 
@@ -99,9 +99,13 @@ interface ToolExecutionError {
   readonly retryable?: boolean;
   readonly details?: Record<string, unknown>;
 }
+
+type ToolOk<Output> = Ok<Output, ToolExecutionError>;
+type ToolErr = Err<ToolExecutionError>;
+type ToolResult<Output> = Result<Output, ToolExecutionError>;
 ```
 
-## `gruntend/registry`
+## `gruntend-sdk/registry`
 
 ```ts
 interface ToolRegistry<TTool extends Tool = Tool> {
@@ -116,7 +120,9 @@ function createToolRegistry<const TTools extends readonly Tool[]>(
 
 Duplicate names throw `Error`.
 
-## `gruntend/client`
+## `gruntend-sdk/client`
+
+This reference documents `gruntend-sdk@0.1.0`.
 
 ### `createGruntendClient(options)`
 
@@ -126,6 +132,9 @@ interface GruntendClientOptions<
 > {
   readonly tools?: TTools;
   readonly registry?: ToolRegistry<TTools[number]>;
+  readonly executor?: CodePlanExecutor;
+  readonly maxOps?: number;
+  readonly console?: CodePlanConsole;
 }
 
 function createGruntendClient<const TTools extends readonly Tool[]>(
@@ -156,17 +165,46 @@ interface GruntendClientCodePlanRunOptions<
   readonly id?: string;
   readonly signal?: AbortSignal;
   readonly retry?: RetryPolicy;
+  readonly executor?: CodePlanExecutor;
+  readonly maxOps?: number;
+  readonly console?: CodePlanConsole;
   readonly ui?: CodePlanUiRuntimeOptions;
   readonly onEvent?: (event: RuntimeEvent) => void;
 }
 ```
 
-## `gruntend/code-plan`
+## `gruntend-sdk/code-plan`
 
 ```ts
 interface CodePlanUiRuntimeOptions {
   readonly html: HtmlTag;
 }
+
+interface CodePlanConsole {
+  readonly debug: (...args: readonly unknown[]) => void;
+  readonly log: (...args: readonly unknown[]) => void;
+  readonly info: (...args: readonly unknown[]) => void;
+  readonly warn: (...args: readonly unknown[]) => void;
+  readonly error: (...args: readonly unknown[]) => void;
+}
+
+interface CodePlanExecutionGlobals {
+  readonly input: unknown;
+  readonly tools: Record<string, unknown>;
+  readonly console: CodePlanConsole;
+  readonly html?: HtmlTag;
+}
+
+interface CodePlanExecutorContext {
+  readonly code: string;
+  readonly globals: CodePlanExecutionGlobals;
+  readonly maxOps: number;
+  readonly signal?: AbortSignal;
+}
+
+type CodePlanExecutor = (
+  context: CodePlanExecutorContext,
+) => Promise<unknown> | unknown;
 
 interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly code: string;
@@ -176,6 +214,9 @@ interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly id?: string;
   readonly signal?: AbortSignal;
   readonly retry?: RetryPolicy;
+  readonly executor?: CodePlanExecutor;
+  readonly maxOps?: number;
+  readonly console?: CodePlanConsole;
   readonly ui?: CodePlanUiRuntimeOptions;
   readonly onEvent?: (event: RuntimeEvent) => void;
 }
@@ -183,6 +224,17 @@ interface CodePlanRunOptions<TTool extends Tool = Tool> {
 function runCodePlan<TTool extends Tool>(
   options: CodePlanRunOptions<TTool>,
 ): Promise<CodePlanRunResult>;
+
+function createJailJsCodePlanExecutor(): CodePlanExecutor;
+
+function createSafeCodePlanConsole(
+  onMessage?: (message: {
+    readonly level: RuntimeConsoleLevel;
+    readonly args: readonly unknown[];
+  }) => void,
+): CodePlanConsole;
+
+const defaultCodePlanMaxOps: 100000;
 
 interface CodePlanRunResult {
   readonly status: "done" | "failed";
@@ -192,13 +244,15 @@ interface CodePlanRunResult {
 }
 ```
 
-## `gruntend/runtime`
+## `gruntend-sdk/runtime`
 
 ```ts
 type RetryPolicy = {
   readonly maxAttempts?: number;
   readonly delayMs?: number;
 };
+
+type RuntimeConsoleLevel = "debug" | "log" | "info" | "warn" | "error";
 
 type ToolRunErrorType =
   | "unknown_tool"
@@ -219,15 +273,76 @@ interface ToolRunError {
 
 type RuntimeEvent =
   | PlanStartedEvent
+  | PlanConsoleEvent
   | PlanCompletedEvent
   | PlanFailedEvent
   | ToolStartedEvent
   | ToolRetryingEvent
   | ToolCompletedEvent
   | ToolFailedEvent;
+
+interface PlanStartedEvent {
+  readonly type: "plan.started";
+  readonly planId: string;
+}
+
+interface PlanConsoleEvent {
+  readonly type: "plan.console";
+  readonly planId: string;
+  readonly level: RuntimeConsoleLevel;
+  readonly args: readonly unknown[];
+}
+
+interface PlanCompletedEvent {
+  readonly type: "plan.completed";
+  readonly planId: string;
+  readonly result: unknown;
+}
+
+interface PlanFailedEvent {
+  readonly type: "plan.failed";
+  readonly planId: string;
+  readonly error: string;
+  readonly errors: Record<string, ToolRunError>;
+}
+
+interface ToolStartedEvent {
+  readonly type: "tool.started";
+  readonly planId: string;
+  readonly callId: string;
+  readonly tool: string;
+  readonly input: unknown;
+}
+
+interface ToolRetryingEvent {
+  readonly type: "tool.retrying";
+  readonly planId: string;
+  readonly callId: string;
+  readonly tool: string;
+  readonly attempt: number;
+  readonly maxAttempts: number;
+  readonly nextAttempt: number;
+  readonly error: ToolRunError;
+}
+
+interface ToolCompletedEvent {
+  readonly type: "tool.completed";
+  readonly planId: string;
+  readonly callId: string;
+  readonly tool: string;
+  readonly output: ToolOk<unknown>;
+}
+
+interface ToolFailedEvent {
+  readonly type: "tool.failed";
+  readonly planId: string;
+  readonly callId: string;
+  readonly tool: string;
+  readonly error: ToolRunError;
+}
 ```
 
-## `gruntend/generate`
+## `gruntend-sdk/generate`
 
 ### `GeneratedCodePlan`
 
@@ -301,7 +416,7 @@ function validateGeneratedCodePlan(value: unknown): GeneratedCodePlan;
 
 Unparseable extracted JSON throws `GeneratedCodePlanParseError`. A missing JSON object or invalid response shape throws `Error`.
 
-## `gruntend/ui`
+## `gruntend-sdk/ui`
 
 ```ts
 function createHtmlTag(): HtmlTag;
@@ -314,7 +429,7 @@ interface GeneratedUi {
 }
 ```
 
-## `gruntend/ui/dom`
+## `gruntend-sdk/ui/dom`
 
 ```ts
 type GeneratedUiEventName = "click" | "submit" | "input" | "change";
@@ -337,4 +452,6 @@ interface GeneratedUiMountHandle {
 }
 ```
 
-Adapters are exported from `gruntend/ui/svelte`, `gruntend/ui/react`, `gruntend/ui/vue`, and `gruntend/ui/solid`.
+Adapters are exported from `gruntend-sdk/ui/svelte`, `gruntend-sdk/ui/react`, `gruntend-sdk/ui/vue`, and `gruntend-sdk/ui/solid`.
+
+Framework adapter exports are source-backed through explicit `types` and `import` export conditions for now, so each host app can compile its own framework format. Core runtime exports such as `gruntend-sdk/client`, `gruntend-sdk/code-plan`, `gruntend-sdk/tool`, and `gruntend-sdk/ui` are published from `dist`.

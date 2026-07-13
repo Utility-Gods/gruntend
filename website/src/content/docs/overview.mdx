@@ -8,21 +8,31 @@ description: Gruntend interprets JavaScript plans against a small set of applica
   your application.
 </p>
 
+## The idea in four parts
+
+- **Tool contract** — describes one operation and validates its input and output.
+- **Handler** — application code that performs the operation with your permissions and services.
+- **Plan** — JavaScript that composes tool calls and returns data or UI.
+- **Runtime** — interprets the plan and routes each call through its matching handler.
+
+In a conventional tool-calling loop, the host repeatedly asks a model what to call next. Gruntend instead lets a model produce one small program. That program can transform results, branch on runtime values, and coordinate several calls while the application retains control of every operation.
+
 ## The interpreter is the boundary
 
-A plan runs inside an AST interpreter. It receives only the values Gruntend supplies:
+A plan runs inside a code-plan executor. The default executor uses JailJS, an AST interpreter. The plan receives only the values Gruntend supplies:
 
 - `input` — task data supplied when the plan runs
 - `tools` — the application capabilities registered with Gruntend
-- `Promise` — standard promise support, including `Promise.all()`
-- `console` — logging for diagnostics
+- `console` — safe diagnostic logging through the lifecycle stream
 - `html` — the tagged-template function, only when generated UI is enabled
 
-It does not receive imports, `fetch`, `window`, `document`, storage, or your application services.
+With the default JailJS executor, standard built-ins such as `Promise` are available for async orchestration. The plan does not receive imports, `fetch`, `window`, `document`, storage, or your application services.
 
 This is the central idea: the plan has the expressiveness of JavaScript, but its useful authority comes only from registered `tools`.
 
-Gruntend currently interprets plans with <a href="https://github.com/badlogic/jailjs" target="_blank" rel="noreferrer">JailJS</a>, a JavaScript AST interpreter.
+JailJS is the default executor, not a permanent lock-in. Applications may provide a custom executor backed by a worker, isolate, remote service, or another interpreter.
+
+The default executor applies an operation budget with `maxOps`, but JailJS should be treated as scope isolation for controlled generated code, not as a complete security sandbox for adversarial code. Keep privileged work inside handlers, validate tool inputs and outputs, and use a stronger executor boundary when your threat model requires it.
 
 ## Plans compose; handlers perform
 
@@ -54,6 +64,23 @@ plan call         tools.menu.items.list(...)
 handler key       handlers["menu.items.list"]
 runtime event     event.tool === "menu.items.list"
 ```
+
+### One contract, two views of `tools`
+
+Application code receives a flat array from `defineTools()`. The runtime uses that array for registration, manifests, and handler typing:
+
+```ts
+const tools = defineTools({ menu: { items: { list: spec } } });
+tools[0].name; // "menu.items.list"
+```
+
+Inside a plan, Gruntend exposes the same registered names as a callable namespace:
+
+```js
+await tools.menu.items.list({ menuId: "menu_1" });
+```
+
+The plan-side namespace is created by the runtime; it is not a second tool definition.
 
 That separation is the product:
 
