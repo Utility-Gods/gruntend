@@ -16,14 +16,14 @@ ui-runtime        html tagged templates → delegated browser UI
 ## Install
 
 ```bash
-pnpm add gruntend valibot
+pnpm add gruntend-sdk valibot
 ```
 
 ## Define tools
 
 ```ts
-import { createGruntendClient } from "gruntend/client";
-import { defineTools } from "gruntend/tool";
+import { createGruntendClient } from "gruntend-sdk/client";
+import { defineTools } from "gruntend-sdk/tool";
 import * as v from "valibot";
 
 const tools = defineTools({
@@ -89,7 +89,7 @@ Handlers stay owned by the app. Gruntend validates generated tool inputs and han
 ## Generate a code plan
 
 ```ts
-import { generateCodePlan, getModel } from "gruntend/generate";
+import { generateCodePlan, getModel } from "gruntend-sdk/generate";
 
 const generated = await generateCodePlan({
   tools,
@@ -194,7 +194,7 @@ return err({
 JailJS is the default code-plan executor. Applications can replace it with their own interpreter, worker, isolate, or remote execution service without changing tool contracts or handlers.
 
 ```ts
-import type { CodePlanExecutor } from "gruntend/code-plan";
+import type { CodePlanExecutor } from "gruntend-sdk/code-plan";
 
 const executor: CodePlanExecutor = async ({
   code,
@@ -235,8 +235,8 @@ See [docs/RELEASE.md](docs/RELEASE.md) for the full release checklist.
 ## Render generated UI
 
 ```ts
-import { createGeneratedUi, createHtmlTag } from "gruntend/ui";
-import { mountGeneratedUi } from "gruntend/ui/dom";
+import { createGeneratedUi, createHtmlTag } from "gruntend-sdk/ui";
+import { mountGeneratedUi } from "gruntend-sdk/ui/dom";
 
 const html = createHtmlTag();
 
@@ -261,8 +261,8 @@ Framework adapters are thin wrappers over the same DOM primitive. They do not ow
 
 ```svelte
 <script lang="ts">
-  import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
-  import GeneratedUi from "gruntend/ui/svelte";
+  import type { GeneratedUi as GeneratedUiModel } from "gruntend-sdk/ui";
+  import GeneratedUi from "gruntend-sdk/ui/svelte";
 
   let { ui }: { ui: GeneratedUiModel } = $props();
 </script>
@@ -277,8 +277,8 @@ Framework adapters are thin wrappers over the same DOM primitive. They do not ow
 ### React
 
 ```tsx
-import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
-import { GeneratedUi } from "gruntend/ui/react";
+import type { GeneratedUi as GeneratedUiModel } from "gruntend-sdk/ui";
+import { GeneratedUi } from "gruntend-sdk/ui/react";
 
 export function AgentResult({ ui }: { ui: GeneratedUiModel }) {
   return (
@@ -294,8 +294,8 @@ export function AgentResult({ ui }: { ui: GeneratedUiModel }) {
 ### Solid
 
 ```tsx
-import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
-import { GeneratedUi } from "gruntend/ui/solid";
+import type { GeneratedUi as GeneratedUiModel } from "gruntend-sdk/ui";
+import { GeneratedUi } from "gruntend-sdk/ui/solid";
 
 export function AgentResult(props: { ui: GeneratedUiModel }) {
   return (
@@ -312,8 +312,8 @@ export function AgentResult(props: { ui: GeneratedUiModel }) {
 
 ```vue
 <script setup lang="ts">
-import type { GeneratedUi as GeneratedUiModel } from "gruntend/ui";
-import GeneratedUi from "gruntend/ui/vue";
+import type { GeneratedUi as GeneratedUiModel } from "gruntend-sdk/ui";
+import GeneratedUi from "gruntend-sdk/ui/vue";
 
 defineProps<{ ui: GeneratedUiModel }>();
 
@@ -329,7 +329,7 @@ function reportError(error: unknown) {
 
 The Svelte, React, and Solid adapters accept `onError`, `onRender`, `onActionStart`, and `onActionEnd` callbacks. The Vue adapter emits `error`, `render`, `action-start`, and `action-end` events. The consuming app supplies its framework dependency; Gruntend keeps these adapters as optional subpath exports.
 
-Framework adapter exports are source-backed through explicit `types` and `import` export conditions for now, so each host app can compile its own framework format. Core runtime exports such as `gruntend/client`, `gruntend/code-plan`, `gruntend/tool`, and `gruntend/ui` are published from `dist`.
+Framework adapter exports are source-backed through explicit `types` and `import` export conditions for now, so each host app can compile its own framework format. Core runtime exports such as `gruntend-sdk/client`, `gruntend-sdk/code-plan`, `gruntend-sdk/tool`, and `gruntend-sdk/ui` are published from `dist`.
 
 Event handlers are written naturally:
 

@@ -9,7 +9,7 @@ This example has:
 - normal app routes for browsing that data
 - a Gruntend tool namespace over app-owned remote handlers
 - a chat-style agent route with a mocked code-plan generator
-- tagged-template message islands rendered through `gruntend/ui` and `gruntend/ui/svelte`
+- tagged-template message islands rendered through `gruntend-sdk/ui` and `gruntend-sdk/ui/svelte`
 
 ## Run
 
@@ -64,7 +64,7 @@ The chat transcript renders generated UI returned from code plans as native Java
 
 ## Switching back to a real LLM later
 
-The switch point is intentionally small: use `generateCodePlan()` from `gruntend/generate` inside `examples/sveltekit/src/lib/remote/agent.remote.ts` and pass your model/options there. The rest of the page can keep consuming the same response shape:
+The switch point is intentionally small: use `generateCodePlan()` from `gruntend-sdk/generate` inside `examples/sveltekit/src/lib/remote/agent.remote.ts` and pass your model/options there. The rest of the page can keep consuming the same response shape:
 
 ```ts
 {

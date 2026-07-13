@@ -1,4 +1,4 @@
-import type { ToolHandlerMap, ToolResult } from "gruntend/tool";
+import type { ToolHandlerMap, ToolResult } from "gruntend-sdk/tool";
 import {
   createMenuCommand,
   createMenuItemCommand,

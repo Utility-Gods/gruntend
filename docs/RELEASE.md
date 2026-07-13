@@ -1,13 +1,13 @@
 # Release guide
 
-This project publishes the `gruntend` package to npm with Changesets and GitHub Actions.
+This project publishes the `gruntend-sdk` package to npm with Changesets and GitHub Actions.
 
 ## One-time setup
 
 1. Confirm the package name is available:
 
    ```bash
-   npm view gruntend name version --json
+   npm view gruntend-sdk name version --json
    ```
 
    A `404 Not Found` response means the name is still available.
@@ -47,12 +47,12 @@ tmp_dir=$(mktemp -d)
 npm pack --pack-destination "$tmp_dir" --json
 cd "$tmp_dir"
 npm init -y
-npm install ./gruntend-0.1.0.tgz
-node --input-type=module -e 'import { createGruntendClient } from "gruntend/client"; import { defineTools } from "gruntend/tool"; console.log(Boolean(createGruntendClient({ tools: defineTools({}) }).registry));'
-node --input-type=module -e 'await Promise.all(["gruntend/client","gruntend/code-plan","gruntend/generate","gruntend/registry","gruntend/runtime","gruntend/tool","gruntend/ui","gruntend/ui/dom","gruntend/ui-runtime"].map((id) => import(id))); console.log("core subpath imports ok");'
+npm install ./gruntend-sdk-0.1.0.tgz
+node --input-type=module -e 'import { createGruntendClient } from "gruntend-sdk/client"; import { defineTools } from "gruntend-sdk/tool"; console.log(Boolean(createGruntendClient({ tools: defineTools({}) }).registry));'
+node --input-type=module -e 'await Promise.all(["gruntend-sdk/client","gruntend-sdk/code-plan","gruntend-sdk/generate","gruntend-sdk/registry","gruntend-sdk/runtime","gruntend-sdk/tool","gruntend-sdk/ui","gruntend-sdk/ui/dom","gruntend-sdk/ui-runtime"].map((id) => import(id))); console.log("core subpath imports ok");'
 ```
 
-Framework adapter exports (`gruntend/ui/react`, `gruntend/ui/solid`, `gruntend/ui/svelte`, and `gruntend/ui/vue`) are source-backed and should be verified by the consuming framework build.
+Framework adapter exports (`gruntend-sdk/ui/react`, `gruntend-sdk/ui/solid`, `gruntend-sdk/ui/svelte`, and `gruntend-sdk/ui/vue`) are source-backed and should be verified by the consuming framework build.
 
 ## First npm release
 
@@ -68,12 +68,12 @@ The first release is already versioned as `0.1.0`, so it does not need a changes
 
 3. The release workflow runs on `main`.
 
-4. If `gruntend@0.1.0` is not already published, Changesets publishes it to npm using `NPM_TOKEN`.
+4. If `gruntend-sdk@0.1.0` is not already published, Changesets publishes it to npm using `NPM_TOKEN`.
 
 5. Confirm the published version:
 
    ```bash
-   npm view gruntend version
+   npm view gruntend-sdk version
    ```
 
 ## Future releases

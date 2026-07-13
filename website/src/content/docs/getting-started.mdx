@@ -10,13 +10,13 @@ description: Define one typed capability, implement its handler, run a JavaScrip
 </p>
 
 :::note[Version]
-This guide documents the `gruntend@0.1.0` beta SDK contract.
+This guide documents the `gruntend-sdk@0.1.0` beta SDK contract.
 :::
 
 This example uses a handwritten plan, so it does not require a model or API key.
 
 ```bash
-pnpm add gruntend valibot
+pnpm add gruntend-sdk valibot
 ```
 
 ## Define the capability
@@ -24,7 +24,7 @@ pnpm add gruntend valibot
 Create `tools.ts`. `defineTools()` is contract-only. It describes the operation, validates its input and output, and produces its registered name. It does not access application data.
 
 ```ts
-import { defineTools } from "gruntend/tool";
+import { defineTools } from "gruntend-sdk/tool";
 import * as v from "valibot";
 
 export const tools = defineTools({
@@ -81,7 +81,7 @@ const menuRepository = {
 Now implement the handler:
 
 ```ts
-import type { ToolHandlerMap } from "gruntend/tool";
+import type { ToolHandlerMap } from "gruntend-sdk/tool";
 import { tools } from "./tools.ts";
 
 export const handlers = {
@@ -130,7 +130,7 @@ TypeScript checks the application code while runtime schemas protect the boundar
 Create `run.ts`. A plan calls the tool through the namespace implied by its registered name.
 
 ```ts
-import { createGruntendClient } from "gruntend/client";
+import { createGruntendClient } from "gruntend-sdk/client";
 import { handlers } from "./handlers.ts";
 import { tools } from "./tools.ts";
 

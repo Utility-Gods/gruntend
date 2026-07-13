@@ -3,7 +3,7 @@ title: API reference
 description: Public Gruntend signatures and types.
 ---
 
-## `gruntend/tool`
+## `gruntend-sdk/tool`
 
 ### `ToolSpec` and `Tool`
 
@@ -105,7 +105,7 @@ type ToolErr = Err<ToolExecutionError>;
 type ToolResult<Output> = Result<Output, ToolExecutionError>;
 ```
 
-## `gruntend/registry`
+## `gruntend-sdk/registry`
 
 ```ts
 interface ToolRegistry<TTool extends Tool = Tool> {
@@ -120,9 +120,9 @@ function createToolRegistry<const TTools extends readonly Tool[]>(
 
 Duplicate names throw `Error`.
 
-## `gruntend/client`
+## `gruntend-sdk/client`
 
-This reference documents `gruntend@0.1.0`.
+This reference documents `gruntend-sdk@0.1.0`.
 
 ### `createGruntendClient(options)`
 
@@ -173,7 +173,7 @@ interface GruntendClientCodePlanRunOptions<
 }
 ```
 
-## `gruntend/code-plan`
+## `gruntend-sdk/code-plan`
 
 ```ts
 interface CodePlanUiRuntimeOptions {
@@ -244,7 +244,7 @@ interface CodePlanRunResult {
 }
 ```
 
-## `gruntend/runtime`
+## `gruntend-sdk/runtime`
 
 ```ts
 type RetryPolicy = {
@@ -342,7 +342,7 @@ interface ToolFailedEvent {
 }
 ```
 
-## `gruntend/generate`
+## `gruntend-sdk/generate`
 
 ### `GeneratedCodePlan`
 
@@ -416,7 +416,7 @@ function validateGeneratedCodePlan(value: unknown): GeneratedCodePlan;
 
 Unparseable extracted JSON throws `GeneratedCodePlanParseError`. A missing JSON object or invalid response shape throws `Error`.
 
-## `gruntend/ui`
+## `gruntend-sdk/ui`
 
 ```ts
 function createHtmlTag(): HtmlTag;
@@ -429,7 +429,7 @@ interface GeneratedUi {
 }
 ```
 
-## `gruntend/ui/dom`
+## `gruntend-sdk/ui/dom`
 
 ```ts
 type GeneratedUiEventName = "click" | "submit" | "input" | "change";
@@ -452,6 +452,6 @@ interface GeneratedUiMountHandle {
 }
 ```
 
-Adapters are exported from `gruntend/ui/svelte`, `gruntend/ui/react`, `gruntend/ui/vue`, and `gruntend/ui/solid`.
+Adapters are exported from `gruntend-sdk/ui/svelte`, `gruntend-sdk/ui/react`, `gruntend-sdk/ui/vue`, and `gruntend-sdk/ui/solid`.
 
-Framework adapter exports are source-backed through explicit `types` and `import` export conditions for now, so each host app can compile its own framework format. Core runtime exports such as `gruntend/client`, `gruntend/code-plan`, `gruntend/tool`, and `gruntend/ui` are published from `dist`.
+Framework adapter exports are source-backed through explicit `types` and `import` export conditions for now, so each host app can compile its own framework format. Core runtime exports such as `gruntend-sdk/client`, `gruntend-sdk/code-plan`, `gruntend-sdk/tool`, and `gruntend-sdk/ui` are published from `dist`.

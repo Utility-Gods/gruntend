@@ -18,7 +18,7 @@ For generated UI, first ask the model for a UI plan, then run that plan with the
 ## Generate a UI plan
 
 ```ts
-import { generateCodePlan } from "gruntend/generate";
+import { generateCodePlan } from "gruntend-sdk/generate";
 
 const { plan } = await generateCodePlan({
   model,
@@ -50,7 +50,7 @@ If you write the plan yourself, skip this generation step and pass your code str
 ## Provide `html` at runtime
 
 ```ts
-import { createHtmlTag } from "gruntend/ui";
+import { createHtmlTag } from "gruntend-sdk/ui";
 
 const html = createHtmlTag();
 
@@ -105,8 +105,8 @@ Choose a normal DOM element where the generated interface should appear:
 Then create and mount the generated UI:
 
 ```ts
-import { createGeneratedUi } from "gruntend/ui";
-import { mountGeneratedUi } from "gruntend/ui/dom";
+import { createGeneratedUi } from "gruntend-sdk/ui";
+import { mountGeneratedUi } from "gruntend-sdk/ui/dom";
 
 if (result.status !== "done") throw new Error(result.error);
 

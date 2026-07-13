@@ -1,4 +1,4 @@
-import type { GeneratedCodePlan } from "gruntend/generate";
+import type { GeneratedCodePlan } from "gruntend-sdk/generate";
 
 export function createMockPlan(task: string): GeneratedCodePlan {
   const normalized = task.toLowerCase();

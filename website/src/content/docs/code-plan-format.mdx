@@ -88,7 +88,7 @@ A model-generated plan uses a small JSON envelope:
 ## Generate with Gruntend
 
 ```ts
-import { generateCodePlan, getModel } from "gruntend/generate";
+import { generateCodePlan, getModel } from "gruntend-sdk/generate";
 
 const { plan } = await generateCodePlan({
   model: getModel("openai", "model-id"),
@@ -106,7 +106,7 @@ Generation returns the envelope. It does not execute it.
 import {
   createCodePlanPrompt,
   parseGeneratedCodePlan,
-} from "gruntend/generate";
+} from "gruntend-sdk/generate";
 
 const prompt = createCodePlanPrompt({ tools, task, input });
 const text = await myModel.complete({
@@ -129,7 +129,7 @@ See [Generated UI](/guides/generated-ui/).
 `runCodePlan()` uses the default JailJS executor unless the application supplies one:
 
 ```ts
-import type { CodePlanExecutor } from "gruntend/code-plan";
+import type { CodePlanExecutor } from "gruntend-sdk/code-plan";
 
 const executor: CodePlanExecutor = async ({
   code,

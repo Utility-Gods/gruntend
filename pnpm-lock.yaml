@@ -63,7 +63,7 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: 6.0.0
         version: 6.0.0(svelte@5.49.1)(vite@7.0.4(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0))
-      gruntend:
+      gruntend-sdk:
         specifier: workspace:*
         version: link:../..
       lucide-svelte:

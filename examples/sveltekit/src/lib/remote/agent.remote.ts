@@ -12,7 +12,7 @@ import {
   GeneratedCodePlanParseError,
   getModel,
   type Model,
-} from "gruntend/generate";
+} from "gruntend-sdk/generate";
 
 const generateAgentPlanSchema = v.object({
   prompt: v.pipe(v.string(), v.nonEmpty()),
