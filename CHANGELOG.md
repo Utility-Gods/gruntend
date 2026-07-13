@@ -1,5 +1,12 @@
 # gruntend
 
+## 0.2.0
+
+### Minor Changes
+
+- 1cfd775: Make application-owned code-plan prompts first-class by allowing `generateCodePlan()` to receive exact `system` and `user` prompt text.
+- 1cfd775: Prompt is first class citizen now
+
 ## 0.1.0
 
 Initial public beta release.
