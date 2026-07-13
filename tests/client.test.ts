@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import type { CodePlanExecutor } from "../src/code-plan.ts";
 import { createGruntendClient } from "../src/client.ts";
 import { defineTools } from "../src/tool.ts";
 import * as v from "valibot";
@@ -38,6 +39,35 @@ test("Gruntend client runs an LLM code plan with app-owned closure handlers", as
   expect(result).toEqual({
     status: "done",
     result: { menuId: "menu:Dinner" },
+    errors: {},
+  });
+});
+
+test("Gruntend client can use a custom executor", async () => {
+  const tools = defineTools({});
+  const executor: CodePlanExecutor = ({ code, globals, maxOps }) => ({
+    code,
+    input: globals.input,
+    maxOps,
+  });
+  const client = createGruntendClient({
+    tools,
+    executor,
+    maxOps: 123,
+  });
+
+  const result = await client.runCodePlan("return input.value;", {
+    input: { value: 9 },
+    handlers: {},
+  });
+
+  expect(result).toEqual({
+    status: "done",
+    result: {
+      code: "return input.value;",
+      input: { value: 9 },
+      maxOps: 123,
+    },
     errors: {},
   });
 });

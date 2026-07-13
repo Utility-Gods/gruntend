@@ -14,6 +14,7 @@ This example has:
 ## Run
 
 ```bash
+pnpm build
 pnpm --filter gruntend-sveltekit-example dev
 ```
 
@@ -24,6 +25,7 @@ This example intentionally runs the SvelteKit dev server under Bun because the s
 Set the SvelteKit base path when building or running the public demo:
 
 ```bash
+pnpm build
 GRUNTEND_EXAMPLE_BASE_PATH=/example pnpm --filter gruntend-sveltekit-example build
 ```
 
@@ -75,6 +77,7 @@ The switch point is intentionally small: use `generateCodePlan()` from `gruntend
 ## Validate
 
 ```bash
+pnpm build
 pnpm --filter gruntend-sveltekit-example check
 pnpm --filter gruntend-sveltekit-example build
 ```

@@ -148,3 +148,7 @@ Generated handlers receive a restricted event payload, not broad DOM access.
 ## Mutations
 
 A mutation UI should first render the proposed change. Call mutation tools only after explicit confirmation from the person using the interface. Permissions and persistence still belong to the app-owned handler.
+
+:::caution[Confirmation is application policy]
+Gruntend's generation prompt asks the model to put mutations behind confirmation, but the runtime does not enforce that interaction pattern. A handwritten or nonconforming plan can call any registered mutation tool immediately. Enforce important rules in application code—for example, expose separate preview and apply capabilities, require a confirmation token, and always authorize the operation inside the handler.
+:::

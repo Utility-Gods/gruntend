@@ -4,6 +4,7 @@ import { transformToES5 } from "@mariozechner/jailjs/transform";
 import type { ToolRegistry } from "./registry.ts";
 import type { UiTemplateTag } from "./ui-runtime.ts";
 import type {
+  RuntimeConsoleLevel,
   RetryPolicy,
   RuntimeEvent,
   ToolRunError,
@@ -24,6 +25,39 @@ export interface CodePlanUiRuntimeOptions {
   readonly html: UiTemplateTag;
 }
 
+export interface CodePlanConsole {
+  readonly debug: (...args: readonly unknown[]) => void;
+  readonly log: (...args: readonly unknown[]) => void;
+  readonly info: (...args: readonly unknown[]) => void;
+  readonly warn: (...args: readonly unknown[]) => void;
+  readonly error: (...args: readonly unknown[]) => void;
+}
+
+export interface CodePlanConsoleMessage {
+  readonly level: RuntimeConsoleLevel;
+  readonly args: readonly unknown[];
+}
+
+export type CodePlanConsoleHandler = (message: CodePlanConsoleMessage) => void;
+
+export interface CodePlanExecutionGlobals {
+  readonly input: unknown;
+  readonly tools: Record<string, unknown>;
+  readonly console: CodePlanConsole;
+  readonly html?: UiTemplateTag;
+}
+
+export interface CodePlanExecutorContext {
+  readonly code: string;
+  readonly globals: CodePlanExecutionGlobals;
+  readonly maxOps: number;
+  readonly signal?: AbortSignal;
+}
+
+export type CodePlanExecutor = (
+  context: CodePlanExecutorContext,
+) => Promise<unknown> | unknown;
+
 export interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly code: string;
   readonly input?: unknown;
@@ -32,6 +66,9 @@ export interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly id?: string;
   readonly signal?: AbortSignal;
   readonly retry?: RetryPolicy;
+  readonly executor?: CodePlanExecutor;
+  readonly maxOps?: number;
+  readonly console?: CodePlanConsole;
   readonly ui?: CodePlanUiRuntimeOptions;
   readonly onEvent?: (event: RuntimeEvent) => void;
 }
@@ -49,6 +86,10 @@ interface ToolContractError extends Error {
   readonly retryable?: boolean;
   readonly details?: Record<string, unknown>;
 }
+
+export const defaultCodePlanMaxOps = 100_000;
+
+const defaultExecutor = createJailJsCodePlanExecutor();
 
 export async function runCodePlan<TTool extends Tool>(
   options: CodePlanRunOptions<TTool>,
@@ -94,18 +135,40 @@ export async function runCodePlan<TTool extends Tool>(
     },
   );
 
+  if (options.signal?.aborted) {
+    const message = "Code plan execution aborted.";
+    options.onEvent?.({
+      type: "plan.failed",
+      planId,
+      error: message,
+      errors,
+    });
+
+    return {
+      status: "failed",
+      errors,
+      error: message,
+    };
+  }
+
   options.onEvent?.({ type: "plan.started", planId });
 
   try {
-    const ast = transformToES5(wrapCodePlan(options.code));
-    const interpreter = new Interpreter({
-      Promise,
-      console,
-      input: options.input ?? {},
-      tools,
-      ...(options.ui ? { html: options.ui.html } : {}),
+    const result = await (options.executor ?? defaultExecutor)({
+      code: options.code,
+      globals: createExecutionGlobals({
+        input: options.input ?? {},
+        tools,
+        console:
+          options.console ??
+          createSafeCodePlanConsole((message) => {
+            options.onEvent?.({ type: "plan.console", planId, ...message });
+          }),
+        ui: options.ui,
+      }),
+      maxOps: options.maxOps ?? defaultCodePlanMaxOps,
+      signal: options.signal,
     });
-    const result = await interpreter.evaluate(ast);
 
     options.onEvent?.({ type: "plan.completed", planId, result });
 
@@ -129,6 +192,101 @@ export async function runCodePlan<TTool extends Tool>(
       error: message,
     };
   }
+}
+
+export function createJailJsCodePlanExecutor(): CodePlanExecutor {
+  return async ({ code, globals, maxOps }) => {
+    const ast = transformToES5(wrapCodePlan(code));
+    const interpreter = new Interpreter(createInterpreterGlobals(globals), {
+      maxOps,
+    });
+    return await interpreter.evaluate(ast);
+  };
+}
+
+export function createSafeCodePlanConsole(
+  onMessage?: CodePlanConsoleHandler,
+): CodePlanConsole {
+  const emit = (level: RuntimeConsoleLevel, args: readonly unknown[]) => {
+    onMessage?.({
+      level,
+      args: args.map((value) => sanitizeConsoleValue(value)),
+    });
+  };
+
+  return Object.freeze({
+    debug: (...args: readonly unknown[]) => emit("debug", args),
+    log: (...args: readonly unknown[]) => emit("log", args),
+    info: (...args: readonly unknown[]) => emit("info", args),
+    warn: (...args: readonly unknown[]) => emit("warn", args),
+    error: (...args: readonly unknown[]) => emit("error", args),
+  });
+}
+
+function createExecutionGlobals(options: {
+  readonly input: unknown;
+  readonly tools: Record<string, unknown>;
+  readonly console: CodePlanConsole;
+  readonly ui?: CodePlanUiRuntimeOptions;
+}): CodePlanExecutionGlobals {
+  return {
+    input: options.input,
+    tools: options.tools,
+    console: options.console,
+    ...(options.ui ? { html: options.ui.html } : {}),
+  };
+}
+
+function createInterpreterGlobals(
+  globals: CodePlanExecutionGlobals,
+): Record<string, unknown> {
+  return {
+    input: globals.input,
+    tools: globals.tools,
+    console: globals.console,
+    ...(globals.html ? { html: globals.html } : {}),
+  };
+}
+
+function sanitizeConsoleValue(value: unknown, depth = 0): unknown {
+  if (value === null || value === undefined) return value;
+
+  if (typeof value === "string") {
+    return value.length > 1_000 ? `${value.slice(0, 1_000)}...` : value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (typeof value === "bigint" || typeof value === "symbol") {
+    return String(value);
+  }
+  if (typeof value === "function") return "[Function]";
+
+  if (depth >= 2) {
+    return Array.isArray(value) ? "[Array]" : "[Object]";
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .slice(0, 20)
+      .map((item) => sanitizeConsoleValue(item, depth + 1));
+  }
+
+  if (typeof value === "object") {
+    let entries: [string, unknown][];
+    try {
+      entries = Object.entries(value as Record<string, unknown>).slice(0, 20);
+    } catch {
+      return "[Object]";
+    }
+    return Object.fromEntries(
+      entries.map(([key, item]) => [
+        key,
+        sanitizeConsoleValue(item, depth + 1),
+      ]),
+    );
+  }
+
+  return String(value);
 }
 
 function wrapCodePlan(code: string): string {

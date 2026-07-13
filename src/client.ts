@@ -1,4 +1,6 @@
 import {
+  type CodePlanConsole,
+  type CodePlanExecutor,
   type CodePlanRunResult,
   type CodePlanUiRuntimeOptions,
   runCodePlan,
@@ -12,6 +14,9 @@ export interface GruntendClientOptions<
 > {
   readonly tools?: TTools;
   readonly registry?: ToolRegistry<TTools[number]>;
+  readonly executor?: CodePlanExecutor;
+  readonly maxOps?: number;
+  readonly console?: CodePlanConsole;
 }
 
 export interface GruntendClient<
@@ -30,6 +35,9 @@ export interface GruntendClientCodePlanRunOptions<
   readonly input?: unknown;
   readonly id?: string;
   readonly retry?: RetryPolicy;
+  readonly executor?: CodePlanExecutor;
+  readonly maxOps?: number;
+  readonly console?: CodePlanConsole;
   readonly handlers: ToolHandlerMap<TTools>;
   readonly signal?: AbortSignal;
   readonly ui?: CodePlanUiRuntimeOptions;
@@ -52,6 +60,9 @@ export function createGruntendClient<const TTools extends readonly Tool[]>(
         handlers: runOptions.handlers,
         signal: runOptions.signal,
         retry: runOptions.retry,
+        executor: runOptions.executor ?? options.executor,
+        maxOps: runOptions.maxOps ?? options.maxOps,
+        console: runOptions.console ?? options.console,
         ui: runOptions.ui,
         onEvent: runOptions.onEvent,
       });

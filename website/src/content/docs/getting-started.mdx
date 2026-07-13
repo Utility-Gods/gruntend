@@ -9,13 +9,19 @@ description: Define one typed capability, implement its handler, run a JavaScrip
   the plan and handler.
 </p>
 
-:::note[Pre-release]
-Gruntend is currently pre-release. This guide documents the public SDK contract used inside this repository; a package installation command will be added when the package is published.
+:::note[Version]
+This guide documents the `gruntend@0.1.0` beta SDK contract.
 :::
+
+This example uses a handwritten plan, so it does not require a model or API key.
+
+```bash
+pnpm add gruntend valibot
+```
 
 ## Define the capability
 
-`defineTools()` is contract-only. It describes the operation, validates its input and output, and produces its registered name. It does not access application data.
+Create `tools.ts`. `defineTools()` is contract-only. It describes the operation, validates its input and output, and produces its registered name. It does not access application data.
 
 ```ts
 import { defineTools } from "gruntend/tool";
@@ -48,11 +54,15 @@ The nested path creates exactly one registered tool:
 menu.item.get
 ```
 
+:::tip[Why `tools` looks different in a plan]
+In application code, `defineTools()` returns a flat array containing the registered `menu.item.get` contract. During execution, Gruntend turns those registered names into the callable plan namespace, so plan code uses `tools.menu.item.get(...)`. You define the contract only once.
+:::
+
 ## Implement the app-owned handler
 
-A handler is an async runtime closure owned by the application. It may access repositories, authorization state, secrets, and services that the generated plan cannot access.
+Create `handlers.ts`. A handler is an async runtime closure owned by the application. It may access repositories, authorization state, secrets, and services that the generated plan cannot access.
 
-For this first task, use a small in-memory application repository:
+For this first task, keep a small in-memory application repository in the same file:
 
 ```ts
 const menuRepository = {
@@ -74,7 +84,7 @@ Now implement the handler:
 import type { ToolHandlerMap } from "gruntend/tool";
 import { tools } from "./tools.ts";
 
-const handlers = {
+export const handlers = {
   "menu.item.get": async ({ input, ok, err }) => {
     const item = await menuRepository.get(input.itemId);
 
@@ -117,9 +127,13 @@ TypeScript checks the application code while runtime schemas protect the boundar
 
 ## Write the plan
 
-A plan calls the tool through the namespace implied by its registered name.
+Create `run.ts`. A plan calls the tool through the namespace implied by its registered name.
 
 ```ts
+import { createGruntendClient } from "gruntend/client";
+import { handlers } from "./handlers.ts";
+import { tools } from "./tools.ts";
+
 const plan = `
   const result = await tools.menu.item.get({
     itemId: input.itemId,
@@ -137,9 +151,6 @@ The runtime unwraps the successful handler result before returning it to the pla
 ## Run the plan
 
 ```ts
-import { createGruntendClient } from "gruntend/client";
-import { tools } from "./tools.ts";
-
 const gruntend = createGruntendClient({ tools });
 
 const result = await gruntend.runCodePlan(plan, {

@@ -2,20 +2,22 @@
 
 Typed tool namespaces and generated UI for app-owned capabilities.
 
-> Gruntend is in pre-release. The npm package will be published soon. For now, the SvelteKit example in this repository demonstrates the current runtime and generated UI direction.
+Current beta: `0.1.0`
 
 Gruntend lets an app expose a small capability surface to an LLM, receive a JavaScript code plan, and execute that plan through app-owned handlers. In UI mode, the plan can return safe `html` tagged-template UI with local component state.
 
 ```text
 defineTools()     app capability surface
 generateCodePlan  LLM → JavaScript plan
-runCodePlan       sandboxed execution through handlers
+runCodePlan       scoped execution through handlers
 ui-runtime        html tagged templates → delegated browser UI
 ```
 
 ## Install
 
-The npm package is not published yet. Install instructions will be added before the first public package release.
+```bash
+pnpm add gruntend valibot
+```
 
 ## Define tools
 
@@ -155,10 +157,13 @@ Generated code can access only injected globals:
 ```text
 input
 tools
-Promise
 console
 html when UI mode is provided at runtime
 ```
+
+With the default JailJS executor, standard built-ins such as `Promise` are still available for `async` code and `Promise.all(...)`.
+The default executor applies an operation budget with `maxOps`; use a custom executor when you need a worker, process, isolate, or remote sandbox as the outer execution boundary.
+The built-in budget is an interpreter operation budget, not a wall-clock or memory isolation boundary.
 
 Use normal JavaScript for orchestration:
 
@@ -184,6 +189,49 @@ return err({
 });
 ```
 
+## Bring your own executor
+
+JailJS is the default code-plan executor. Applications can replace it with their own interpreter, worker, isolate, or remote execution service without changing tool contracts or handlers.
+
+```ts
+import type { CodePlanExecutor } from "gruntend/code-plan";
+
+const executor: CodePlanExecutor = async ({
+  code,
+  globals,
+  maxOps,
+  signal,
+}) => {
+  return myInterpreter.evaluate(code, {
+    globals,
+    maxOps,
+    signal,
+  });
+};
+
+const gruntend = createGruntendClient({
+  tools,
+  executor,
+});
+```
+
+The executor receives Gruntend-owned globals: `input`, `tools`, a safe `console`, and `html` when UI mode is enabled. It also receives `maxOps` and the run `signal` so custom backends can enforce budgets and cancellation. If the signal is already aborted, Gruntend fails the run before invoking the executor.
+The `code` value is the generated async function body; custom executors own any wrapping, parsing, or remote execution protocol they need.
+
+## Release process
+
+The repository uses Changesets for versioning, changelog updates, release PRs, and npm publishing.
+
+For a user-facing package change:
+
+```bash
+pnpm changeset
+```
+
+When changesets land on `main`, the release workflow opens a version PR. Merging that PR publishes to npm with provenance when the repository has `NPM_TOKEN` configured.
+
+See [docs/RELEASE.md](docs/RELEASE.md) for the full release checklist.
+
 ## Render generated UI
 
 ```ts
@@ -202,7 +250,7 @@ const ui = createGeneratedUi(result.result).unwrap();
 const frame = ui.render().unwrap();
 
 // frame.html is safe compiled HTML.
-// frame.handlers maps delegated handler ids to sandboxed functions.
+// frame.handlers maps delegated handler ids to generated functions.
 
 mountGeneratedUi(rootElement, ui);
 ```
@@ -281,6 +329,8 @@ function reportError(error: unknown) {
 
 The Svelte, React, and Solid adapters accept `onError`, `onRender`, `onActionStart`, and `onActionEnd` callbacks. The Vue adapter emits `error`, `render`, `action-start`, and `action-end` events. The consuming app supplies its framework dependency; Gruntend keeps these adapters as optional subpath exports.
 
+Framework adapter exports are source-backed through explicit `types` and `import` export conditions for now, so each host app can compile its own framework format. Core runtime exports such as `gruntend/client`, `gruntend/code-plan`, `gruntend/tool`, and `gruntend/ui` are published from `dist`.
+
 Event handlers are written naturally:
 
 ```js
@@ -301,6 +351,7 @@ The browser never receives real inline JavaScript.
 
 ```text
 plan.started
+plan.console
 tool.started
 tool.retrying
 tool.completed
@@ -325,6 +376,7 @@ await gruntend.runCodePlan(code, {
 Run mock mode:
 
 ```bash
+pnpm build
 pnpm --filter gruntend-sveltekit-example dev
 ```
 
@@ -346,6 +398,7 @@ Then open:
 
 ```bash
 pnpm install
+pnpm build
 pnpm test
 pnpm check
 pnpm --filter gruntend-sveltekit-example check

@@ -80,3 +80,5 @@ error · render · action-start · action-end
 ```
 
 Changing `ui` updates the existing mount. Unmounting the component removes delegated listeners. All adapters expose `generated-ui-shell`, `generated-ui`, `generated-ui-status`, and `generated-ui-error` classes for host styling.
+
+The framework adapter exports are source-backed through explicit `types` and `import` export conditions for now, so each host app can compile its own framework format. The core runtime exports (`gruntend/client`, `gruntend/code-plan`, `gruntend/tool`, and `gruntend/ui`) are published from `dist`.
