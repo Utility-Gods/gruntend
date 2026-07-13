@@ -33,7 +33,11 @@ export function createBrowserHandlers(): ToolHandlerMap<typeof appTools> {
       runTool(() => createMenuCommand(input) as Promise<MenuOutput>, ok, err),
 
     "menu.items.list": async ({ input, ok, err }) =>
-      runTool(() => getMenuItems(input).run() as Promise<MenuItemsOutput>, ok, err),
+      runTool(
+        () => getMenuItems(input).run() as Promise<MenuItemsOutput>,
+        ok,
+        err,
+      ),
 
     "menu.item.create": async ({ input, ok, err }) =>
       runTool(
