@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm --dir ../.. build",
     "dev": "vite --host 0.0.0.0",
+    "prebuild": "pnpm --dir ../.. build",
     "build": "vite build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "deploy": "pnpm build && wrangler deploy",
