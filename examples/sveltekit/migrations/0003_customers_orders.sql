@@ -29,9 +29,9 @@ CREATE TABLE IF NOT EXISTS order_lines (
   item_name TEXT NOT NULL,
   unit_price REAL NOT NULL CHECK (unit_price >= 0),
   quantity INTEGER NOT NULL CHECK (quantity > 0),
-  FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
-  FOREIGN KEY (menu_id) REFERENCES menus(menu_id),
-  FOREIGN KEY (item_id) REFERENCES menu_items(item_id)
+  -- Menu and item identifiers are historical snapshots. They must survive
+  -- changes to or deletion of the corresponding live menu records.
+  FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders(created_at);
