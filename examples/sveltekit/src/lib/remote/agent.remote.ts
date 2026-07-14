@@ -45,13 +45,21 @@ const suggestAgentTaskSchema = v.object({
 
 type AgentPlannerMode = "mock" | "openai";
 
+const defaultPlannerModelId = "gpt-5.1";
+const defaultSuggestionModelId = "gpt-5-nano";
+const plannerCacheSessionId = "gruntend-demo-planner-v1";
+const suggestionCacheSessionId = "gruntend-demo-task-suggestion-v1";
+
 export const getAgentPlannerInfo = query(async () => {
   const mode = resolvePlannerMode();
 
   return {
     generator: mode === "mock" ? ("mock" as const) : ("pi-ai" as const),
     mode,
-    model: mode === "mock" ? "mock-planner" : env.OPENAI_MODEL || "gpt-5.5",
+    model:
+      mode === "mock"
+        ? "mock-planner"
+        : env.OPENAI_MODEL || defaultPlannerModelId,
   };
 });
 
@@ -85,7 +93,9 @@ export const suggestAgentTask = command(
       );
     }
 
-    const model = resolveOpenAiModel(env.OPENAI_MODEL || "gpt-5.5");
+    const model = resolveOpenAiModel(
+      env.OPENAI_SUGGESTION_MODEL || defaultSuggestionModelId,
+    );
     const context = { platform: event.platform };
     const [
       menus,
@@ -154,6 +164,8 @@ export const suggestAgentTask = command(
         apiKey,
         reasoning: model.reasoning ? "low" : undefined,
         maxTokens: 800,
+        cacheRetention: "long",
+        sessionId: suggestionCacheSessionId,
       },
     );
 
@@ -200,9 +212,6 @@ export const generateAgentPlan = command(
         generator: "mock" as const,
         model: "mock-planner",
         plan: createMockPlan(prompt.trim()),
-        stopReason: "stop",
-        usage: undefined,
-        responseId: `mock_${Date.now()}`,
       };
     }
 
@@ -213,12 +222,13 @@ export const generateAgentPlan = command(
       );
     }
 
-    const model = resolveOpenAiModel(env.OPENAI_MODEL || "gpt-5.5");
+    const model = resolveOpenAiModel(env.OPENAI_MODEL || defaultPlannerModelId);
     const context = { platform: event.platform };
     const promptRequest = {
       tools: appTools,
       task: prompt.trim(),
       input: {
+        currentTime: new Date().toISOString(),
         menus: await listMenus(context),
         orders: await listOrders(context),
         customers: await listCustomers(context),
@@ -232,7 +242,7 @@ export const generateAgentPlan = command(
     };
     const defaultPrompt = createCodePlanPrompt(promptRequest);
     const chartRequirement = requiresChart(prompt)
-      ? "\n\nRequired output for this task: the generated interface must include a visible, accessible chart. Use native SVG or a registered renderer; do not return only metrics, rows, or a table."
+      ? "\n\nRequired output for this task: the generated interface must include a visible, accessible chart. Use native SVG; do not return only metrics, rows, or a table."
       : "";
     const codePlanPrompt = {
       system: `${defaultPrompt.system}\n\nApplication-owned planning policy:\n${restaurantPlannerInstructions}`,
@@ -247,6 +257,8 @@ export const generateAgentPlan = command(
           apiKey,
           reasoning: model.reasoning ? "low" : undefined,
           maxTokens: 5000,
+          cacheRetention: "long",
+          sessionId: plannerCacheSessionId,
         },
       }),
     );
@@ -258,15 +270,14 @@ export const generateAgentPlan = command(
       durationMs: Date.now() - startedAt,
       inputTokens: generated.message.usage.input,
       outputTokens: generated.message.usage.output,
+      cacheReadTokens: generated.message.usage.cacheRead,
+      cacheWriteTokens: generated.message.usage.cacheWrite,
     });
 
     return {
       generator: "pi-ai" as const,
       model: model.id,
       plan: generated.plan,
-      stopReason: generated.message.stopReason,
-      usage: generated.message.usage,
-      responseId: generated.message.responseId,
     };
   },
 );

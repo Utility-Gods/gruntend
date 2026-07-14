@@ -18,29 +18,18 @@ const { items } = await tools.menu.items.list({
 return items.filter((item) => item.price < input.maximumPrice);
 ```
 
-The interpreter provides:
+The selected executor receives this runtime surface:
 
-- `input` — the task data supplied by the application
-- `tools` — registered application capabilities
-- `console` — safe diagnostic logging through runtime events
-- `html` — available only when generated UI is enabled
+| Value | Purpose |
+| --- | --- |
+| `input` | Task data supplied by the application. |
+| `tools` | Registered application capabilities. |
+| `console` | Diagnostic logging through runtime events. |
+| `html` | Tagged templates when generated UI is enabled. |
 
-With the default JailJS executor, standard built-ins such as `Promise` are available for asynchronous calls. The plan does not receive imports, `fetch`, `window`, `document`, storage, or application services.
+The built-in browser executors provide standard JavaScript values such as `Promise` for asynchronous calls. A plan does not receive imports, `fetch`, `window`, `document`, storage, or application services.
 
-Use ordinary JavaScript for runtime decisions. Independent calls can use `Promise.all()`; dependent calls should be awaited in order.
-
-The default executor has an operation budget. Pass `maxOps` to tune it for a run:
-
-```ts
-await gruntend.runCodePlan(code, {
-  input,
-  handlers,
-  maxOps: 100_000,
-});
-```
-
-The built-in budget is an interpreter operation budget, not a wall-clock or memory isolation boundary.
-Use a custom executor when you need a worker, process, isolate, or remote sandbox as the outer execution boundary.
+Use ordinary JavaScript for runtime decisions. Independent calls can use `Promise.all()`; dependent calls should be awaited in order. Executor-specific limits and trust boundaries are documented in [Code-plan executors](/reference/executors/).
 
 ## Plan input
 
@@ -81,9 +70,11 @@ A model-generated plan uses a small JSON envelope:
 }
 ```
 
-- `summary` is a non-empty human-readable description.
-- `input` becomes the runtime `input` value.
-- `code` is the JavaScript function body.
+| Field | Contract |
+| --- | --- |
+| `summary` | Non-empty human-readable description. |
+| `input` | Becomes the runtime `input` value. |
+| `code` | JavaScript async function body, without a wrapper or IIFE. |
 
 ## Generate with Gruntend
 
@@ -144,32 +135,12 @@ const plan = parseGeneratedCodePlan(text);
 
 ## Tagged HTML plans
 
-Pass `ui: { kind: "tagged-html" }` while building or generating a plan that should return UI. The interpreter must also receive `ui: { html }` when that plan runs.
+Pass `ui: { kind: "tagged-html" }` while building or generating a plan that should return UI. The selected executor must also receive `ui: { html }` when that plan runs.
 
 See [Generated UI](/guides/generated-ui/).
 
-## Custom executors
+## Choose an executor
 
-`runCodePlan()` uses the default JailJS executor unless the application supplies one:
+Plan format and execution strategy are separate. The application explicitly selects JailJS, QuickJS/WASM, or a custom browser executor before the complete plan starts.
 
-```ts
-import type { CodePlanExecutor } from "gruntend-sdk/code-plan";
-
-const executor: CodePlanExecutor = async ({
-  code,
-  globals,
-  maxOps,
-  signal,
-}) => {
-  return myRuntime.evaluate(code, { globals, maxOps, signal });
-};
-
-await gruntend.runCodePlan(code, {
-  input,
-  handlers,
-  executor,
-});
-```
-
-A custom executor receives the same Gruntend-created globals as the default executor: `input`, `tools`, safe `console`, and optional `html`. It also receives `maxOps` and the run `signal` so the backend can enforce budgets and cancellation. If the signal is already aborted, Gruntend fails the run before invoking the executor.
-The `code` value is the generated async function body; custom executors own any wrapping, parsing, or remote execution protocol they need.
+See [Code-plan executors](/reference/executors/) for setup, trust profiles, limits, per-run overrides, generated UI ownership, and no-replay behavior.

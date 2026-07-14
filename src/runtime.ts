@@ -37,6 +37,7 @@ export type RuntimeEvent =
 export interface PlanStartedEvent {
   readonly type: "plan.started";
   readonly planId: string;
+  readonly executorId?: string;
 }
 
 export interface PlanConsoleEvent {
@@ -49,12 +50,15 @@ export interface PlanConsoleEvent {
 export interface PlanCompletedEvent {
   readonly type: "plan.completed";
   readonly planId: string;
+  readonly executorId?: string;
   readonly result: unknown;
 }
 
 export interface PlanFailedEvent {
   readonly type: "plan.failed";
   readonly planId: string;
+  readonly executorId?: string;
+  readonly errorCode?: string;
   readonly error: string;
   readonly errors: Record<string, ToolRunError>;
 }

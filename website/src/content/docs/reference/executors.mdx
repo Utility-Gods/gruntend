@@ -1,0 +1,96 @@
+---
+title: Code-plan executors
+description: Explicit browser executor selection, trust profiles, and strict no-fallback behavior.
+---
+
+A code-plan executor owns the JavaScript environment in which one complete plan runs. Executor selection is explicit: direct `runCodePlan()` calls require an executor, and every client requires a default executor.
+
+## Browser executors
+
+| Executor     | Profile ID        | Trust label  | Generated UI | Intended input                                               |
+| ------------ | ----------------- | ------------ | ------------ | ------------------------------------------------------------ |
+| JailJS       | `jailjs`          | `controlled` | Yes          | Application-controlled or reviewed plans                     |
+| QuickJS/WASM | `quickjs-browser` | `isolated`   | Yes          | Plans requiring a separate in-page JavaScript realm and heap |
+
+The trust label communicates the intended boundary; it is not a substitute for application authorization. Tools remain the only way a plan can request app-owned effects.
+
+### JailJS
+
+```ts
+import { createGruntendClient } from "gruntend-sdk/client";
+import { createJailJsCodePlanExecutor } from "gruntend-sdk/executor/jailjs";
+
+const executor = createJailJsCodePlanExecutor({ maxOps: 100_000 });
+const gruntend = createGruntendClient({ tools, executor });
+```
+
+JailJS is lightweight and preserves the existing ES5 transform and operation budget. It executes controlled code and is **not** a hostile-code isolation boundary.
+
+### QuickJS browser
+
+```ts
+import { createGruntendClient } from "gruntend-sdk/client";
+import { createQuickJsBrowserCodePlanExecutor } from "gruntend-sdk/executor/quickjs-browser";
+
+const executor = await createQuickJsBrowserCodePlanExecutor({
+  memoryLimitBytes: 16 * 1024 * 1024,
+  maxStackBytes: 512 * 1024,
+  timeoutMs: 2_000,
+});
+
+const gruntend = createGruntendClient({ tools, executor });
+```
+
+QuickJS initializes its WASM module asynchronously. Each plan receives a fresh runtime and context. Inputs and tool values are copied as supported plain values; host objects and constructors are not passed into the guest. Async tools are represented as guest-owned promises, and generated UI closures remain in the selected QuickJS session until the UI is replaced or unmounted.
+
+The SvelteKit demo defaults to JailJS and exposes an executor selector beside the Run action. Choosing QuickJS lazily initializes its browser WASM module and pins that complete plan and generated UI session to the resulting executor.
+
+## Selection and mixing
+
+A client default may be overridden for one run:
+
+```ts
+const gruntend = createGruntendClient({ tools, executor: jailJs });
+
+await gruntend.runCodePlan(code, {
+  handlers,
+  executor: quickJs,
+});
+```
+
+Selection is whole-plan composition:
+
+```ts
+const selectedExecutor = runOptions.executor ?? client.executor;
+```
+
+All statements, awaited tool continuations, render closures, and event closures for that plan remain pinned to `selectedExecutor`. Different sequential or concurrent plans may select different executors. Generated statements cannot choose or change executors.
+
+Gruntend never automatically falls back, downgrades, or replays a plan with a second executor. This remains true after a tool has already performed a mutation. An initialization, execution, limit, or abort failure produces one failed result and one lifecycle failure stream.
+
+## Custom browser executor
+
+```ts
+import type { CodePlanExecutor } from "gruntend-sdk/executor";
+
+const executor: CodePlanExecutor = {
+  profile: {
+    id: "my-browser-interpreter-v1",
+    trust: "controlled",
+    supportsGeneratedUi: false,
+  },
+  async execute({ code, globals, maxOps, signal }) {
+    return myInterpreter.evaluate(code, {
+      globals,
+      maxOps,
+      signal,
+    });
+  },
+};
+```
+
+Profile IDs should be stable because lifecycle diagnostics and selection tests use them. If `supportsGeneratedUi` is false, Gruntend rejects UI mode before calling `execute()`.
+
+## Current scope
+
+This release implements in-page browser executors and the existing synchronous generated-UI callable contract. Node executors, Web Workers, transports, RPC/remote execution, and asynchronous UI sessions are deferred implementation work. No routing or fallback protocol is included.

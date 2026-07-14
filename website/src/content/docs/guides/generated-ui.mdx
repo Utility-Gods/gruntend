@@ -11,7 +11,7 @@ description: Let a code plan return an html template or stateful render function
 There are two separate operations:
 
 - `generateCodePlan(...)` calls a model and returns JavaScript plan code. It does not run that code or call handlers. Generation is optional because you may write or obtain the plan elsewhere.
-- `runCodePlan(...)` takes existing plan code, evaluates it in the interpreter, and dispatches its tool calls to your handlers. It does not call a model.
+- `runCodePlan(...)` takes existing plan code, evaluates it with the selected executor, and dispatches its tool calls to your handlers. It does not call a model.
 
 For generated UI, first ask the model for a UI plan, then run that plan with the `html` function available.
 
@@ -40,7 +40,7 @@ interface GeneratedCodePlan {
 ```
 
 - `summary` describes what the model generated.
-- `input` is passed to the interpreter as `input`.
+- `input` is passed to the selected executor as `input`.
 - `code` is the JavaScript function body passed to `runCodePlan()`.
 
 `ui: { kind: "tagged-html" }` changes the generation instructions so `code` returns UI. It does not create or execute the UI.
@@ -61,7 +61,7 @@ const result = await gruntend.runCodePlan(plan.code, {
 });
 ```
 
-`ui: { html }` makes the tagged-template function available inside the interpreter. The plan can now use `html` alongside `input` and `tools`.
+`ui: { html }` makes the tagged-template function available inside the selected executor. The plan can now use `html` alongside `input` and `tools`.
 
 ## Return UI from the plan
 

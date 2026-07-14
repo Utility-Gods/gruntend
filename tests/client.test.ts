@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
-import type { CodePlanExecutor } from "../src/code-plan.ts";
 import { createGruntendClient } from "../src/client.ts";
+import type { CodePlanExecutor } from "../src/executor.ts";
+import { createJailJsCodePlanExecutor } from "../src/executors/jailjs.ts";
 import { defineTools } from "../src/tool.ts";
 import * as v from "valibot";
 
@@ -17,7 +18,10 @@ test("Gruntend client runs an LLM code plan with app-owned closure handlers", as
     },
   });
 
-  const client = createGruntendClient({ tools });
+  const client = createGruntendClient({
+    tools,
+    executor: createJailJsCodePlanExecutor(),
+  });
   const authToken = "secret-token";
 
   const result = await client.runCodePlan(
@@ -45,11 +49,18 @@ test("Gruntend client runs an LLM code plan with app-owned closure handlers", as
 
 test("Gruntend client can use a custom executor", async () => {
   const tools = defineTools({});
-  const executor: CodePlanExecutor = ({ code, globals, maxOps }) => ({
-    code,
-    input: globals.input,
-    maxOps,
-  });
+  const executor: CodePlanExecutor = {
+    profile: {
+      id: "custom-test",
+      trust: "controlled",
+      supportsGeneratedUi: false,
+    },
+    execute: ({ code, globals, maxOps }) => ({
+      code,
+      input: globals.input,
+      maxOps,
+    }),
+  };
   const client = createGruntendClient({
     tools,
     executor,

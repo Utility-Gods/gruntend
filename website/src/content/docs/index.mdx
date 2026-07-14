@@ -7,6 +7,13 @@ hero:
   tagline: Gruntend lets models compose typed application capabilities into JavaScript plans, then interprets those plans through app-owned handlers to return data or task-specific UI.
 ---
 
+import { Aside } from "@astrojs/starlight/components";
 import RuntimeWalkthrough from "../../components/RuntimeWalkthrough.astro";
+
+<Aside type="caution" title="Public beta — not production-ready">
+  Gruntend is under active development. Do not expose sensitive production
+  capabilities or rely on an executor as the only security boundary. Use
+  least-privilege tools and enforce authorization in app-owned handlers.
+</Aside>
 
 <RuntimeWalkthrough />

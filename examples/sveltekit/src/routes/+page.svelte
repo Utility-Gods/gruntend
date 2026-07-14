@@ -15,7 +15,11 @@
     Tags,
     TrendingUp,
   } from "@lucide/svelte";
-  import { gruntend } from "$lib/agent/client";
+  import {
+    getQuickJsBrowserExecutor,
+    gruntend,
+    jailJsExecutor,
+  } from "$lib/agent/client";
   import { createBrowserHandlers } from "$lib/agent/handlers";
   import {
     generateAgentPlan,
@@ -37,6 +41,7 @@
   import { toast } from "svelte-sonner";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
+  type ExecutorChoice = "jailjs" | "quickjs-browser";
   type ShowcaseTaskKind =
     | "price"
     | "menu"
@@ -164,6 +169,8 @@
     },
   ] as const satisfies readonly ShowcaseTask[];
 
+  const restaurantPlanMaxOps = 500_000;
+
   const mutationTools = new Set([
     "menus.create",
     "menu.item.create",
@@ -187,12 +194,15 @@
   const teamCount = $derived(usersResponse?.users.length);
 
   let prompt = $state("");
+  let executorChoice = $state<ExecutorChoice>("jailjs");
+  let activeExecutorId = $state("");
   let suggestionLoading = $state(false);
   let state = $state<RunState>("idle");
   let resultUi = $state<GeneratedUiModel>();
   let resultTitle = $state("");
   let errorMessage = $state("");
   let debugDetails = $state("");
+  let modelName = $state("");
   let toolCallCount = $state(0);
   let completedToolCallCount = $state(0);
   let runtimeActivity = $state(
@@ -272,11 +282,18 @@
     if (state === "planning" || state === "running") return;
 
     prompt = task;
+    const selectedExecutorChoice = executorChoice;
+    const executorPromise =
+      selectedExecutorChoice === "quickjs-browser"
+        ? getQuickJsBrowserExecutor()
+        : Promise.resolve(jailJsExecutor);
     state = "planning";
     resultUi = undefined;
     resultTitle = "Understanding your request";
     errorMessage = "";
     debugDetails = "";
+    modelName = "";
+    activeExecutorId = "";
     toolCallCount = 0;
     completedToolCallCount = 0;
     runtimeActivity = "Waiting for the model to return a JavaScript plan";
@@ -288,11 +305,13 @@
         prompt: task,
       })) as AgentGenerationEnvelope;
       const plan = envelope.plan;
+      modelName = envelope.model ?? "unknown";
       resultTitle = plan.summary;
       debugDetails = JSON.stringify(
         {
           generator: envelope.generator,
           model: envelope.model,
+          executor: selectedExecutorChoice,
           summary: plan.summary,
           input: plan.input,
           code: plan.code,
@@ -302,11 +321,17 @@
       );
 
       state = "running";
-      runtimeActivity = "Starting the controlled interpreter";
+      runtimeActivity =
+        selectedExecutorChoice === "quickjs-browser"
+          ? "Initializing the QuickJS/WASM executor"
+          : "Starting the JailJS executor";
+      const executor = await executorPromise;
       const result = await gruntend.runCodePlan(plan.code, {
         id: "restaurant-dashboard-plan",
         input: plan.input,
         retry: { maxAttempts: 2 },
+        executor,
+        maxOps: restaurantPlanMaxOps,
         handlers: createBrowserHandlers({
           canMutate: () => generatedActionRunning,
         }),
@@ -360,7 +385,8 @@
     console.debug("[juniper operation]", event);
 
     if (event.type === "plan.started") {
-      runtimeActivity = "Interpreter started with registered application tools";
+      activeExecutorId = event.executorId ?? "";
+      runtimeActivity = `${event.executorId ?? "Executor"} started with registered application tools`;
     } else if (event.type === "tool.started") {
       toolCallCount += 1;
       runtimeActivity = `Calling ${event.tool}`;
@@ -578,6 +604,23 @@
           <div
             class="flex flex-col gap-2 border-t border-neutral-200 bg-[#faf9f6] px-2.5 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
           >
+            <label
+              class="flex h-10 w-full items-center justify-between gap-2 border border-neutral-300 bg-white px-3 text-xs font-semibold text-slate-700 transition sm:mr-auto sm:w-auto"
+              class:cursor-wait={state === "planning" || state === "running"}
+              class:opacity-60={state === "planning" || state === "running"}
+              title="Select one executor for the complete JavaScript plan"
+            >
+              <span>Executor</span>
+              <select
+                bind:value={executorChoice}
+                class="min-w-32 bg-transparent text-xs font-semibold text-slate-950 outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                disabled={state === "planning" || state === "running"}
+                aria-label="Code-plan executor"
+              >
+                <option value="jailjs">JailJS · controlled</option>
+                <option value="quickjs-browser">QuickJS · isolated</option>
+              </select>
+            </label>
             <button
               type="button"
               class="inline-flex h-10 w-full items-center justify-center gap-2 border border-neutral-300 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:border-primary-500 hover:text-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
@@ -663,7 +706,8 @@
               <span
                 class="bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
               >
-                Ready · {toolCallCount} tool call{toolCallCount === 1
+                Ready · {activeExecutorId || executorChoice} · {toolCallCount} tool call{toolCallCount ===
+                1
                   ? ""
                   : "s"}
               </span>
@@ -812,8 +856,15 @@
                   </a>
                 </aside>
               {/if}
+              {#if modelName}
+                <p
+                  class="mt-5 border-t border-neutral-200 pt-3 font-mono text-[11px] leading-5 text-neutral-500"
+                >
+                  Model · {modelName}
+                </p>
+              {/if}
               {#if debugDetails}
-                <details class="mt-5 border-t border-neutral-200 pt-4">
+                <details class="mt-3 border-t border-neutral-200 pt-4">
                   <summary
                     class="cursor-pointer text-xs font-semibold text-neutral-600 hover:text-primary-700"
                   >

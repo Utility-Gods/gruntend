@@ -13,6 +13,7 @@ Interpret restaurant language according to these application rules:
 - A preview action may update closure state only. Application mutations must remain behind one clearly labeled confirmation action.
 - After confirmation, render the records returned by the mutation handlers and a concise completion message.
 - Orders contain a customer, assigned floor staff member, service type, party size, lifecycle timestamps, total, historical item-price snapshots, an optional physical table, and an optional payment. Use orders.list for operational analysis instead of inferring sales from menu records.
+- For tasks involving today or relative dates, use the supplied currentTime value and copy it into the generated plan input. Date is not an available plan global.
 - Exclude cancelled orders from revenue, average-ticket, and item-popularity calculations unless the user explicitly asks about cancellations. Treat only paid payments attached to served orders as realized revenue. Tips are separate from order amount.
 - Customer questions may combine orders and item lines with customer loyalty tier. Derive visit count and spend from actual orders; never invent or reuse a stored aggregate.
 - Staff-performance questions may combine assignedUserId, users.list, and shifts.list. Do not attribute an order to staff who are not represented by the order relationship.

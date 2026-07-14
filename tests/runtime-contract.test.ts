@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { createGruntendClient } from "../src/client.ts";
+import { createJailJsCodePlanExecutor } from "../src/executors/jailjs.ts";
 import { defineTools } from "../src/tool.ts";
 import * as v from "valibot";
 
@@ -14,7 +15,10 @@ test("runtime handlers are closures supplied when a code plan is triggered", asy
     },
   });
 
-  const client = createGruntendClient({ tools });
+  const client = createGruntendClient({
+    tools,
+    executor: createJailJsCodePlanExecutor(),
+  });
   const authToken = "runtime-token";
 
   const result = await client.runCodePlan(
@@ -44,7 +48,10 @@ test("runtime rejects invalid LLM tool input before calling the handler", async 
     },
   });
 
-  const client = createGruntendClient({ tools });
+  const client = createGruntendClient({
+    tools,
+    executor: createJailJsCodePlanExecutor(),
+  });
 
   const result = await client.runCodePlan(
     `return await tools.menu.create({ name: 123 });`,
@@ -80,7 +87,10 @@ test("runtime rejects handler output that violates the tool output contract", as
     },
   });
 
-  const client = createGruntendClient({ tools });
+  const client = createGruntendClient({
+    tools,
+    executor: createJailJsCodePlanExecutor(),
+  });
 
   const result = await client.runCodePlan(
     `return await tools.menu.create({ name: "Dinner" });`,

@@ -134,7 +134,7 @@ interface GruntendClientOptions<
 > {
   readonly tools?: TTools;
   readonly registry?: ToolRegistry<TTools[number]>;
-  readonly executor?: CodePlanExecutor;
+  readonly executor: CodePlanExecutor;
   readonly maxOps?: number;
   readonly console?: CodePlanConsole;
 }
@@ -145,7 +145,10 @@ function createGruntendClient<const TTools extends readonly Tool[]>(
 ```
 
 ```ts
-const gruntend = createGruntendClient({ tools });
+const gruntend = createGruntendClient({
+  tools,
+  executor: createJailJsCodePlanExecutor(),
+});
 ```
 
 ### `client.runCodePlan(code, options)`
@@ -204,9 +207,16 @@ interface CodePlanExecutorContext {
   readonly signal?: AbortSignal;
 }
 
-type CodePlanExecutor = (
-  context: CodePlanExecutorContext,
-) => Promise<unknown> | unknown;
+interface CodePlanExecutorProfile {
+  readonly id: string;
+  readonly trust: "controlled" | "isolated";
+  readonly supportsGeneratedUi: boolean;
+}
+
+interface CodePlanExecutor {
+  readonly profile: CodePlanExecutorProfile;
+  execute(context: CodePlanExecutorContext): Promise<unknown> | unknown;
+}
 
 interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly code: string;
@@ -216,7 +226,7 @@ interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly id?: string;
   readonly signal?: AbortSignal;
   readonly retry?: RetryPolicy;
-  readonly executor?: CodePlanExecutor;
+  readonly executor: CodePlanExecutor;
   readonly maxOps?: number;
   readonly console?: CodePlanConsole;
   readonly ui?: CodePlanUiRuntimeOptions;
@@ -227,7 +237,15 @@ function runCodePlan<TTool extends Tool>(
   options: CodePlanRunOptions<TTool>,
 ): Promise<CodePlanRunResult>;
 
-function createJailJsCodePlanExecutor(): CodePlanExecutor;
+function createJailJsCodePlanExecutor(options?: {
+  readonly maxOps?: number;
+}): CodePlanExecutor;
+
+function createQuickJsBrowserCodePlanExecutor(options?: {
+  readonly memoryLimitBytes?: number;
+  readonly maxStackBytes?: number;
+  readonly timeoutMs?: number;
+}): Promise<CodePlanExecutor>;
 
 function createSafeCodePlanConsole(
   onMessage?: (message: {
@@ -243,6 +261,8 @@ interface CodePlanRunResult {
   readonly result?: unknown;
   readonly errors: Record<string, ToolRunError>;
   readonly error?: string;
+  readonly errorCode?: CodePlanExecutorErrorCode;
+  readonly executorId?: string;
 }
 ```
 

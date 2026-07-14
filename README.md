@@ -6,6 +6,9 @@ Typed tool namespaces and generated UI for app-owned capabilities.
 
 Gruntend lets an app expose a small capability surface to an LLM, receive a JavaScript code plan, and execute that plan through app-owned handlers. In UI mode, the plan can return safe `html` tagged-template UI with local component state.
 
+> [!CAUTION]
+> Gruntend is a public beta under active development and is not production-ready. Do not expose sensitive production capabilities or rely on an executor as the only security boundary.
+
 ```text
 defineTools()     app capability surface
 generateCodePlan  LLM → JavaScript plan
@@ -23,6 +26,7 @@ pnpm add gruntend-sdk valibot
 
 ```ts
 import { createGruntendClient } from "gruntend-sdk/client";
+import { createJailJsCodePlanExecutor } from "gruntend-sdk/executor/jailjs";
 import { defineTools } from "gruntend-sdk/tool";
 import * as v from "valibot";
 
@@ -73,7 +77,10 @@ const tools = defineTools({
   },
 });
 
-const gruntend = createGruntendClient({ tools });
+const gruntend = createGruntendClient({
+  tools,
+  executor: createJailJsCodePlanExecutor(),
+});
 ```
 
 A tool contract is just:
@@ -193,8 +200,8 @@ console
 html when UI mode is provided at runtime
 ```
 
-With the default JailJS executor, standard built-ins such as `Promise` are still available for `async` code and `Promise.all(...)`.
-The default executor applies an operation budget with `maxOps`; use a custom executor when you need a worker, process, isolate, or remote sandbox as the outer execution boundary.
+With the JailJS executor selected, standard built-ins such as `Promise` are still available for `async` code and `Promise.all(...)`.
+JailJS applies an operation budget with `maxOps`. The QuickJS browser executor instead enforces WASM runtime memory, stack, and deadline limits.
 The built-in budget is an interpreter operation budget, not a wall-clock or memory isolation boundary.
 
 Use normal JavaScript for orchestration:
@@ -223,22 +230,24 @@ return err({
 
 ## Bring your own executor
 
-JailJS is the default code-plan executor. Applications can replace it with their own interpreter, worker, isolate, or remote execution service without changing tool contracts or handlers.
+Executor selection is explicit. JailJS is a lightweight `controlled` executor; the QuickJS browser executor uses a separate WASM realm and reports `isolated`. A run uses exactly one selected executor and Gruntend never falls back to or replays the plan with another executor.
 
 ```ts
-import type { CodePlanExecutor } from "gruntend-sdk/code-plan";
+import type { CodePlanExecutor } from "gruntend-sdk/executor";
 
-const executor: CodePlanExecutor = async ({
-  code,
-  globals,
-  maxOps,
-  signal,
-}) => {
-  return myInterpreter.evaluate(code, {
-    globals,
-    maxOps,
-    signal,
-  });
+const executor: CodePlanExecutor = {
+  profile: {
+    id: "my-browser-runtime",
+    trust: "controlled",
+    supportsGeneratedUi: false,
+  },
+  execute({ code, globals, maxOps, signal }) {
+    return myInterpreter.evaluate(code, {
+      globals,
+      maxOps,
+      signal,
+    });
+  },
 };
 
 const gruntend = createGruntendClient({
@@ -247,8 +256,18 @@ const gruntend = createGruntendClient({
 });
 ```
 
-The executor receives Gruntend-owned globals: `input`, `tools`, a safe `console`, and `html` when UI mode is enabled. It also receives `maxOps` and the run `signal` so custom backends can enforce budgets and cancellation. If the signal is already aborted, Gruntend fails the run before invoking the executor.
-The `code` value is the generated async function body; custom executors own any wrapping, parsing, or remote execution protocol they need.
+The executor receives Gruntend-owned globals: `input`, `tools`, a safe `console`, and `html` when UI mode is enabled. It also receives `maxOps` and the run `signal` so custom backends can enforce budgets and cancellation. If the signal is already aborted, Gruntend fails the run before invoking the executor. The `code` value is the generated async function body.
+
+Use QuickJS in a browser by creating it asynchronously before client construction:
+
+```ts
+import { createQuickJsBrowserCodePlanExecutor } from "gruntend-sdk/executor/quickjs-browser";
+
+const executor = await createQuickJsBrowserCodePlanExecutor();
+const gruntend = createGruntendClient({ tools, executor });
+```
+
+The SvelteKit demo defaults to JailJS and provides a compact per-run selector for trying QuickJS/WASM in the browser. Its temporary `500_000` operation allowance applies to JailJS runs. Node executors, Workers, transports, and asynchronous UI sessions are deferred work.
 
 ## Release process
 
@@ -417,7 +436,8 @@ Use real LLM mode with `examples/sveltekit/.env`:
 ```env
 GRUNTEND_AGENT_MODE=openai
 OPENAI_API_KEY=your_key_here
-OPENAI_MODEL=gpt-5.5
+OPENAI_MODEL=gpt-5.1
+OPENAI_SUGGESTION_MODEL=gpt-5-nano
 ```
 
 Then open:

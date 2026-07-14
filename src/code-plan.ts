@@ -1,6 +1,13 @@
 import { Result } from "better-result";
-import { Interpreter } from "@mariozechner/jailjs";
-import { transformToES5 } from "@mariozechner/jailjs/transform";
+import {
+  CodePlanExecutorError,
+  type CodePlanConsole,
+  type CodePlanConsoleHandler,
+  type CodePlanExecutionGlobals,
+  type CodePlanExecutor,
+  type CodePlanExecutorErrorCode,
+  type CodePlanExecutorContext,
+} from "./executor.ts";
 import type { ToolRegistry } from "./registry.ts";
 import type { UiTemplateTag } from "./ui-runtime.ts";
 import type {
@@ -25,38 +32,17 @@ export interface CodePlanUiRuntimeOptions {
   readonly html: UiTemplateTag;
 }
 
-export interface CodePlanConsole {
-  readonly debug: (...args: readonly unknown[]) => void;
-  readonly log: (...args: readonly unknown[]) => void;
-  readonly info: (...args: readonly unknown[]) => void;
-  readonly warn: (...args: readonly unknown[]) => void;
-  readonly error: (...args: readonly unknown[]) => void;
-}
-
-export interface CodePlanConsoleMessage {
-  readonly level: RuntimeConsoleLevel;
-  readonly args: readonly unknown[];
-}
-
-export type CodePlanConsoleHandler = (message: CodePlanConsoleMessage) => void;
-
-export interface CodePlanExecutionGlobals {
-  readonly input: unknown;
-  readonly tools: Record<string, unknown>;
-  readonly console: CodePlanConsole;
-  readonly html?: UiTemplateTag;
-}
-
-export interface CodePlanExecutorContext {
-  readonly code: string;
-  readonly globals: CodePlanExecutionGlobals;
-  readonly maxOps: number;
-  readonly signal?: AbortSignal;
-}
-
-export type CodePlanExecutor = (
-  context: CodePlanExecutorContext,
-) => Promise<unknown> | unknown;
+export type {
+  CodePlanConsole,
+  CodePlanConsoleHandler,
+  CodePlanConsoleMessage,
+  CodePlanExecutionGlobals,
+  CodePlanExecutor,
+  CodePlanExecutorContext,
+  CodePlanExecutorErrorCode,
+  CodePlanExecutorProfile,
+  CodePlanExecutorTrust,
+} from "./executor.ts";
 
 export interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly code: string;
@@ -66,7 +52,7 @@ export interface CodePlanRunOptions<TTool extends Tool = Tool> {
   readonly id?: string;
   readonly signal?: AbortSignal;
   readonly retry?: RetryPolicy;
-  readonly executor?: CodePlanExecutor;
+  readonly executor: CodePlanExecutor;
   readonly maxOps?: number;
   readonly console?: CodePlanConsole;
   readonly ui?: CodePlanUiRuntimeOptions;
@@ -78,6 +64,8 @@ export interface CodePlanRunResult {
   readonly result?: unknown;
   readonly errors: Record<string, ToolRunError>;
   readonly error?: string;
+  readonly errorCode?: CodePlanExecutorErrorCode;
+  readonly executorId?: string;
 }
 
 interface ToolContractError extends Error {
@@ -88,8 +76,6 @@ interface ToolContractError extends Error {
 }
 
 export const defaultCodePlanMaxOps = 100_000;
-
-const defaultExecutor = createJailJsCodePlanExecutor();
 
 export async function runCodePlan<TTool extends Tool>(
   options: CodePlanRunOptions<TTool>,
@@ -135,26 +121,38 @@ export async function runCodePlan<TTool extends Tool>(
     },
   );
 
-  if (options.signal?.aborted) {
-    const message = "Code plan execution aborted.";
-    options.onEvent?.({
-      type: "plan.failed",
-      planId,
-      error: message,
-      errors,
-    });
+  const executor = options.executor;
 
-    return {
-      status: "failed",
+  if (options.ui && !executor.profile.supportsGeneratedUi) {
+    return failExecutorRun({
+      planId,
+      executorId: executor.profile.id,
+      code: "executor_unsupported_generated_ui",
+      message: `Executor "${executor.profile.id}" does not support generated UI.`,
       errors,
-      error: message,
-    };
+      onEvent: options.onEvent,
+    });
   }
 
-  options.onEvent?.({ type: "plan.started", planId });
+  if (options.signal?.aborted) {
+    return failExecutorRun({
+      planId,
+      executorId: executor.profile.id,
+      code: "executor_aborted",
+      message: "Code plan execution aborted.",
+      errors,
+      onEvent: options.onEvent,
+    });
+  }
+
+  options.onEvent?.({
+    type: "plan.started",
+    planId,
+    executorId: executor.profile.id,
+  });
 
   try {
-    const result = await (options.executor ?? defaultExecutor)({
+    const result = await executor.execute({
       code: options.code,
       globals: createExecutionGlobals({
         input: options.input ?? {},
@@ -170,7 +168,12 @@ export async function runCodePlan<TTool extends Tool>(
       signal: options.signal,
     });
 
-    options.onEvent?.({ type: "plan.completed", planId, result });
+    options.onEvent?.({
+      type: "plan.completed",
+      planId,
+      executorId: executor.profile.id,
+      result,
+    });
 
     return {
       status: "done",
@@ -178,29 +181,62 @@ export async function runCodePlan<TTool extends Tool>(
       errors,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    options.onEvent?.({
-      type: "plan.failed",
+    const failure = normalizeExecutorFailure(error, options.signal);
+    return failExecutorRun({
       planId,
-      error: message,
+      executorId: executor.profile.id,
+      code: failure.code,
+      message: failure.message,
       errors,
+      onEvent: options.onEvent,
     });
-
-    return {
-      status: "failed",
-      errors,
-      error: message,
-    };
   }
 }
 
-export function createJailJsCodePlanExecutor(): CodePlanExecutor {
-  return async ({ code, globals, maxOps }) => {
-    const ast = transformToES5(wrapCodePlan(code));
-    const interpreter = new Interpreter(createInterpreterGlobals(globals), {
-      maxOps,
-    });
-    return await interpreter.evaluate(ast);
+function normalizeExecutorFailure(
+  error: unknown,
+  signal?: AbortSignal,
+): { readonly code: CodePlanExecutorErrorCode; readonly message: string } {
+  if (signal?.aborted) {
+    return {
+      code: "executor_aborted",
+      message: "Code plan execution aborted.",
+    };
+  }
+
+  if (error instanceof CodePlanExecutorError) {
+    return { code: error.code, message: error.message };
+  }
+
+  return {
+    code: "executor_execution_failed",
+    message: error instanceof Error ? error.message : String(error),
+  };
+}
+
+function failExecutorRun(options: {
+  readonly planId: string;
+  readonly executorId: string;
+  readonly code: CodePlanExecutorErrorCode;
+  readonly message: string;
+  readonly errors: Record<string, ToolRunError>;
+  readonly onEvent?: (event: RuntimeEvent) => void;
+}): CodePlanRunResult {
+  options.onEvent?.({
+    type: "plan.failed",
+    planId: options.planId,
+    executorId: options.executorId,
+    errorCode: options.code,
+    error: options.message,
+    errors: options.errors,
+  });
+
+  return {
+    status: "failed",
+    errors: options.errors,
+    error: options.message,
+    errorCode: options.code,
+    executorId: options.executorId,
   };
 }
 
@@ -234,17 +270,6 @@ function createExecutionGlobals(options: {
     tools: options.tools,
     console: options.console,
     ...(options.ui ? { html: options.ui.html } : {}),
-  };
-}
-
-function createInterpreterGlobals(
-  globals: CodePlanExecutionGlobals,
-): Record<string, unknown> {
-  return {
-    input: globals.input,
-    tools: globals.tools,
-    console: globals.console,
-    ...(globals.html ? { html: globals.html } : {}),
   };
 }
 
@@ -287,18 +312,6 @@ function sanitizeConsoleValue(value: unknown, depth = 0): unknown {
   }
 
   return String(value);
-}
-
-function wrapCodePlan(code: string): string {
-  return `(async () => {\n${stripMarkdownFence(code)}\n})();`;
-}
-
-function stripMarkdownFence(code: string): string {
-  const trimmed = code.trim();
-  const match = trimmed.match(
-    /^```(?:ts|tsx|js|jsx|javascript|typescript)?\s*([\s\S]*?)\s*```$/,
-  );
-  return match ? match[1] : code;
 }
 
 function createToolsObject(

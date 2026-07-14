@@ -80,6 +80,38 @@ test("mountGeneratedUi renders, delegates events, and rerenders after handlers",
   mounted.destroy();
 });
 
+test("mountGeneratedUi disposes replaced and unmounted UI exactly once", () => {
+  const html = createHtmlTag();
+  let firstDestroyed = 0;
+  let secondDestroyed = 0;
+  const first = createGeneratedUi({
+    call() {
+      return html`<p>First</p>`;
+    },
+    destroy() {
+      firstDestroyed += 1;
+    },
+  }).unwrap();
+  const second = createGeneratedUi({
+    call() {
+      return html`<p>Second</p>`;
+    },
+    destroy() {
+      secondDestroyed += 1;
+    },
+  }).unwrap();
+  const mounted = mountGeneratedUi(new FakeMountElement(), first);
+
+  mounted.update(second);
+  expect(firstDestroyed).toBe(1);
+  expect(secondDestroyed).toBe(0);
+
+  mounted.destroy();
+  mounted.destroy();
+  expect(firstDestroyed).toBe(1);
+  expect(secondDestroyed).toBe(1);
+});
+
 function fakeTarget(attributes: Record<string, string>) {
   return {
     closest(selector: string) {
