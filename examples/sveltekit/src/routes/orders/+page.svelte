@@ -209,8 +209,7 @@
               <li class="flex min-w-0 justify-between gap-4">
                 <span class="min-w-0 break-words"
                   >{line.quantity}× {line.itemName}</span
-                ><span
-                  class="tabular-nums"
+                ><span class="tabular-nums"
                   >${(line.unitPrice * line.quantity).toFixed(2)}</span
                 >
               </li>

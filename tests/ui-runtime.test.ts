@@ -70,7 +70,11 @@ test("compileUiTemplate supports mixed quoted attribute interpolation", () => {
   const period = "this week";
 
   const compiled = compileUiTemplate(
-    html`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Sales ${period}"></svg>`,
+    html`<svg
+      viewBox="0 0 ${width} ${height}"
+      role="img"
+      aria-label="Sales ${period}"
+    ></svg>`,
   ).unwrap();
 
   expect(compiled.html).toBe(

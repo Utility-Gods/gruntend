@@ -415,9 +415,7 @@ function interpolationContext(
 ): TemplateInterpolationContext {
   if (!endsInsideTag(before)) return { kind: "text" };
 
-  const quotedAttr = before.match(
-    /([:@A-Za-z0-9_-]+)\s*=\s*(["'])([^"']*)$/,
-  );
+  const quotedAttr = before.match(/([:@A-Za-z0-9_-]+)\s*=\s*(["'])([^"']*)$/);
   if (quotedAttr) {
     const attr = quotedAttr[1];
     const quote = quotedAttr[2];

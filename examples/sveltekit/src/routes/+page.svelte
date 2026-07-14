@@ -522,25 +522,33 @@
         <dl
           class="grid w-full grid-cols-2 border-l border-t border-neutral-200 bg-[#faf9f6] sm:grid-cols-4 md:w-auto"
         >
-          <div class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4">
+          <div
+            class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4"
+          >
             <dt class="text-[11px] text-neutral-500">Menus</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
               {menuCount ?? "…"}
             </dd>
           </div>
-          <div class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4">
+          <div
+            class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4"
+          >
             <dt class="text-[11px] text-neutral-500">Items</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
               {itemCount ?? "…"}
             </dd>
           </div>
-          <div class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4">
+          <div
+            class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4"
+          >
             <dt class="text-[11px] text-neutral-500">Orders</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
               {orderCount ?? "…"}
             </dd>
           </div>
-          <div class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4">
+          <div
+            class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4"
+          >
             <dt class="text-[11px] text-neutral-500">Staff</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
               {teamCount ?? "…"}
