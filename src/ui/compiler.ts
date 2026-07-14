@@ -5,7 +5,7 @@ import {
   generatedUiAllowedTags,
   generatedUiForbiddenAttributes,
   generatedUiRuntimeAttributes,
-} from "./ui-policy.ts";
+} from "./policy.ts";
 
 export interface UiTemplate {
   readonly strings: readonly string[];

@@ -7,11 +7,11 @@ import {
   generatedUiForbiddenAttributes,
   generatedUiForbiddenTags,
   generatedUiRuntimeAttributes,
-} from "../ui-policy.ts";
+} from "../policy.ts";
 import {
   createGeneratedUiDomRenderer,
   type GeneratedUiDomTarget,
-} from "./dom-runtime.ts";
+} from "./dom-session.ts";
 
 export interface DomPurifyGeneratedUiTarget extends GeneratedUiDomTarget {
   replaceChildren(...nodes: readonly (Node | string)[]): void;

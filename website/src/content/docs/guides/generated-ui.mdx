@@ -156,7 +156,7 @@ session.destroy();
 
 `createGeneratedUi()` turns the plan result into a small interface with `render()` and `runHandler()`. `GeneratedUiRenderer` is a first-class object strategy selected by the application, not by the model. The renderer remains fixed for the mounted session.
 
-The DOMPurify renderer is the recommended browser renderer. It applies Gruntend's explicit markup policy, sanitizes into a `DocumentFragment`, and commits it with `replaceChildren()`. For controlled integrations that need the compiled-HTML sink, use `createDomGeneratedUiRenderer()` from `gruntend-sdk/renderer/dom`. The older `mountGeneratedUi()` helper remains available from `gruntend-sdk/ui/dom` for compatibility.
+The DOMPurify renderer is Gruntend's built-in browser renderer. It applies Gruntend's explicit markup policy, sanitizes into a `DocumentFragment`, and commits it with `replaceChildren()`. Applications with a different target or commit strategy can implement `GeneratedUiRenderer<TTarget>` directly.
 
 The renderer session:
 
@@ -173,7 +173,7 @@ The returned `session` controls that connection:
 - `session.runHandler(id)` invokes a generated handler programmatically
 - `session.destroy()` removes event listeners and stops future rendering
 
-Framework adapters perform this same mounting and cleanup through their component lifecycle. See [Framework adapters](/guides/framework-adapters/).
+Framework adapters perform this same mounting and cleanup through their component lifecycle. See [Renderers](/guides/renderers/) for the renderer contract and [Framework adapters](/guides/framework-adapters/) for component integration.
 
 :::caution[Two separate security boundaries]
 DOMPurify hardens generated markup. It does not sandbox generated JavaScript or reduce the authority of registered tool handlers. Choose an isolated executor independently when plan code is not trusted.

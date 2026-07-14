@@ -8,7 +8,7 @@ import {
   compileUiTemplate,
   createUiComponent,
   createUiTemplateTag,
-} from "../src/ui-runtime.ts";
+} from "../src/ui/compiler.ts";
 
 test("compileUiTemplate rewrites function event slots to delegated handler attributes", () => {
   const html = createUiTemplateTag();

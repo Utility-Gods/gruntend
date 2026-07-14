@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { GeneratedUiRenderer } from "../src/renderer.ts";
+import type { GeneratedUiRenderer } from "../src/ui/renderer.ts";
 import { createGeneratedUi, createHtmlTag } from "../src/ui/index.ts";
 
 export function runRendererConformance(
@@ -134,6 +134,10 @@ export class FakeRendererTarget {
 
     const fragment = nodes[0] as DocumentFragment & { __html?: string };
     this.innerHTML = fragment.__html ?? "";
+  }
+
+  contains(): boolean {
+    return true;
   }
 
   async emit(type: string, event: unknown): Promise<void> {

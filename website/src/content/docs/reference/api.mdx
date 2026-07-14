@@ -491,39 +491,7 @@ interface GeneratedUiRenderOptions {
 }
 ```
 
-`createDomPurifyGeneratedUiRenderer()` is exported from `gruntend-sdk/renderer/dom-purify` and is the recommended browser renderer. `createDomGeneratedUiRenderer()` is exported from `gruntend-sdk/renderer/dom` for controlled integrations.
-
-## `gruntend-sdk/ui/dom`
-
-```ts
-type GeneratedUiEventName = "click" | "submit" | "input" | "change";
-
-function mountGeneratedUi(
-  element: GeneratedUiMountElement,
-  ui: GeneratedUi,
-  options?: GeneratedUiMountOptions,
-): GeneratedUiMountHandle;
-
-interface GeneratedUiMountElement {
-  innerHTML: string;
-  addEventListener(type: string, listener: (event: unknown) => unknown): void;
-  removeEventListener(
-    type: string,
-    listener: (event: unknown) => unknown,
-  ): void;
-}
-
-interface GeneratedUiMountHandle {
-  render(): void;
-  runHandler(
-    handlerId: string,
-    event?: unknown,
-    eventName?: GeneratedUiEventName,
-  ): Promise<void>;
-  update(nextUi: GeneratedUi): void;
-  destroy(): void;
-}
-```
+`createDomPurifyGeneratedUiRenderer()` is exported from `gruntend-sdk/renderer/dom-purify` and is the built-in browser renderer. Applications can implement `GeneratedUiRenderer<TTarget>` for other targets or commit strategies.
 
 Adapters are exported from `gruntend-sdk/ui/svelte`, `gruntend-sdk/ui/react`, `gruntend-sdk/ui/vue`, and `gruntend-sdk/ui/solid`.
 

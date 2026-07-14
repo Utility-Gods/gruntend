@@ -13,7 +13,7 @@ Gruntend lets an app expose a small capability surface to an LLM, receive a Java
 defineTools()     app capability surface
 generateCodePlan  LLM → JavaScript plan
 runCodePlan       scoped execution through handlers
-ui-runtime        html tagged templates → delegated browser UI
+generated UI      compiler → renderer → delegated browser UI
 ```
 
 ## Install
@@ -310,7 +310,9 @@ The DOMPurify renderer is the recommended browser renderer. It uses an exact DOM
 
 Renderer sanitization and plan-code isolation are separate boundaries. DOMPurify hardens generated markup; it does not sandbox generated JavaScript or reduce the authority of registered tool handlers. Select an isolated executor independently when the plan code is not trusted.
 
-For controlled integrations that need the existing compiled-HTML sink, `createDomGeneratedUiRenderer()` is available from `gruntend-sdk/renderer/dom`. The compatibility helper `mountGeneratedUi()` remains available from `gruntend-sdk/ui/dom`.
+Applications with a different target or commit strategy can implement the `GeneratedUiRenderer<TTarget>` interface. Gruntend provides DOMPurify as its only built-in browser renderer.
+
+See [docs/GENERATED_UI.md](docs/GENERATED_UI.md) for the compiler, renderer, DOM session, and security-boundary architecture.
 
 Framework adapters are thin wrappers over the selected renderer. They do not own Gruntend state; pass both the renderer and the `GeneratedUi` returned by `createGeneratedUi()`.
 

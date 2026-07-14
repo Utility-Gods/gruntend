@@ -12,7 +12,10 @@ import {
   type CodePlanExecutionGlobals,
   type CodePlanExecutor,
 } from "../executor.ts";
-import type { UiInterpretedFunction, UiTemplate } from "../ui-runtime.ts";
+import type {
+  UiInterpretedFunction,
+  UiTemplate,
+} from "../ui/compiler.ts";
 
 export interface QuickJsBrowserExecutorOptions {
   readonly memoryLimitBytes?: number;

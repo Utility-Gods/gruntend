@@ -1,4 +1,4 @@
-import type { GeneratedUi, GeneratedUiFrame } from "./ui/index.ts";
+import type { GeneratedUi, GeneratedUiFrame } from "./index.ts";
 
 export type GeneratedUiEventName = "click" | "submit" | "input" | "change";
 

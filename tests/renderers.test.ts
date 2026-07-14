@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import type { Config as DomPurifyConfig } from "dompurify";
-import { createDomPurifyGeneratedUiRenderer } from "../src/renderers/dom-purify.ts";
-import { createDomGeneratedUiRenderer } from "../src/renderers/dom.ts";
+import { createDomPurifyGeneratedUiRenderer } from "../src/ui/renderers/dom-purify.ts";
 import { createGeneratedUi, createHtmlTag } from "../src/ui/index.ts";
 import {
   FakeRendererTarget,
@@ -9,7 +8,6 @@ import {
   runRendererConformance,
 } from "./renderer-conformance.ts";
 
-runRendererConformance("DOM renderer", createDomGeneratedUiRenderer);
 runRendererConformance("DOMPurify renderer", () =>
   createDomPurifyGeneratedUiRenderer({
     purifier: {

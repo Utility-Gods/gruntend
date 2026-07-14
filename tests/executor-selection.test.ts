@@ -7,7 +7,7 @@ import {
 } from "../src/executor.ts";
 import { createToolRegistry } from "../src/registry.ts";
 import { defineTools, type ToolHandlerMap } from "../src/tool.ts";
-import { createUiTemplateTag } from "../src/ui-runtime.ts";
+import { createUiTemplateTag } from "../src/ui/compiler.ts";
 import * as v from "valibot";
 
 function trackingExecutor(

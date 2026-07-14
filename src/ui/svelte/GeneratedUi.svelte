@@ -5,7 +5,7 @@
     GeneratedUiActionEvent,
     GeneratedUiRenderer,
     GeneratedUiRenderSession,
-  } from "../../renderer.ts";
+  } from "../renderer.ts";
   import type {
     GeneratedUi as GeneratedUiController,
     GeneratedUiFrame,

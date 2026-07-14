@@ -45,6 +45,7 @@ export default defineConfig({
           label: "Guides",
           items: [
             { label: "Generated UI", slug: "guides/generated-ui" },
+            { label: "Renderers", slug: "guides/renderers" },
             { label: "Framework adapters", slug: "guides/framework-adapters" },
           ],
         },

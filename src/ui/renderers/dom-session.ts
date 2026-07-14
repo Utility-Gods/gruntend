@@ -7,7 +7,7 @@ import type {
   GeneratedUiRenderOptions,
   GeneratedUiRenderSession,
 } from "../renderer.ts";
-import type { GeneratedUi, GeneratedUiFrame } from "../ui/index.ts";
+import type { GeneratedUi, GeneratedUiFrame } from "../index.ts";
 
 export interface GeneratedUiHandlerMatch {
   readonly eventName: GeneratedUiEventName;
@@ -26,13 +26,12 @@ export interface GeneratedUiEventPayload {
 }
 
 export interface GeneratedUiDomTarget {
-  innerHTML: string;
   addEventListener(type: string, listener: (event: unknown) => unknown): void;
   removeEventListener(
     type: string,
     listener: (event: unknown) => unknown,
   ): void;
-  contains?(value: Node | null): boolean;
+  contains(value: Node | null): boolean;
 }
 
 export interface GeneratedUiDomCommitter<TTarget extends GeneratedUiDomTarget> {
@@ -247,7 +246,7 @@ function belongsToRoot(
   target: HandlerTarget,
   root?: GeneratedUiDomTarget,
 ): boolean {
-  if (!root || typeof root.contains !== "function") return true;
+  if (!root) return true;
   if ((target as unknown) === root) return false;
   return root.contains(target as unknown as Node);
 }
