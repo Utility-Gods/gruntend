@@ -38,12 +38,12 @@ There is no built-in direct-`innerHTML` renderer and no legacy mounting shortcut
 
 These boundaries solve different problems:
 
-| Boundary | Responsibility |
-| --- | --- |
-| TypeScript renderer types | Match renderers with valid host targets |
-| UI compiler and policy | Reject unsafe template structure and encode handler closures |
-| DOMPurify renderer | Sanitize the final browser markup before insertion |
-| Code-plan executor | Evaluate generated JavaScript with the selected trust profile |
-| Tool handlers | Enforce permissions, persistence rules, and application authority |
+| Boundary                  | Responsibility                                                    |
+| ------------------------- | ----------------------------------------------------------------- |
+| TypeScript renderer types | Match renderers with valid host targets                           |
+| UI compiler and policy    | Reject unsafe template structure and encode handler closures      |
+| DOMPurify renderer        | Sanitize the final browser markup before insertion                |
+| Code-plan executor        | Evaluate generated JavaScript with the selected trust profile     |
+| Tool handlers             | Enforce permissions, persistence rules, and application authority |
 
 Renderer typing is not a security boundary at runtime. DOMPurify does not sandbox generated JavaScript, and executor isolation does not authorize tool calls.

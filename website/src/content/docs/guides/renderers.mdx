@@ -82,9 +82,9 @@ The built-in browser renderer:
 DOMPurify fails closed when it is unavailable. Arbitrary `data-*` attributes, unknown protocols, inline event attributes, scripts, styles, templates, and unsupported markup are not part of the renderer policy.
 
 <Aside type="caution" title="Separate security boundaries">
-  DOMPurify sanitizes generated markup. It does not isolate generated
-  JavaScript or reduce the authority of registered tool handlers. Select the
-  executor trust boundary independently and always authorize operations inside
+  DOMPurify sanitizes generated markup. It does not isolate generated JavaScript
+  or reduce the authority of registered tool handlers. Select the executor trust
+  boundary independently and always authorize operations inside
   application-owned handlers.
 </Aside>
 
