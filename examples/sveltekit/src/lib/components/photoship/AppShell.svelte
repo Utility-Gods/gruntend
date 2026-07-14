@@ -1,8 +1,13 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { page } from "$app/state";
-  import { Utensils } from "lucide-svelte";
-  import { getMenusWithItems, getUsers } from "$lib/remote/example.remote";
+  import { Utensils } from "@lucide/svelte";
+  import {
+    getCustomers,
+    getMenusWithItems,
+    getOrders,
+    getUsers,
+  } from "$lib/remote/example.remote";
   import type { Snippet } from "svelte";
 
   type NavItem = {
@@ -15,7 +20,9 @@
     readonly children?: Snippet;
   };
 
+  const customersResponse = $derived(getCustomers().current);
   const menusResponse = $derived(getMenusWithItems().current);
+  const ordersResponse = $derived(getOrders().current);
   const usersResponse = $derived(getUsers().current);
   const navItems = $derived<NavItem[]>([
     { href: `${base}/`, label: "Overview" },
@@ -23,6 +30,16 @@
       href: `${base}/menus`,
       label: "Menus",
       count: menusResponse?.menus.length,
+    },
+    {
+      href: `${base}/orders`,
+      label: "Orders",
+      count: ordersResponse?.orders.length,
+    },
+    {
+      href: `${base}/customers`,
+      label: "Customers",
+      count: customersResponse?.customers.length,
     },
     {
       href: `${base}/users`,
@@ -114,12 +131,12 @@
         >
       </p>
       <a
-        class="inline-flex items-center gap-2 font-medium text-neutral-600 hover:text-primary-600"
+        class="inline-flex items-center gap-1.5 font-medium text-neutral-600 hover:text-primary-600"
         href="https://www.npmjs.com/package/gruntend-sdk"
         target="_blank"
         rel="noreferrer"
       >
-        <img class="h-3.5 w-auto" src="/npm.svg" alt="" />
+        <img class="h-2.5 w-auto" src="/npm.svg" alt="" />
         gruntend-sdk
       </a>
       <a

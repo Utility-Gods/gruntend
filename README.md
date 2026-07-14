@@ -133,6 +133,16 @@ Model selection, prompt policy, and generation quality remain application-owned.
 
 `ui: { kind: "tagged-html" }` tells the model to return UI using the provided `html` tagged template, not string-built HTML or UI JSON.
 
+Generated UI can include native SVG charts through a restricted element and attribute allowlist. Geometry and presentation remain part of the JavaScript plan:
+
+```js
+return html`<svg viewBox="0 0 640 240" role="img" aria-label="Revenue">
+  <rect x="20" y="40" width="50" height="160" fill="#f54a00"></rect>
+</svg>`;
+```
+
+The SVG profile rejects scripts, styles, inline event strings, namespace attributes, external resources, `foreignObject`, images, `use`, animation, filter elements, unknown elements, malformed tags, and forged runtime targets. Interpolations are escaped. This profile is for markup produced through the `html` tag, not for sanitizing uploaded arbitrary SVG files.
+
 Generated UI should return either a template:
 
 ```js
@@ -181,6 +191,7 @@ input
 tools
 console
 html when UI mode is provided at runtime
+render when application-owned renderers are registered
 ```
 
 With the default JailJS executor, standard built-ins such as `Promise` are still available for `async` code and `Promise.all(...)`.

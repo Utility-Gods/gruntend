@@ -1,5 +1,9 @@
 import { expect, test } from "vitest";
-import { createGeneratedUi, createHtmlTag } from "../src/ui/index.ts";
+import {
+  createGeneratedUi,
+  createHtmlTag,
+  createRenderPrimitive,
+} from "../src/ui/index.ts";
 import {
   createGeneratedEventPayload,
   findGeneratedHandler,
@@ -37,6 +41,29 @@ test("createGeneratedEventPayload exposes only safe event fields", () => {
   payload.preventDefault();
 
   expect(prevented).toBe(true);
+});
+
+test("mountGeneratedUi mounts and cleans up registered renderers", () => {
+  const html = createHtmlTag();
+  const lifecycle: string[] = [];
+  const chart = createRenderPrimitive({
+    name: "chart",
+    create: (args) => String(args[0]),
+    mount({ target, value }) {
+      lifecycle.push(`mount:${target.getAttribute("data-gr-render")}:${value}`);
+      return () => lifecycle.push(`cleanup:${value}`);
+    },
+  });
+  const ui = createGeneratedUi(
+    html`<section>${chart("revenue")}</section>`,
+  ).unwrap();
+  const element = new FakeMountElement();
+
+  const mounted = mountGeneratedUi(element, ui);
+
+  expect(lifecycle).toEqual(["mount:r0:revenue"]);
+  mounted.destroy();
+  expect(lifecycle).toEqual(["mount:r0:revenue", "cleanup:revenue"]);
 });
 
 test("mountGeneratedUi renders, delegates events, and rerenders after handlers", async () => {
@@ -101,6 +128,17 @@ class FakeMountElement implements GeneratedUiMountElement {
     string,
     Set<(event: unknown) => unknown>
   >();
+
+  querySelector(selector: string): Element | null {
+    const id = selector.match(/^\[data-gr-render="([^"]+)"\]$/)?.[1];
+    if (!id || !this.innerHTML.includes(`data-gr-render="${id}"`)) return null;
+
+    return {
+      getAttribute(name: string) {
+        return name === "data-gr-render" ? id : null;
+      },
+    } as unknown as Element;
+  }
 
   addEventListener(type: string, listener: (event: unknown) => unknown): void {
     const listeners =

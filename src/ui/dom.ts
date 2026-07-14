@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import type { UiCallable, UiRenderCleanup } from "../ui-runtime.ts";
 import type { GeneratedUi, GeneratedUiFrame } from "./index.ts";
 
 export type GeneratedUiEventName = "click" | "submit" | "input" | "change";
@@ -38,6 +39,7 @@ export interface GeneratedUiMountOptions {
 
 export interface GeneratedUiMountElement {
   innerHTML: string;
+  querySelector?(selector: string): Element | null;
   addEventListener(type: string, listener: (event: unknown) => unknown): void;
   removeEventListener(
     type: string,
@@ -70,6 +72,20 @@ export function mountGeneratedUi(
 ): GeneratedUiMountHandle {
   let currentUi = ui;
   let destroyed = false;
+  let renderCleanups: UiRenderCleanup[] = [];
+
+  function cleanupRenderers() {
+    const cleanups = renderCleanups;
+    renderCleanups = [];
+
+    for (const cleanup of cleanups) {
+      try {
+        cleanup();
+      } catch (error) {
+        options.onError?.(error);
+      }
+    }
+  }
 
   function render() {
     if (destroyed) return;
@@ -80,8 +96,39 @@ export function mountGeneratedUi(
       return;
     }
 
+    cleanupRenderers();
     element.innerHTML = frame.value.html;
+    mountRenderers(frame.value);
     options.onRender?.(frame.value);
+  }
+
+  function mountRenderers(frame: GeneratedUiFrame) {
+    for (const mount of frame.mounts ?? []) {
+      const target = element.querySelector?.(
+        `[data-gr-render="${mount.id}"]`,
+      );
+
+      if (!target) {
+        options.onError?.(
+          new Error(`Generated UI renderer target "${mount.id}" was not found.`),
+        );
+        continue;
+      }
+
+      try {
+        const cleanup = mount.renderer.mount({
+          target,
+          value: mount.value,
+          call: callRendererCallback,
+          requestRender() {
+            queueMicrotask(render);
+          },
+        });
+        if (cleanup) renderCleanups.push(cleanup);
+      } catch (error) {
+        options.onError?.(error);
+      }
+    }
   }
 
   async function runHandler(
@@ -136,12 +183,21 @@ export function mountGeneratedUi(
     },
     destroy() {
       destroyed = true;
+      cleanupRenderers();
 
       for (const eventName of Object.keys(eventAttributes)) {
         element.removeEventListener(eventName, onEvent);
       }
     },
   };
+}
+
+function callRendererCallback(
+  callback: UiCallable,
+  ...args: readonly unknown[]
+): unknown {
+  if (typeof callback === "function") return callback(...args);
+  return callback.call(undefined, ...args);
 }
 
 export function findGeneratedHandler(

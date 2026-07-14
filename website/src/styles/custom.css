@@ -366,10 +366,26 @@ a {
   color: #c2410c;
 }
 
-.home-footer .npm-footer-link {
+.home-footer .package-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.45rem;
+}
+
+.home-footer .package-link img {
+  display: block;
+  flex: none;
+}
+
+.home-footer .npm-icon,
+.home-footer .github-icon {
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+
+.home-footer .package-link:focus-visible {
+  outline: 2px solid #f54a00;
+  outline-offset: 3px;
 }
 
 html[data-has-hero] header.header {

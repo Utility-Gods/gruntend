@@ -1,5 +1,6 @@
 <script lang="ts">
   import AppShell from "$lib/components/photoship/AppShell.svelte";
+  import { Toaster } from "svelte-sonner";
   import "../app.css";
 
   let { children } = $props();
@@ -54,3 +55,12 @@
 <AppShell>
   {@render children()}
 </AppShell>
+
+<Toaster
+  position="top-right"
+  theme="light"
+  closeButton
+  duration={5000}
+  offset={24}
+  toastOptions={{ class: "juniper-toast", unstyled: true }}
+/>

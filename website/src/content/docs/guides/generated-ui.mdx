@@ -94,6 +94,35 @@ return function render() {
 
 After a handler runs, the surface renders again.
 
+## Render charts with SVG
+
+SVG remains declarative markup, so a plan can compute chart geometry with JavaScript and return it through the same `html` template:
+
+```js
+var maximum = Math.max.apply(null, input.values);
+
+return html`<svg viewBox="0 0 640 240" role="img" aria-label="Revenue by day">
+  ${input.values.map(function (value, index) {
+    var height = value / maximum * 180;
+    return html`<rect
+      x=${40 + index * 70}
+      y=${200 - height}
+      width="44"
+      height=${height}
+      fill="#f54a00"
+    ></rect>`;
+  })}
+</svg>`;
+```
+
+The template compiler reconstructs markup through explicit element and attribute allowlists before the DOM runtime assigns `innerHTML`. The SVG profile permits static geometry and text (`svg`, `g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, `text`, `tspan`, `title`, and `desc`). Text and attribute interpolations are escaped.
+
+The compiler rejects scripts, styles, inline event strings, namespace attributes, `foreignObject`, images, `use`, animation, filter elements, unknown elements, malformed tags, external links, external paint URLs, and forged runtime or delegated-handler targets. Only root-relative or fragment `href` values are accepted.
+
+:::caution[Restricted profile, not arbitrary SVG sanitization]
+Pass chart markup through the `html` tag. Do not treat Gruntend as an upload sanitizer for arbitrary SVG files.
+:::
+
 ## Mount the result
 
 Choose a normal DOM element where the generated interface should appear:

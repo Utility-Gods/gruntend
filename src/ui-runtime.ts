@@ -21,9 +21,41 @@ export type UiCallable =
 export type UiEventHandler = UiCallable;
 export type UiRenderFunction = UiCallable;
 
+export type UiRenderCleanup = () => void;
+
+export interface UiRendererMountContext<TValue = unknown> {
+  readonly target: Element;
+  readonly value: TValue;
+  call(callback: UiCallable, ...args: readonly unknown[]): unknown;
+  requestRender(): void;
+}
+
+export interface UiRenderer<TValue = unknown> {
+  readonly name: string;
+  create(args: readonly unknown[]): TValue;
+  mount(
+    context: UiRendererMountContext<TValue>,
+  ): void | UiRenderCleanup;
+}
+
+declare const uiRenderNodeType: unique symbol;
+
+export interface UiRenderNode {
+  readonly [uiRenderNodeType]: true;
+}
+
+export type UiRenderPrimitive = (...args: readonly unknown[]) => UiRenderNode;
+
+export interface UiRenderMount<TValue = unknown> {
+  readonly id: string;
+  readonly renderer: UiRenderer<TValue>;
+  readonly value: TValue;
+}
+
 export interface UiTemplateCompileResult {
   readonly html: string;
   readonly handlers: Record<string, UiEventHandler>;
+  readonly mounts?: readonly UiRenderMount[];
 }
 
 export interface UiTemplateCompileError {
@@ -63,14 +95,70 @@ const uiTemplateSchema = v.object({
   strings: v.array(v.string()),
   values: v.array(v.unknown()),
 });
-const unsafeTags = new Set([
-  "script",
-  "iframe",
-  "object",
-  "embed",
-  "link",
-  "style",
-  "meta",
+const allowedTags = new Set([
+  "a",
+  "article",
+  "aside",
+  "br",
+  "button",
+  "caption",
+  "code",
+  "dd",
+  "details",
+  "div",
+  "dl",
+  "dt",
+  "em",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "hr",
+  "input",
+  "label",
+  "legend",
+  "li",
+  "main",
+  "nav",
+  "ol",
+  "option",
+  "p",
+  "pre",
+  "section",
+  "select",
+  "small",
+  "span",
+  "strong",
+  "summary",
+  "table",
+  "tbody",
+  "td",
+  "text",
+  "textarea",
+  "tfoot",
+  "th",
+  "thead",
+  "tr",
+  "ul",
+  "svg",
+  "g",
+  "path",
+  "rect",
+  "circle",
+  "ellipse",
+  "line",
+  "polyline",
+  "polygon",
+  "tspan",
+  "title",
+  "desc",
 ]);
 const eventAttributes = new Set(["onclick", "onsubmit", "oninput", "onchange"]);
 const booleanAttributes = new Set(["checked", "disabled", "selected"]);
@@ -86,10 +174,90 @@ const allowedAttributes = new Set([
   "selected",
   "placeholder",
   "href",
+  "tabindex",
+  "viewbox",
+  "preserveaspectratio",
+  "x",
+  "y",
+  "x1",
+  "y1",
+  "x2",
+  "y2",
+  "dx",
+  "dy",
+  "cx",
+  "cy",
+  "r",
+  "rx",
+  "ry",
+  "width",
+  "height",
+  "d",
+  "points",
+  "pathlength",
+  "fill",
+  "fill-opacity",
+  "stroke",
+  "stroke-width",
+  "stroke-opacity",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "stroke-dasharray",
+  "stroke-dashoffset",
+  "opacity",
+  "transform",
+  "vector-effect",
+  "text-anchor",
+  "dominant-baseline",
+  "font-size",
+  "font-weight",
 ]);
-const tagPattern = /<\/?\s*([A-Za-z][A-Za-z0-9-]*)([^>]*)>/g;
+const svgAttributeNames: Readonly<Record<string, string>> = {
+  viewbox: "viewBox",
+  preserveaspectratio: "preserveAspectRatio",
+  pathlength: "pathLength",
+};
+const paintAttributes = new Set(["fill", "stroke"]);
+const rejectedAttributes = new Set([
+  "action",
+  "formaction",
+  "ping",
+  "src",
+  "srcdoc",
+  "style",
+  "xlink:href",
+  "xmlns",
+]);
+const runtimeAttributes = new Set([
+  "data-gr-click",
+  "data-gr-submit",
+  "data-gr-input",
+  "data-gr-change",
+  "data-gr-render",
+]);
+const renderNodeRecords = new WeakMap<
+  UiRenderNode,
+  { readonly renderer: UiRenderer; readonly value: unknown }
+>();
 const attributePattern =
   /([:@A-Za-z0-9_-]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g;
+
+export function createUiRenderPrimitive<TValue>(
+  renderer: UiRenderer<TValue>,
+): UiRenderPrimitive {
+  if (!renderer.name.trim()) {
+    throw new Error("UI renderer names must not be empty.");
+  }
+
+  return (...args: readonly unknown[]) => {
+    const node = Object.freeze({}) as UiRenderNode;
+    renderNodeRecords.set(node, {
+      renderer: renderer as UiRenderer,
+      value: renderer.create(args),
+    });
+    return node;
+  };
+}
 
 export function createUiTemplateTag(): UiTemplateTag {
   return (
@@ -149,18 +317,22 @@ export function compileUiTemplate(
 ): UiTemplateCompileOutcome {
   const context: UiTemplateCompileContext = {
     handlers: {},
+    mounts: [],
     nextHandlerId: 0,
+    nextMountId: 0,
   };
   const html = compileTemplateHtml(template, context);
 
   if (Result.isError(html)) return outcomeErr(html.error);
 
-  return sanitizeHtml(html.value, context.handlers);
+  return sanitizeHtml(html.value, context);
 }
 
 interface UiTemplateCompileContext {
   readonly handlers: Record<string, UiEventHandler>;
+  readonly mounts: UiRenderMount[];
   nextHandlerId: number;
+  nextMountId: number;
 }
 
 type TemplateInterpolationContext =
@@ -273,6 +445,14 @@ function compileTextInterpolation(
     return compileTemplateHtml(value, context);
   }
 
+  const renderNode = readUiRenderNode(value);
+  if (renderNode) {
+    const id = `r${context.nextMountId}`;
+    context.nextMountId += 1;
+    context.mounts.push({ id, ...renderNode });
+    return Result.ok(`<div data-gr-render="${id}"></div>`);
+  }
+
   if (Array.isArray(value)) {
     let html = "";
 
@@ -359,48 +539,121 @@ function escapeRegExp(value: string): string {
 
 function sanitizeHtml(
   html: string,
-  handlers: Record<string, UiEventHandler>,
+  context: UiTemplateCompileContext,
 ): UiTemplateCompileOutcome {
   const withoutComments = html.replace(/<!--[\s\S]*?-->/g, "");
-  tagPattern.lastIndex = 0;
-
+  const consumedRuntimeValues = new Set<string>();
   let sanitized = "";
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+  let index = 0;
 
-  while ((match = tagPattern.exec(withoutComments))) {
-    const [rawTag, rawName, rawAttributes] = match;
-    const isClosing = rawTag.startsWith("</");
-    const tag = rawName.toLowerCase();
+  while (index < withoutComments.length) {
+    const tagStart = withoutComments.indexOf("<", index);
+    if (tagStart === -1) {
+      sanitized += withoutComments.slice(index);
+      break;
+    }
 
-    if (unsafeTags.has(tag)) {
+    sanitized += withoutComments.slice(index, tagStart);
+    const parsed = readTag(withoutComments, tagStart);
+    if (Result.isError(parsed)) return outcomeErr(parsed.error);
+
+    const tag = parsed.value.name.toLowerCase();
+    if (!allowedTags.has(tag)) {
       return outcomeErr({
         code: "unsafe_tag",
         message: `Tag "${tag}" is not allowed.`,
       });
     }
 
-    sanitized += withoutComments.slice(lastIndex, match.index);
-
-    if (isClosing) {
+    if (parsed.value.closing) {
       sanitized += `</${tag}>`;
     } else {
-      const attrs = sanitizeAttributeText(rawAttributes, handlers);
+      const attrs = sanitizeAttributeText(
+        parsed.value.attributes,
+        context,
+        consumedRuntimeValues,
+      );
       if (Result.isError(attrs)) return outcomeErr(attrs.error);
       sanitized += `<${tag}${attrs.value}>`;
     }
 
-    lastIndex = match.index + rawTag.length;
+    index = parsed.value.end;
   }
 
-  sanitized += withoutComments.slice(lastIndex);
+  return outcomeOk({
+    html: sanitized,
+    handlers: context.handlers,
+    mounts: context.mounts,
+  });
+}
 
-  return outcomeOk({ html: sanitized, handlers });
+interface ParsedTag {
+  readonly name: string;
+  readonly attributes: string;
+  readonly closing: boolean;
+  readonly end: number;
+}
+
+function readTag(
+  html: string,
+  start: number,
+): BetterResult<ParsedTag, UiTemplateCompileError> {
+  let quote = "";
+  let end = start + 1;
+
+  for (; end < html.length; end = end + 1) {
+    const character = html[end];
+    if (quote) {
+      if (character === quote) quote = "";
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === ">") break;
+  }
+
+  if (end >= html.length || quote) {
+    return Result.err({
+      code: "unsafe_tag",
+      message: "Malformed generated markup is not allowed.",
+    });
+  }
+
+  let body = html.slice(start + 1, end).trim();
+  const closing = body.startsWith("/");
+  if (closing) body = body.slice(1).trim();
+  if (!closing && body.endsWith("/")) body = body.slice(0, -1).trimEnd();
+
+  const name = body.match(/^[A-Za-z][A-Za-z0-9-]*/)?.[0];
+  if (!name) {
+    return Result.err({
+      code: "unsafe_tag",
+      message: "Malformed generated markup is not allowed.",
+    });
+  }
+
+  const attributes = body.slice(name.length);
+  if (closing && attributes.trim()) {
+    return Result.err({
+      code: "unsafe_tag",
+      message: "Closing tags cannot contain attributes.",
+    });
+  }
+
+  return Result.ok({
+    name,
+    attributes,
+    closing,
+    end: end + 1,
+  });
 }
 
 function sanitizeAttributeText(
   attributeText: string,
-  handlers: Record<string, UiEventHandler>,
+  context: UiTemplateCompileContext,
+  consumedRuntimeValues: Set<string>,
 ): BetterResult<string, UiTemplateCompileError> {
   const kept: string[] = [];
   attributePattern.lastIndex = 0;
@@ -410,7 +663,7 @@ function sanitizeAttributeText(
     const rawName = match[1];
     const rawValue = match[2] ?? "";
     const name = rawName.toLowerCase();
-    const value = unquoteAttribute(rawValue);
+    const value = decodeBasicEntities(unquoteAttribute(rawValue));
 
     if (name.startsWith("on")) {
       return Result.err({
@@ -419,10 +672,22 @@ function sanitizeAttributeText(
       });
     }
 
-    if (name.startsWith("data-gr-") && !handlers[value]) {
+    if (rawName.includes(":") || rejectedAttributes.has(name)) {
       return Result.err({
         code: "unsafe_attribute",
-        message: `Generated handler attribute "${name}" references an unknown handler.`,
+        message: `Attribute "${name}" is not allowed.`,
+      });
+    }
+
+    if (
+      name.startsWith("data-gr-") &&
+      !isKnownRuntimeAttribute(name, value, context, consumedRuntimeValues)
+    ) {
+      return Result.err({
+        code: "unsafe_attribute",
+        message: name === "data-gr-render"
+          ? `Generated render attribute "${name}" references an unknown renderer.`
+          : `Generated handler attribute "${name}" references an unknown handler.`,
       });
     }
 
@@ -438,7 +703,15 @@ function sanitizeAttributeText(
         });
       }
 
-      kept.push(`${name}="${escapeAttributeValue(value)}"`);
+      if (paintAttributes.has(name) && !isSafePaint(value)) {
+        return Result.err({
+          code: "unsafe_attribute",
+          message: `Unsafe SVG paint value "${value}" is not allowed.`,
+        });
+      }
+
+      const outputName = svgAttributeNames[name] ?? name;
+      kept.push(`${outputName}="${escapeAttributeValue(value)}"`);
     }
   }
 
@@ -457,11 +730,79 @@ function unquoteAttribute(value: string): string {
 }
 
 function isSafeHref(value: string): boolean {
-  return value.startsWith("/") || value.startsWith("#");
+  if (value !== value.trim() || /[\\\u0000-\u001f\u007f]/.test(value)) {
+    return false;
+  }
+
+  return (
+    value.startsWith("#") ||
+    (value.startsWith("/") && !value.startsWith("//"))
+  );
+}
+
+function isSafePaint(value: string): boolean {
+  const normalized = value.trim();
+  if (!normalized || /[\\&\u0000-\u001f\u007f]/.test(normalized)) {
+    return false;
+  }
+
+  if (/^url\(#[A-Za-z][\w:.-]*\)$/i.test(normalized)) return true;
+  if (/^#[0-9a-f]{3,8}$/i.test(normalized)) return true;
+  if (/^(?:none|currentcolor|transparent|inherit)$/i.test(normalized)) {
+    return true;
+  }
+  if (/^[a-z]+$/i.test(normalized)) return true;
+  return /^(?:rgb|rgba|hsl|hsla)\([\d.,%+\-/\s]+\)$/i.test(
+    normalized,
+  );
+}
+
+function isKnownRuntimeAttribute(
+  name: string,
+  value: string,
+  context: UiTemplateCompileContext,
+  consumedRuntimeValues: Set<string>,
+): boolean {
+  if (!runtimeAttributes.has(name)) return false;
+
+  const key =
+    name === "data-gr-render" ? `renderer:${value}` : `handler:${value}`;
+  if (consumedRuntimeValues.has(key)) return false;
+
+  const known =
+    name === "data-gr-render"
+      ? context.mounts.some((mount) => mount.id === value)
+      : !!context.handlers[value];
+  if (known) consumedRuntimeValues.add(key);
+  return known;
+}
+
+function readUiRenderNode(
+  value: unknown,
+): { readonly renderer: UiRenderer; readonly value: unknown } | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  return renderNodeRecords.get(value as UiRenderNode);
+}
+
+function decodeBasicEntities(value: string): string {
+  const entities: Readonly<Record<string, string>> = {
+    amp: "&",
+    gt: ">",
+    lt: "<",
+    quot: '"',
+  };
+  return value.replace(
+    /&(amp|gt|lt|quot);/g,
+    (_, name: string) => entities[name] ?? "",
+  );
 }
 
 function escapeAttributeValue(value: string): string {
-  return value.replaceAll('"', "&quot;");
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function isUiEventHandler(value: unknown): value is UiEventHandler {

@@ -4,15 +4,23 @@ import * as v from "valibot";
 import {
   createMenu,
   createMenuItem,
+  createOrder,
   createUser,
   deleteMenuItem,
   duplicateMenuItem,
   getMenu,
   getMenuItem,
+  listCustomers,
   listMenuItems,
   listMenus,
+  listOrders,
+  listPayments,
+  listReservations,
+  listRestaurantTables,
+  listShifts,
   listUsers,
   updateMenuItem,
+  updateOrderStatus,
 } from "$lib/server/store";
 import type { Menu, MenuItem } from "$lib/types";
 
@@ -50,10 +58,73 @@ const updateMenuItemSchema = v.object({
   tags: v.optional(v.array(v.string())),
 });
 
+const createOrderSchema = v.object({
+  tableName: v.pipe(v.string(), v.nonEmpty()),
+  tableId: v.optional(v.string()),
+  customerId: v.string(),
+  assignedUserId: v.string(),
+  serviceType: v.picklist(["dine-in", "takeout", "delivery"]),
+  partySize: v.pipe(v.number(), v.integer(), v.minValue(1)),
+  items: v.pipe(
+    v.array(
+      v.object({
+        menuId: v.string(),
+        itemId: v.string(),
+        quantity: v.pipe(v.number(), v.integer(), v.minValue(1)),
+      }),
+    ),
+    v.minLength(1),
+  ),
+});
+
+const updateOrderStatusSchema = v.object({
+  orderId: v.string(),
+  status: v.picklist(["open", "preparing", "served", "cancelled"]),
+});
+
 const createUserSchema = v.object({
   name: v.pipe(v.string(), v.nonEmpty()),
-  role: v.picklist(["owner", "chef", "manager"]),
+  role: v.picklist(["owner", "chef", "manager", "server", "host"]),
 });
+
+export const getCustomers = query(async () => {
+  return { customers: await listCustomers(requestStore()) };
+});
+
+export const getOrders = query(async () => {
+  return { orders: await listOrders(requestStore()) };
+});
+
+export const getRestaurantTables = query(async () => {
+  return { tables: await listRestaurantTables(requestStore()) };
+});
+
+export const getPayments = query(async () => {
+  return { payments: await listPayments(requestStore()) };
+});
+
+export const getShifts = query(async () => {
+  return { shifts: await listShifts(requestStore()) };
+});
+
+export const getReservations = query(async () => {
+  return { reservations: await listReservations(requestStore()) };
+});
+
+export const createOrderCommand = command(createOrderSchema, async (input) => {
+  const result = { order: await createOrder(input, requestStore()) };
+  await requested(getOrders, 5).refreshAll();
+  return result;
+});
+
+export const updateOrderStatusCommand = command(
+  updateOrderStatusSchema,
+  async (input) => {
+    const result = { order: await updateOrderStatus(input, requestStore()) };
+    await requested(getOrders, 5).refreshAll();
+    return result;
+  },
+);
 
 export const getUsers = query(async () => {
   return { users: await listUsers(requestStore()) };

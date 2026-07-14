@@ -2,22 +2,47 @@ import type { ToolHandlerMap, ToolResult } from "gruntend-sdk/tool";
 import {
   createMenuCommand,
   createMenuItemCommand,
+  createOrderCommand,
   createUserCommand,
   deleteMenuItemCommand,
   duplicateMenuItemCommand,
   getMenuById,
+  getCustomers,
   getMenuItems,
   getMenus,
+  getOrders,
+  getPayments,
+  getReservations,
+  getRestaurantTables,
+  getShifts,
   getUsers,
   updateMenuItemCommand,
+  updateOrderStatusCommand,
 } from "$lib/remote/example.remote";
-import type { Menu, MenuItem, User } from "$lib/types";
+import type {
+  Customer,
+  Menu,
+  MenuItem,
+  Order,
+  Payment,
+  Reservation,
+  RestaurantTable,
+  Shift,
+  User,
+} from "$lib/types";
 import type { appTools } from "./tools";
 
 type MenusOutput = { readonly menus: Menu[] };
 type MenuOutput = { readonly menu: Menu };
 type MenuItemsOutput = { readonly items: MenuItem[] };
 type MenuItemOutput = { readonly item: MenuItem };
+type CustomersOutput = { readonly customers: Customer[] };
+type OrdersOutput = { readonly orders: Order[] };
+type OrderOutput = { readonly order: Order };
+type PaymentsOutput = { readonly payments: Payment[] };
+type ReservationsOutput = { readonly reservations: Reservation[] };
+type TablesOutput = { readonly tables: RestaurantTable[] };
+type ShiftsOutput = { readonly shifts: Shift[] };
 type UsersOutput = { readonly users: User[] };
 type UserOutput = { readonly user: User };
 
@@ -92,6 +117,40 @@ export function createBrowserHandlers(
         ok,
         err,
       ),
+
+    "customers.list": async ({ ok, err }) =>
+      runTool(() => getCustomers().run() as Promise<CustomersOutput>, ok, err),
+
+    "orders.list": async ({ ok, err }) =>
+      runTool(() => getOrders().run() as Promise<OrdersOutput>, ok, err),
+
+    "orders.create": async ({ input, ok, err }) =>
+      runMutation(
+        options,
+        () => createOrderCommand(toPlainInput(input)) as Promise<OrderOutput>,
+        ok,
+        err,
+      ),
+
+    "orders.status.update": async ({ input, ok, err }) =>
+      runMutation(
+        options,
+        () => updateOrderStatusCommand(toPlainInput(input)) as Promise<OrderOutput>,
+        ok,
+        err,
+      ),
+
+    "tables.list": async ({ ok, err }) =>
+      runTool(() => getRestaurantTables().run() as Promise<TablesOutput>, ok, err),
+
+    "payments.list": async ({ ok, err }) =>
+      runTool(() => getPayments().run() as Promise<PaymentsOutput>, ok, err),
+
+    "shifts.list": async ({ ok, err }) =>
+      runTool(() => getShifts().run() as Promise<ShiftsOutput>, ok, err),
+
+    "reservations.list": async ({ ok, err }) =>
+      runTool(() => getReservations().run() as Promise<ReservationsOutput>, ok, err),
 
     "users.list": async ({ ok, err }) =>
       runTool(() => getUsers().run() as Promise<UsersOutput>, ok, err),

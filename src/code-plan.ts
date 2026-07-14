@@ -2,7 +2,10 @@ import { Result } from "better-result";
 import { Interpreter } from "@mariozechner/jailjs";
 import { transformToES5 } from "@mariozechner/jailjs/transform";
 import type { ToolRegistry } from "./registry.ts";
-import type { UiTemplateTag } from "./ui-runtime.ts";
+import type {
+  UiRenderPrimitive,
+  UiTemplateTag,
+} from "./ui-runtime.ts";
 import type {
   RuntimeConsoleLevel,
   RetryPolicy,
@@ -23,6 +26,7 @@ import {
 
 export interface CodePlanUiRuntimeOptions {
   readonly html: UiTemplateTag;
+  readonly renderers?: Readonly<Record<string, UiRenderPrimitive>>;
 }
 
 export interface CodePlanConsole {
@@ -45,6 +49,7 @@ export interface CodePlanExecutionGlobals {
   readonly tools: Record<string, unknown>;
   readonly console: CodePlanConsole;
   readonly html?: UiTemplateTag;
+  readonly render?: Readonly<Record<string, UiRenderPrimitive>>;
 }
 
 export interface CodePlanExecutorContext {
@@ -234,6 +239,9 @@ function createExecutionGlobals(options: {
     tools: options.tools,
     console: options.console,
     ...(options.ui ? { html: options.ui.html } : {}),
+    ...(options.ui?.renderers
+      ? { render: Object.freeze({ ...options.ui.renderers }) }
+      : {}),
   };
 }
 
@@ -245,6 +253,7 @@ function createInterpreterGlobals(
     tools: globals.tools,
     console: globals.console,
     ...(globals.html ? { html: globals.html } : {}),
+    ...(globals.render ? { render: globals.render } : {}),
   };
 }
 
