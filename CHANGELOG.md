@@ -1,5 +1,11 @@
 # gruntend
 
+## 0.3.0
+
+### Minor Changes
+
+- 8549f18: Add restricted native SVG chart markup to generated UI. SVG markup is reconstructed through explicit element and attribute allowlists, with external resources, executable capabilities, malformed tags, and forged delegated-handler targets rejected.
+
 ## 0.2.0
 
 ### Minor Changes
