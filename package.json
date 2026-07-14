@@ -1,6 +1,6 @@
 {
   "name": "gruntend-sdk",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "type": "module",
   "description": "Typed tool namespaces and code-plan execution for application-owned capabilities.",
   "license": "MIT",
