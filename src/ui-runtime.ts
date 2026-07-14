@@ -21,41 +21,9 @@ export type UiCallable =
 export type UiEventHandler = UiCallable;
 export type UiRenderFunction = UiCallable;
 
-export type UiRenderCleanup = () => void;
-
-export interface UiRendererMountContext<TValue = unknown> {
-  readonly target: Element;
-  readonly value: TValue;
-  call(callback: UiCallable, ...args: readonly unknown[]): unknown;
-  requestRender(): void;
-}
-
-export interface UiRenderer<TValue = unknown> {
-  readonly name: string;
-  create(args: readonly unknown[]): TValue;
-  mount(
-    context: UiRendererMountContext<TValue>,
-  ): void | UiRenderCleanup;
-}
-
-declare const uiRenderNodeType: unique symbol;
-
-export interface UiRenderNode {
-  readonly [uiRenderNodeType]: true;
-}
-
-export type UiRenderPrimitive = (...args: readonly unknown[]) => UiRenderNode;
-
-export interface UiRenderMount<TValue = unknown> {
-  readonly id: string;
-  readonly renderer: UiRenderer<TValue>;
-  readonly value: TValue;
-}
-
 export interface UiTemplateCompileResult {
   readonly html: string;
   readonly handlers: Record<string, UiEventHandler>;
-  readonly mounts?: readonly UiRenderMount[];
 }
 
 export interface UiTemplateCompileError {
@@ -233,31 +201,9 @@ const runtimeAttributes = new Set([
   "data-gr-submit",
   "data-gr-input",
   "data-gr-change",
-  "data-gr-render",
 ]);
-const renderNodeRecords = new WeakMap<
-  UiRenderNode,
-  { readonly renderer: UiRenderer; readonly value: unknown }
->();
 const attributePattern =
   /([:@A-Za-z0-9_-]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g;
-
-export function createUiRenderPrimitive<TValue>(
-  renderer: UiRenderer<TValue>,
-): UiRenderPrimitive {
-  if (!renderer.name.trim()) {
-    throw new Error("UI renderer names must not be empty.");
-  }
-
-  return (...args: readonly unknown[]) => {
-    const node = Object.freeze({}) as UiRenderNode;
-    renderNodeRecords.set(node, {
-      renderer: renderer as UiRenderer,
-      value: renderer.create(args),
-    });
-    return node;
-  };
-}
 
 export function createUiTemplateTag(): UiTemplateTag {
   return (
@@ -317,9 +263,7 @@ export function compileUiTemplate(
 ): UiTemplateCompileOutcome {
   const context: UiTemplateCompileContext = {
     handlers: {},
-    mounts: [],
     nextHandlerId: 0,
-    nextMountId: 0,
   };
   const html = compileTemplateHtml(template, context);
 
@@ -330,9 +274,7 @@ export function compileUiTemplate(
 
 interface UiTemplateCompileContext {
   readonly handlers: Record<string, UiEventHandler>;
-  readonly mounts: UiRenderMount[];
   nextHandlerId: number;
-  nextMountId: number;
 }
 
 type TemplateInterpolationContext =
@@ -443,14 +385,6 @@ function compileTextInterpolation(
 
   if (isUiTemplate(value)) {
     return compileTemplateHtml(value, context);
-  }
-
-  const renderNode = readUiRenderNode(value);
-  if (renderNode) {
-    const id = `r${context.nextMountId}`;
-    context.nextMountId += 1;
-    context.mounts.push({ id, ...renderNode });
-    return Result.ok(`<div data-gr-render="${id}"></div>`);
   }
 
   if (Array.isArray(value)) {
@@ -574,7 +508,12 @@ function sanitizeHtml(
         consumedRuntimeValues,
       );
       if (Result.isError(attrs)) return outcomeErr(attrs.error);
-      sanitized += `<${tag}${attrs.value}>`;
+      sanitized += `<${tag}${attrs.value}`;
+      if (parsed.value.selfClosing) {
+        sanitized += " />";
+      } else {
+        sanitized += ">";
+      }
     }
 
     index = parsed.value.end;
@@ -583,7 +522,6 @@ function sanitizeHtml(
   return outcomeOk({
     html: sanitized,
     handlers: context.handlers,
-    mounts: context.mounts,
   });
 }
 
@@ -591,6 +529,7 @@ interface ParsedTag {
   readonly name: string;
   readonly attributes: string;
   readonly closing: boolean;
+  readonly selfClosing: boolean;
   readonly end: number;
 }
 
@@ -624,7 +563,8 @@ function readTag(
   let body = html.slice(start + 1, end).trim();
   const closing = body.startsWith("/");
   if (closing) body = body.slice(1).trim();
-  if (!closing && body.endsWith("/")) body = body.slice(0, -1).trimEnd();
+  const selfClosing = !closing && body.endsWith("/");
+  if (selfClosing) body = body.slice(0, -1).trimEnd();
 
   const name = body.match(/^[A-Za-z][A-Za-z0-9-]*/)?.[0];
   if (!name) {
@@ -646,6 +586,7 @@ function readTag(
     name,
     attributes,
     closing,
+    selfClosing,
     end: end + 1,
   });
 }
@@ -685,9 +626,7 @@ function sanitizeAttributeText(
     ) {
       return Result.err({
         code: "unsafe_attribute",
-        message: name === "data-gr-render"
-          ? `Generated render attribute "${name}" references an unknown renderer.`
-          : `Generated handler attribute "${name}" references an unknown handler.`,
+        message: `Generated handler attribute "${name}" references an unknown handler.`,
       });
     }
 
@@ -735,8 +674,7 @@ function isSafeHref(value: string): boolean {
   }
 
   return (
-    value.startsWith("#") ||
-    (value.startsWith("/") && !value.startsWith("//"))
+    value.startsWith("#") || (value.startsWith("/") && !value.startsWith("//"))
   );
 }
 
@@ -752,9 +690,7 @@ function isSafePaint(value: string): boolean {
     return true;
   }
   if (/^[a-z]+$/i.test(normalized)) return true;
-  return /^(?:rgb|rgba|hsl|hsla)\([\d.,%+\-/\s]+\)$/i.test(
-    normalized,
-  );
+  return /^(?:rgb|rgba|hsl|hsla)\([\d.,%+\-/\s]+\)$/i.test(normalized);
 }
 
 function isKnownRuntimeAttribute(
@@ -765,23 +701,12 @@ function isKnownRuntimeAttribute(
 ): boolean {
   if (!runtimeAttributes.has(name)) return false;
 
-  const key =
-    name === "data-gr-render" ? `renderer:${value}` : `handler:${value}`;
+  const key = `handler:${value}`;
   if (consumedRuntimeValues.has(key)) return false;
 
-  const known =
-    name === "data-gr-render"
-      ? context.mounts.some((mount) => mount.id === value)
-      : !!context.handlers[value];
+  const known = !!context.handlers[value];
   if (known) consumedRuntimeValues.add(key);
   return known;
-}
-
-function readUiRenderNode(
-  value: unknown,
-): { readonly renderer: UiRenderer; readonly value: unknown } | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  return renderNodeRecords.get(value as UiRenderNode);
 }
 
 function decodeBasicEntities(value: string): string {

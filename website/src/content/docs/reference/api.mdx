@@ -180,7 +180,6 @@ interface GruntendClientCodePlanRunOptions<
 ```ts
 interface CodePlanUiRuntimeOptions {
   readonly html: HtmlTag;
-  readonly renderers?: Readonly<Record<string, GeneratedUiRenderPrimitive>>;
 }
 
 interface CodePlanConsole {
@@ -196,7 +195,6 @@ interface CodePlanExecutionGlobals {
   readonly tools: Record<string, unknown>;
   readonly console: CodePlanConsole;
   readonly html?: HtmlTag;
-  readonly render?: Readonly<Record<string, GeneratedUiRenderPrimitive>>;
 }
 
 interface CodePlanExecutorContext {
@@ -429,44 +427,10 @@ Unparseable extracted JSON throws `GeneratedCodePlanParseError`. A missing JSON 
 function createHtmlTag(): HtmlTag;
 function createGeneratedUi(value: unknown): GeneratedUiCreateOutcome;
 function compileHtmlTemplate(template: HtmlTemplate): GeneratedUiRenderOutcome;
-function createRenderPrimitive<TValue>(
-  renderer: GeneratedUiRenderer<TValue>,
-): GeneratedUiRenderPrimitive;
-
-type GeneratedUiRenderCleanup = () => void;
-type GeneratedUiRenderPrimitive = (
-  ...args: readonly unknown[]
-) => GeneratedUiRenderNode;
-
-interface GeneratedUiRenderNode {
-  // Opaque. Only createRenderPrimitive() creates render nodes.
-}
-
-interface GeneratedUiRenderMount<TValue = unknown> {
-  readonly id: string;
-  readonly renderer: GeneratedUiRenderer<TValue>;
-  readonly value: TValue;
-}
-
-interface GeneratedUiRenderer<TValue = unknown> {
-  readonly name: string;
-  create(args: readonly unknown[]): TValue;
-  mount(
-    context: GeneratedUiRendererMountContext<TValue>,
-  ): void | GeneratedUiRenderCleanup;
-}
-
-interface GeneratedUiRendererMountContext<TValue = unknown> {
-  readonly target: Element;
-  readonly value: TValue;
-  call(callback: GeneratedUiEventHandler, ...args: readonly unknown[]): unknown;
-  requestRender(): void;
-}
 
 interface GeneratedUiFrame {
   readonly html: string;
   readonly handlers: Record<string, GeneratedUiEventHandler>;
-  readonly mounts?: readonly GeneratedUiRenderMount[];
 }
 
 interface GeneratedUi {
@@ -488,9 +452,11 @@ function mountGeneratedUi(
 
 interface GeneratedUiMountElement {
   innerHTML: string;
-  querySelector?(selector: string): Element | null;
   addEventListener(type: string, listener: (event: unknown) => unknown): void;
-  removeEventListener(type: string, listener: (event: unknown) => unknown): void;
+  removeEventListener(
+    type: string,
+    listener: (event: unknown) => unknown,
+  ): void;
 }
 
 interface GeneratedUiMountHandle {

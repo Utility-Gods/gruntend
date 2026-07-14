@@ -6,7 +6,6 @@ import { defineTools } from "../src/tool.ts";
 import {
   compileUiTemplate,
   createUiComponent,
-  createUiRenderPrimitive,
   createUiTemplateTag,
 } from "../src/ui-runtime.ts";
 
@@ -40,16 +39,26 @@ test("createUiComponent supports delegated SVG events and closure rerendering", 
   const html = createUiTemplateTag();
   let selected = false;
   const component = createUiComponent(function render() {
-    return html`<svg viewBox="0 0 100 100"><g onclick=${() => {
-      selected = true;
-    }}><rect width="100" height="100" fill=${selected ? "#0f172a" : "#f54a00"}></rect></g></svg>`;
+    return html`<svg viewBox="0 0 100 100">
+      <g
+        onclick=${() => {
+          selected = true;
+        }}
+      >
+        <rect
+          width="100"
+          height="100"
+          fill=${selected ? "#0f172a" : "#f54a00"}
+        ></rect>
+      </g>
+    </svg>`;
   }).unwrap();
 
-  expect(component.render().unwrap().html).toContain(
+  expect(compactMarkup(component.render().unwrap().html)).toContain(
     '<g data-gr-click="h0"><rect width="100" height="100" fill="#f54a00">',
   );
   component.dispatch("h0");
-  expect(component.render().unwrap().html).toContain(
+  expect(compactMarkup(component.render().unwrap().html)).toContain(
     '<g data-gr-click="h0"><rect width="100" height="100" fill="#0f172a">',
   );
 });
@@ -99,32 +108,28 @@ test("compileUiTemplate preserves safe SVG chart markup", () => {
   );
 });
 
-test("compileUiTemplate creates opaque mount records for render primitives", () => {
+test("compileUiTemplate preserves self-closing SVG elements", () => {
   const html = createUiTemplateTag();
-  const renderer = {
-    name: "chart",
-    create: (args: readonly unknown[]) => args[0],
-    mount: () => undefined,
-  };
-  const chart = createUiRenderPrimitive(renderer);
 
   const compiled = compileUiTemplate(
-    html`<section>${chart({ values: [2, 4, 8] })}</section>`,
+    html`<svg viewBox="0 0 100 100">
+      <rect width="40" height="80" />
+      <text x="50" y="95">Revenue</text>
+    </svg>`,
   ).unwrap();
 
-  expect(compiled.html).toBe(
-    '<section><div data-gr-render="r0"></div></section>',
+  expect(compactMarkup(compiled.html)).toBe(
+    '<svg viewBox="0 0 100 100"><rect width="40" height="80" /><text x="50" y="95">Revenue</text></svg>',
   );
-  expect(compiled.mounts).toEqual([
-    { id: "r0", renderer, value: { values: [2, 4, 8] } },
-  ]);
 });
 
 test("compileUiTemplate rejects unsafe SVG capabilities", () => {
   const html = createUiTemplateTag();
 
   const compiled = compileUiTemplate(
-    html`<svg><foreignObject><div>Unsafe</div></foreignObject></svg>`,
+    html`<svg>
+      <foreignObject><div>Unsafe</div></foreignObject>
+    </svg>`,
   );
 
   expect(Result.isError(compiled)).toBe(true);
@@ -196,9 +201,7 @@ test.each([
 
 test("compileUiTemplate scans quoted greater-than characters without hiding later tags", () => {
   const compiled = compileUiTemplate({
-    strings: [
-      '<svg><g aria-label=">"><base href="/"></base></g></svg>',
-    ],
+    strings: ['<svg><g aria-label=">"><base href="/"></base></g></svg>'],
     values: [],
   });
 
@@ -238,10 +241,12 @@ test("compileUiTemplate rejects malformed generated markup", () => {
 test("compileUiTemplate permits only local navigation and local paint fragments", () => {
   const html = createUiTemplateTag();
   const compiled = compileUiTemplate(
-    html`<svg><a href="#details"><path fill="url(#paint)"></path></a></svg>`,
+    html`<svg>
+      <a href="#details"><path fill="url(#paint)"></path></a>
+    </svg>`,
   ).unwrap();
 
-  expect(compiled.html).toBe(
+  expect(compactMarkup(compiled.html)).toBe(
     '<svg><a href="#details"><path fill="url(#paint)"></path></a></svg>',
   );
 });
@@ -314,30 +319,12 @@ test("compileUiTemplate rejects spoofed delegated handler attributes", () => {
   });
 });
 
-test("compileUiTemplate rejects duplicated renderer targets", () => {
-  const html = createUiTemplateTag();
-  const chart = createUiRenderPrimitive({
-    name: "chart",
-    create: () => ({}),
-    mount: () => undefined,
-  });
-  const compiled = compileUiTemplate(
-    html`<div data-gr-render="r0"></div>${chart()}`,
-  );
-
-  expect(Result.isError(compiled)).toBe(true);
-  expect(compiled.unwrapError()).toEqual({
-    code: "unsafe_attribute",
-    message:
-      'Generated render attribute "data-gr-render" references an unknown renderer.',
-  });
-});
-
 test("compileUiTemplate rejects duplicated delegated handler targets", () => {
   const html = createUiTemplateTag();
   const handler = () => undefined;
   const compiled = compileUiTemplate(
-    html`<button data-gr-click="h0">Spoof</button><button onclick=${handler}>Real</button>`,
+    html`<button data-gr-click="h0">Spoof</button
+      ><button onclick=${handler}>Real</button>`,
   );
 
   expect(Result.isError(compiled)).toBe(true);
@@ -346,32 +333,6 @@ test("compileUiTemplate rejects duplicated delegated handler targets", () => {
     message:
       'Generated handler attribute "data-gr-click" references an unknown handler.',
   });
-});
-
-test("runCodePlan exposes registered render primitives to interpreted plans", async () => {
-  const renderer = {
-    name: "chart",
-    create: (args: readonly unknown[]) => args[0],
-    mount: () => undefined,
-  };
-  const chart = createUiRenderPrimitive(renderer);
-  const result = await runCodePlan({
-    code: `return html\`<section>\${render.chart({ label: "Revenue" })}</section>\`;`,
-    registry: createToolRegistry(defineTools({})),
-    handlers: {},
-    ui: {
-      html: createUiTemplateTag(),
-      renderers: { chart },
-    },
-  });
-
-  expect(result.status).toBe("done");
-  const component = createUiComponent(result.result).unwrap();
-  const frame = component.render().unwrap();
-  expect(frame.html).toBe(
-    '<section><div data-gr-render="r0"></div></section>',
-  );
-  expect(frame.mounts?.[0]?.renderer).toBe(renderer);
 });
 
 test("runCodePlan can return an interpreted render function with local state", async () => {
@@ -405,6 +366,10 @@ test("runCodePlan can return an interpreted render function with local state", a
     '<button type="button" data-gr-click="h0">Count: 1</button>',
   );
 });
+
+function compactMarkup(markup: string): string {
+  return markup.replace(/>\s+</g, "><").trim();
+}
 
 test("runCodePlan can return a tagged-template menu page with local selection state", async () => {
   const result = await runCodePlan({

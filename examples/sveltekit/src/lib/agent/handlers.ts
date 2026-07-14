@@ -135,13 +135,18 @@ export function createBrowserHandlers(
     "orders.status.update": async ({ input, ok, err }) =>
       runMutation(
         options,
-        () => updateOrderStatusCommand(toPlainInput(input)) as Promise<OrderOutput>,
+        () =>
+          updateOrderStatusCommand(toPlainInput(input)) as Promise<OrderOutput>,
         ok,
         err,
       ),
 
     "tables.list": async ({ ok, err }) =>
-      runTool(() => getRestaurantTables().run() as Promise<TablesOutput>, ok, err),
+      runTool(
+        () => getRestaurantTables().run() as Promise<TablesOutput>,
+        ok,
+        err,
+      ),
 
     "payments.list": async ({ ok, err }) =>
       runTool(() => getPayments().run() as Promise<PaymentsOutput>, ok, err),
@@ -150,7 +155,11 @@ export function createBrowserHandlers(
       runTool(() => getShifts().run() as Promise<ShiftsOutput>, ok, err),
 
     "reservations.list": async ({ ok, err }) =>
-      runTool(() => getReservations().run() as Promise<ReservationsOutput>, ok, err),
+      runTool(
+        () => getReservations().run() as Promise<ReservationsOutput>,
+        ok,
+        err,
+      ),
 
     "users.list": async ({ ok, err }) =>
       runTool(() => getUsers().run() as Promise<UsersOutput>, ok, err),

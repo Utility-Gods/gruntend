@@ -104,8 +104,7 @@
       id: "weekly-revenue",
       kind: "svg-chart",
       label: "Review weekly revenue",
-      prompt:
-        "Show paid revenue by day for the past week in a bar chart",
+      prompt: "Show paid revenue by day for the past week in a bar chart",
       requiresAction: false,
     },
     {
@@ -113,7 +112,7 @@
       kind: "interactive-chart",
       label: "Explore popular dishes",
       prompt:
-        "Show the best-selling dishes by quantity and let me select a bar to inspect sales details", 
+        "Show the best-selling dishes by quantity and let me select a bar to inspect sales details",
       requiresAction: false,
     },
     {
@@ -121,15 +120,14 @@
       kind: "svg-chart",
       label: "See order status mix",
       prompt:
-        "Show a compact chart comparing the number of open, preparing, served, and cancelled orders", 
+        "Show a compact chart comparing the number of open, preparing, served, and cancelled orders",
       requiresAction: false,
     },
     {
       id: "average-ticket-line",
       kind: "line-chart",
       label: "Track average ticket",
-      prompt:
-        "Show the average paid order value by day in a line chart",
+      prompt: "Show the average paid order value by day in a line chart",
       requiresAction: false,
     },
     {
@@ -445,7 +443,9 @@
     };
     toast.success(
       `${actionMutationCount} confirmed ${actionMutationCount === 1 ? "change" : "changes"} saved`,
-      { description: "The updated records are now visible in the application." },
+      {
+        description: "The updated records are now visible in the application.",
+      },
     );
     void refreshDashboardData();
   }
@@ -818,7 +818,6 @@
     {/if}
   </section>
 </div>
-
 
 <style>
   .live-event {

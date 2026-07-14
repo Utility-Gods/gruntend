@@ -164,7 +164,15 @@ const paymentModel = {
     status: { enum: ["pending", "paid", "refunded", "voided"] },
     paidAt: { anyOf: [{ type: "string" }, { type: "null" }] },
   },
-  required: ["paymentId", "orderId", "amount", "tip", "method", "status", "paidAt"],
+  required: [
+    "paymentId",
+    "orderId",
+    "amount",
+    "tip",
+    "method",
+    "status",
+    "paidAt",
+  ],
 };
 const shiftModel = {
   type: "object",
@@ -188,7 +196,15 @@ const reservationModel = {
     status: { enum: ["booked", "seated", "completed", "cancelled", "no-show"] },
     reservedAt: { type: "string" },
   },
-  required: ["reservationId", "customerId", "tableId", "orderId", "partySize", "status", "reservedAt"],
+  required: [
+    "reservationId",
+    "customerId",
+    "tableId",
+    "orderId",
+    "partySize",
+    "status",
+    "reservedAt",
+  ],
 };
 const orderLineModel = {
   type: "object",
@@ -201,7 +217,15 @@ const orderLineModel = {
     unitPrice: { type: "number" },
     quantity: { type: "number" },
   },
-  required: ["lineId", "orderId", "menuId", "itemId", "itemName", "unitPrice", "quantity"],
+  required: [
+    "lineId",
+    "orderId",
+    "menuId",
+    "itemId",
+    "itemName",
+    "unitPrice",
+    "quantity",
+  ],
 };
 const orderModel = {
   type: "object",
@@ -222,7 +246,23 @@ const orderModel = {
     createdAt: { type: "string" },
     closedAt: { anyOf: [{ type: "string" }, { type: "null" }] },
   },
-  required: ["orderId", "tableName", "tableId", "table", "customerId", "customer", "assignedUserId", "serviceType", "partySize", "status", "lines", "payment", "total", "createdAt", "closedAt"],
+  required: [
+    "orderId",
+    "tableName",
+    "tableId",
+    "table",
+    "customerId",
+    "customer",
+    "assignedUserId",
+    "serviceType",
+    "partySize",
+    "status",
+    "lines",
+    "payment",
+    "total",
+    "createdAt",
+    "closedAt",
+  ],
 };
 const emptyParameters = { type: "object", properties: {}, required: [] };
 
@@ -403,7 +443,8 @@ export const appTools = defineTools({
   },
   orders: {
     list: {
-      description: "List orders with customer, service, status, item, quantity, price, staff, and timestamp details.",
+      description:
+        "List orders with customer, service, status, item, quantity, price, staff, and timestamp details.",
       input: v.object({}),
       output: v.object({ orders: v.array(orderSchema) }),
       parameters: emptyParameters,
@@ -456,7 +497,14 @@ export const appTools = defineTools({
             },
           },
         },
-        required: ["tableName", "customerId", "assignedUserId", "serviceType", "partySize", "items"],
+        required: [
+          "tableName",
+          "customerId",
+          "assignedUserId",
+          "serviceType",
+          "partySize",
+          "items",
+        ],
       },
       returns: {
         type: "object",
@@ -490,7 +538,8 @@ export const appTools = defineTools({
   },
   tables: {
     list: {
-      description: "List physical restaurant tables, sections, capacities, and availability configuration.",
+      description:
+        "List physical restaurant tables, sections, capacities, and availability configuration.",
       input: v.object({}),
       output: v.object({ tables: v.array(restaurantTableSchema) }),
       parameters: emptyParameters,
@@ -503,7 +552,8 @@ export const appTools = defineTools({
   },
   payments: {
     list: {
-      description: "List order payments, tips, methods, and settlement statuses.",
+      description:
+        "List order payments, tips, methods, and settlement statuses.",
       input: v.object({}),
       output: v.object({ payments: v.array(paymentSchema) }),
       parameters: emptyParameters,
@@ -529,13 +579,16 @@ export const appTools = defineTools({
   },
   reservations: {
     list: {
-      description: "List reservations with customers, tables, parties, statuses, times, and linked orders.",
+      description:
+        "List reservations with customers, tables, parties, statuses, times, and linked orders.",
       input: v.object({}),
       output: v.object({ reservations: v.array(reservationSchema) }),
       parameters: emptyParameters,
       returns: {
         type: "object",
-        properties: { reservations: { type: "array", items: reservationModel } },
+        properties: {
+          reservations: { type: "array", items: reservationModel },
+        },
         required: ["reservations"],
       },
     },

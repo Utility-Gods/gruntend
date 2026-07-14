@@ -2,16 +2,9 @@ import { Result, type Result as BetterResult } from "better-result";
 import {
   compileUiTemplate,
   createUiComponent,
-  createUiRenderPrimitive,
   createUiTemplateTag,
   type UiComponentCreateError,
   type UiEventHandler,
-  type UiRenderCleanup,
-  type UiRenderer,
-  type UiRendererMountContext,
-  type UiRenderMount,
-  type UiRenderNode,
-  type UiRenderPrimitive,
   type UiTemplate,
   type UiTemplateCompileError,
   type UiTemplateCompileOutcome,
@@ -25,13 +18,6 @@ export type GeneratedUiEventHandler = UiEventHandler;
 export type GeneratedUiFrame = UiTemplateCompileResult;
 export type GeneratedUiRenderError = UiTemplateCompileError;
 export type GeneratedUiRenderOutcome = UiTemplateCompileOutcome;
-export type GeneratedUiRenderCleanup = UiRenderCleanup;
-export type GeneratedUiRenderer<TValue = unknown> = UiRenderer<TValue>;
-export type GeneratedUiRendererMountContext<TValue = unknown> =
-  UiRendererMountContext<TValue>;
-export type GeneratedUiRenderMount<TValue = unknown> = UiRenderMount<TValue>;
-export type GeneratedUiRenderNode = UiRenderNode;
-export type GeneratedUiRenderPrimitive = UiRenderPrimitive;
 
 export interface GeneratedUi {
   render(): GeneratedUiRenderOutcome;
@@ -52,12 +38,6 @@ export type GeneratedUiCreateOutcome = BetterResult<
 
 export function createHtmlTag(): HtmlTag {
   return createUiTemplateTag();
-}
-
-export function createRenderPrimitive<TValue>(
-  renderer: GeneratedUiRenderer<TValue>,
-): GeneratedUiRenderPrimitive {
-  return createUiRenderPrimitive(renderer);
 }
 
 export function compileHtmlTemplate(

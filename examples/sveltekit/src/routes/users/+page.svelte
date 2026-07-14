@@ -38,16 +38,25 @@
   <header class="flex items-center gap-3 py-1">
     <UsersRound class="shrink-0 text-primary-600" size={23} strokeWidth={2.2} />
     <div>
-      <h1 class="text-xl font-semibold tracking-tight text-slate-950">Restaurant staff</h1>
-      <p class="mt-0.5 text-xs text-neutral-500">Assignments and sales are calculated from the same D1 order relationships</p>
+      <h1 class="text-xl font-semibold tracking-tight text-slate-950">
+        Restaurant staff
+      </h1>
+      <p class="mt-0.5 text-xs text-neutral-500">
+        Assignments and sales are calculated from the same D1 order
+        relationships
+      </p>
     </div>
   </header>
 
   {#if !usersResponse || !ordersResponse || !shiftsResponse}
     <LoadingSurface label="Loading staff operations from D1..." rows={6} />
   {:else}
-    <section class="overflow-hidden border border-neutral-200 bg-white shadow-sm">
-      <div class="hidden grid-cols-[1.3fr_120px_100px_120px_120px] border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 md:grid">
+    <section
+      class="overflow-hidden border border-neutral-200 bg-white shadow-sm"
+    >
+      <div
+        class="hidden grid-cols-[1.3fr_120px_100px_120px_120px] border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 md:grid"
+      >
         <span>Name</span>
         <span>Role</span>
         <span>Orders</span>
@@ -55,12 +64,22 @@
         <span>Shift hours</span>
       </div>
       {#each users as user}
-        <article class="grid gap-2 border-b border-neutral-100 px-5 py-4 last:border-b-0 md:grid-cols-[1.3fr_120px_100px_120px_120px] md:items-center">
+        <article
+          class="grid gap-2 border-b border-neutral-100 px-5 py-4 last:border-b-0 md:grid-cols-[1.3fr_120px_100px_120px_120px] md:items-center"
+        >
           <h2 class="text-sm font-semibold text-slate-950">{user.name}</h2>
-          <span class="text-sm font-medium capitalize text-primary-700">{user.role}</span>
-          <span class="text-sm tabular-nums text-neutral-700">{assignedOrders(user.userId).length}</span>
-          <span class="text-sm tabular-nums text-neutral-700">${paidSales(user.userId).toFixed(2)}</span>
-          <span class="text-sm tabular-nums text-neutral-700">{scheduledHours(user.userId).toFixed(1)}h</span>
+          <span class="text-sm font-medium capitalize text-primary-700"
+            >{user.role}</span
+          >
+          <span class="text-sm tabular-nums text-neutral-700"
+            >{assignedOrders(user.userId).length}</span
+          >
+          <span class="text-sm tabular-nums text-neutral-700"
+            >${paidSales(user.userId).toFixed(2)}</span
+          >
+          <span class="text-sm tabular-nums text-neutral-700"
+            >{scheduledHours(user.userId).toFixed(1)}h</span
+          >
         </article>
       {/each}
     </section>

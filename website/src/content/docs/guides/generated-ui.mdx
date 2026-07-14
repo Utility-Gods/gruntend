@@ -103,7 +103,7 @@ var maximum = Math.max.apply(null, input.values);
 
 return html`<svg viewBox="0 0 640 240" role="img" aria-label="Revenue by day">
   ${input.values.map(function (value, index) {
-    var height = value / maximum * 180;
+    var height = (value / maximum) * 180;
     return html`<rect
       x=${40 + index * 70}
       y=${200 - height}

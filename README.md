@@ -191,7 +191,6 @@ input
 tools
 console
 html when UI mode is provided at runtime
-render when application-owned renderers are registered
 ```
 
 With the default JailJS executor, standard built-ins such as `Promise` are still available for `async` code and `Promise.all(...)`.

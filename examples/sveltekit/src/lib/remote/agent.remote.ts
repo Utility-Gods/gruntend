@@ -87,17 +87,25 @@ export const suggestAgentTask = command(
 
     const model = resolveOpenAiModel(env.OPENAI_MODEL || "gpt-5.5");
     const context = { platform: event.platform };
-    const [menus, orders, customers, tables, payments, shifts, reservations, users] =
-      await Promise.all([
-        listMenus(context),
-        listOrders(context),
-        listCustomers(context),
-        listRestaurantTables(context),
-        listPayments(context),
-        listShifts(context),
-        listReservations(context),
-        listUsers(context),
-      ]);
+    const [
+      menus,
+      orders,
+      customers,
+      tables,
+      payments,
+      shifts,
+      reservations,
+      users,
+    ] = await Promise.all([
+      listMenus(context),
+      listOrders(context),
+      listCustomers(context),
+      listRestaurantTables(context),
+      listPayments(context),
+      listShifts(context),
+      listReservations(context),
+      listUsers(context),
+    ]);
     const message = await completeSimple(
       model,
       {
@@ -127,16 +135,12 @@ export const suggestAgentTask = command(
                   loyaltyTiers: countBy(
                     customers.map((customer) => customer.loyaltyTier),
                   ),
-                  tableSections: countBy(
-                    tables.map((table) => table.section),
-                  ),
+                  tableSections: countBy(tables.map((table) => table.section)),
                   reservationStatuses: countBy(
                     reservations.map((reservation) => reservation.status),
                   ),
                   staffRoles: countBy(users.map((user) => user.role)),
-                  shiftStations: countBy(
-                    shifts.map((shift) => shift.station),
-                  ),
+                  shiftStations: countBy(shifts.map((shift) => shift.station)),
                 },
               },
               null,
@@ -314,7 +318,7 @@ The task must:
 - use a chart only when an owner would naturally benefit from a visual comparison
 - for every mutation, ask to review the proposed change and confirm it before anything is created, copied, updated, deleted, or changed
 - never use analyst language such as investigate, realized revenue, rank, cohort, distribution, correlation, drill-down, derive, or interactive analysis
-- never mention Gruntend, tools, handlers, JavaScript, SVG, Canvas, renderers, APIs, databases, prompts, fields, records, or IDs
+- never mention Gruntend, tools, handlers, JavaScript, APIs, databases, prompts, fields, records, IDs, or other implementation details
 
 Use natural requests such as “Help me build…”, “Show me…”, “Which…”, or “Let me review…”. If a draft is supplied, rewrite technical language into the owner’s everyday language while preserving the core goal. Avoid generic dashboards, impossible forecasts, invented information, and decorative visualizations.`;
 

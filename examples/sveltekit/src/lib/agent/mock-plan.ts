@@ -25,7 +25,10 @@ return html\`<section class="surface-card"><h2 class="surface-title">Paid revenu
     };
   }
 
-  if (normalized.includes("best-selling") || normalized.includes("popular dishes")) {
+  if (
+    normalized.includes("best-selling") ||
+    normalized.includes("popular dishes")
+  ) {
     return {
       summary: "Explore best-selling dishes from order-line quantities.",
       input: {},
@@ -66,7 +69,10 @@ return html\`<section class="surface-card"><h2 class="surface-title">Order statu
     };
   }
 
-  if (normalized.includes("average paid order") || normalized.includes("average ticket")) {
+  if (
+    normalized.includes("average paid order") ||
+    normalized.includes("average ticket")
+  ) {
     return {
       summary: "Track average paid order value by day.",
       input: {},
@@ -84,7 +90,8 @@ return html\`<section class="surface-card"><h2 class="surface-title">Average pai
 
   if (normalized.includes("paid sales") && normalized.includes("assigned")) {
     return {
-      summary: "Compare paid sales, tips, and completed orders by assigned floor staff.",
+      summary:
+        "Compare paid sales, tips, and completed orders by assigned floor staff.",
       input: {},
       code: `
 var usersResult = await tools.users.list({});
@@ -145,9 +152,13 @@ return html\`<section class="surface-card"><h2 class="surface-title">Paid revenu
     };
   }
 
-  if (normalized.includes("loyalty tier") && normalized.includes("interactive")) {
+  if (
+    normalized.includes("loyalty tier") &&
+    normalized.includes("interactive")
+  ) {
     return {
-      summary: "Explore paid revenue and ticket details by customer loyalty tier.",
+      summary:
+        "Explore paid revenue and ticket details by customer loyalty tier.",
       input: {},
       code: `
 var ordersResult = await tools.orders.list({});
@@ -214,7 +225,10 @@ return function render() {
     };
   }
 
-  if (normalized.includes("average item price") && normalized.includes("line chart")) {
+  if (
+    normalized.includes("average item price") &&
+    normalized.includes("line chart")
+  ) {
     return {
       summary: "Compare average menu prices with a native SVG line chart.",
       input: {},

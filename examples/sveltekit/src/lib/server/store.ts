@@ -271,45 +271,204 @@ const seedItems: readonly MenuItem[] = [
 ];
 
 const seedTables: readonly RestaurantTable[] = [
-  { tableId: "table_1", name: "Table 1", section: "dining-room", seats: 4, active: true },
-  { tableId: "table_2", name: "Table 2", section: "dining-room", seats: 2, active: true },
-  { tableId: "table_3", name: "Table 3", section: "dining-room", seats: 4, active: true },
-  { tableId: "table_4", name: "Table 4", section: "dining-room", seats: 2, active: true },
-  { tableId: "table_5", name: "Table 5", section: "dining-room", seats: 4, active: true },
-  { tableId: "table_6", name: "Table 6", section: "dining-room", seats: 6, active: true },
-  { tableId: "table_7", name: "Table 7", section: "dining-room", seats: 4, active: true },
-  { tableId: "table_8", name: "Table 8", section: "dining-room", seats: 6, active: true },
-  { tableId: "table_9", name: "Patio 1", section: "patio", seats: 4, active: true },
-  { tableId: "table_10", name: "Patio 2", section: "patio", seats: 4, active: true },
-  { tableId: "table_11", name: "Patio 4", section: "patio", seats: 6, active: true },
-  { tableId: "table_12", name: "Patio 5", section: "patio", seats: 2, active: true },
-  { tableId: "table_13", name: "Bar 1", section: "bar", seats: 2, active: true },
-  { tableId: "table_14", name: "Bar 3", section: "bar", seats: 2, active: true },
+  {
+    tableId: "table_1",
+    name: "Table 1",
+    section: "dining-room",
+    seats: 4,
+    active: true,
+  },
+  {
+    tableId: "table_2",
+    name: "Table 2",
+    section: "dining-room",
+    seats: 2,
+    active: true,
+  },
+  {
+    tableId: "table_3",
+    name: "Table 3",
+    section: "dining-room",
+    seats: 4,
+    active: true,
+  },
+  {
+    tableId: "table_4",
+    name: "Table 4",
+    section: "dining-room",
+    seats: 2,
+    active: true,
+  },
+  {
+    tableId: "table_5",
+    name: "Table 5",
+    section: "dining-room",
+    seats: 4,
+    active: true,
+  },
+  {
+    tableId: "table_6",
+    name: "Table 6",
+    section: "dining-room",
+    seats: 6,
+    active: true,
+  },
+  {
+    tableId: "table_7",
+    name: "Table 7",
+    section: "dining-room",
+    seats: 4,
+    active: true,
+  },
+  {
+    tableId: "table_8",
+    name: "Table 8",
+    section: "dining-room",
+    seats: 6,
+    active: true,
+  },
+  {
+    tableId: "table_9",
+    name: "Patio 1",
+    section: "patio",
+    seats: 4,
+    active: true,
+  },
+  {
+    tableId: "table_10",
+    name: "Patio 2",
+    section: "patio",
+    seats: 4,
+    active: true,
+  },
+  {
+    tableId: "table_11",
+    name: "Patio 4",
+    section: "patio",
+    seats: 6,
+    active: true,
+  },
+  {
+    tableId: "table_12",
+    name: "Patio 5",
+    section: "patio",
+    seats: 2,
+    active: true,
+  },
+  {
+    tableId: "table_13",
+    name: "Bar 1",
+    section: "bar",
+    seats: 2,
+    active: true,
+  },
+  {
+    tableId: "table_14",
+    name: "Bar 3",
+    section: "bar",
+    seats: 2,
+    active: true,
+  },
 ];
 
 const seedCustomers: readonly Customer[] = [
-  { customerId: "customer_1", name: "Lena Ortiz", email: "lena.ortiz@example.com", loyaltyTier: "gold", createdAt: "2025-10-12T09:00:00.000Z" },
-  { customerId: "customer_2", name: "Noah Williams", email: "noah.williams@example.com", loyaltyTier: "silver", createdAt: "2026-01-08T09:00:00.000Z" },
-  { customerId: "customer_3", name: "Priya Shah", email: "priya.shah@example.com", loyaltyTier: "silver", createdAt: "2026-04-18T09:00:00.000Z" },
-  { customerId: "customer_4", name: "Eli Brooks", email: "eli.brooks@example.com", loyaltyTier: "standard", createdAt: "2025-08-03T09:00:00.000Z" },
-  { customerId: "customer_5", name: "Sofia Kim", email: "sofia.kim@example.com", loyaltyTier: "silver", createdAt: "2026-02-21T09:00:00.000Z" },
+  {
+    customerId: "customer_1",
+    name: "Lena Ortiz",
+    email: "lena.ortiz@example.com",
+    loyaltyTier: "gold",
+    createdAt: "2025-10-12T09:00:00.000Z",
+  },
+  {
+    customerId: "customer_2",
+    name: "Noah Williams",
+    email: "noah.williams@example.com",
+    loyaltyTier: "silver",
+    createdAt: "2026-01-08T09:00:00.000Z",
+  },
+  {
+    customerId: "customer_3",
+    name: "Priya Shah",
+    email: "priya.shah@example.com",
+    loyaltyTier: "silver",
+    createdAt: "2026-04-18T09:00:00.000Z",
+  },
+  {
+    customerId: "customer_4",
+    name: "Eli Brooks",
+    email: "eli.brooks@example.com",
+    loyaltyTier: "standard",
+    createdAt: "2025-08-03T09:00:00.000Z",
+  },
+  {
+    customerId: "customer_5",
+    name: "Sofia Kim",
+    email: "sofia.kim@example.com",
+    loyaltyTier: "silver",
+    createdAt: "2026-02-21T09:00:00.000Z",
+  },
 ];
 
 const seedOrders: readonly Order[] = [
-  seedOrder("order_1", "Table 4", "served", "2026-07-07T18:20:00.000Z", [["item_1", 2], ["item_2", 1]]),
-  seedOrder("order_2", "Patio 2", "served", "2026-07-07T20:05:00.000Z", [["item_4", 1], ["item_10", 2]]),
-  seedOrder("order_3", "Bar 1", "served", "2026-07-08T12:15:00.000Z", [["item_9", 2], ["item_5", 1]]),
-  seedOrder("order_4", "Table 7", "cancelled", "2026-07-08T19:40:00.000Z", [["item_1", 1]]),
-  seedOrder("order_5", "Table 3", "served", "2026-07-09T18:05:00.000Z", [["item_3", 2], ["item_11", 2]]),
-  seedOrder("order_6", "Patio 5", "served", "2026-07-09T20:35:00.000Z", [["item_4", 2], ["item_12", 2]]),
-  seedOrder("order_7", "Table 1", "served", "2026-07-10T11:30:00.000Z", [["item_6", 2], ["item_9", 2]]),
-  seedOrder("order_8", "Table 6", "served", "2026-07-10T19:10:00.000Z", [["item_1", 3], ["item_2", 2], ["item_10", 2]]),
-  seedOrder("order_9", "Patio 1", "served", "2026-07-11T12:45:00.000Z", [["item_5", 2], ["item_8", 1], ["item_11", 2]]),
-  seedOrder("order_10", "Table 8", "served", "2026-07-11T20:20:00.000Z", [["item_4", 1], ["item_1", 2], ["item_12", 3]]),
-  seedOrder("order_11", "Bar 3", "served", "2026-07-12T13:05:00.000Z", [["item_7", 2], ["item_10", 2]]),
-  seedOrder("order_12", "Table 2", "served", "2026-07-12T19:55:00.000Z", [["item_1", 2], ["item_3", 1], ["item_9", 2]]),
-  seedOrder("order_13", "Patio 4", "preparing", "2026-07-13T19:25:00.000Z", [["item_4", 1], ["item_2", 2]]),
-  seedOrder("order_14", "Table 5", "open", "2026-07-13T19:42:00.000Z", [["item_1", 1], ["item_10", 2]]),
+  seedOrder("order_1", "Table 4", "served", "2026-07-07T18:20:00.000Z", [
+    ["item_1", 2],
+    ["item_2", 1],
+  ]),
+  seedOrder("order_2", "Patio 2", "served", "2026-07-07T20:05:00.000Z", [
+    ["item_4", 1],
+    ["item_10", 2],
+  ]),
+  seedOrder("order_3", "Bar 1", "served", "2026-07-08T12:15:00.000Z", [
+    ["item_9", 2],
+    ["item_5", 1],
+  ]),
+  seedOrder("order_4", "Table 7", "cancelled", "2026-07-08T19:40:00.000Z", [
+    ["item_1", 1],
+  ]),
+  seedOrder("order_5", "Table 3", "served", "2026-07-09T18:05:00.000Z", [
+    ["item_3", 2],
+    ["item_11", 2],
+  ]),
+  seedOrder("order_6", "Patio 5", "served", "2026-07-09T20:35:00.000Z", [
+    ["item_4", 2],
+    ["item_12", 2],
+  ]),
+  seedOrder("order_7", "Table 1", "served", "2026-07-10T11:30:00.000Z", [
+    ["item_6", 2],
+    ["item_9", 2],
+  ]),
+  seedOrder("order_8", "Table 6", "served", "2026-07-10T19:10:00.000Z", [
+    ["item_1", 3],
+    ["item_2", 2],
+    ["item_10", 2],
+  ]),
+  seedOrder("order_9", "Patio 1", "served", "2026-07-11T12:45:00.000Z", [
+    ["item_5", 2],
+    ["item_8", 1],
+    ["item_11", 2],
+  ]),
+  seedOrder("order_10", "Table 8", "served", "2026-07-11T20:20:00.000Z", [
+    ["item_4", 1],
+    ["item_1", 2],
+    ["item_12", 3],
+  ]),
+  seedOrder("order_11", "Bar 3", "served", "2026-07-12T13:05:00.000Z", [
+    ["item_7", 2],
+    ["item_10", 2],
+  ]),
+  seedOrder("order_12", "Table 2", "served", "2026-07-12T19:55:00.000Z", [
+    ["item_1", 2],
+    ["item_3", 1],
+    ["item_9", 2],
+  ]),
+  seedOrder("order_13", "Patio 4", "preparing", "2026-07-13T19:25:00.000Z", [
+    ["item_4", 1],
+    ["item_2", 2],
+  ]),
+  seedOrder("order_14", "Table 5", "open", "2026-07-13T19:42:00.000Z", [
+    ["item_1", 1],
+    ["item_10", 2],
+  ]),
 ];
 
 function seedOrder(
@@ -342,7 +501,7 @@ function seedOrder(
         : "dine-in";
   const table =
     serviceType === "dine-in"
-      ? seedTables.find((entry) => entry.name === tableName) ?? null
+      ? (seedTables.find((entry) => entry.name === tableName) ?? null)
       : null;
   return {
     orderId,
@@ -536,9 +695,7 @@ export async function listPayments(
   return [...(rows.results ?? [])].map(rowToPayment);
 }
 
-export async function listShifts(
-  context: StoreContext = {},
-): Promise<Shift[]> {
+export async function listShifts(context: StoreContext = {}): Promise<Shift[]> {
   const d1 = readD1(context);
   if (!d1) return [];
 
@@ -562,9 +719,7 @@ export async function listReservations(
   return [...(rows.results ?? [])].map(rowToReservation);
 }
 
-export async function listOrders(
-  context: StoreContext = {},
-): Promise<Order[]> {
+export async function listOrders(context: StoreContext = {}): Promise<Order[]> {
   const d1 = readD1(context);
   if (!d1) return memoryStore.listOrders();
 
@@ -576,7 +731,9 @@ export async function listOrders(
     [...(rows.results ?? [])].map(async (row) => {
       const [lines, customerRow, tableRow, paymentRow] = await Promise.all([
         d1
-          .prepare("SELECT * FROM order_lines WHERE order_id = ? ORDER BY line_id")
+          .prepare(
+            "SELECT * FROM order_lines WHERE order_id = ? ORDER BY line_id",
+          )
           .bind(row.order_id)
           .all<OrderLineRow>(),
         d1
@@ -594,7 +751,8 @@ export async function listOrders(
           .bind(row.order_id)
           .first<PaymentRow>(),
       ]);
-      if (!customerRow) throw new Error(`Customer "${row.customer_id}" was not found.`);
+      if (!customerRow)
+        throw new Error(`Customer "${row.customer_id}" was not found.`);
       return rowToOrder(
         row,
         rowToCustomer(customerRow),
@@ -623,7 +781,8 @@ export async function createOrder(
   },
   context: StoreContext = {},
 ): Promise<Order> {
-  if (input.items.length === 0) throw new Error("An order needs at least one item.");
+  if (input.items.length === 0)
+    throw new Error("An order needs at least one item.");
   const d1 = readD1(context);
   if (!d1) return memoryStore.createOrder(input);
 
@@ -635,13 +794,21 @@ export async function createOrder(
     : undefined;
   validateOrderLocation(input.serviceType, table, input.partySize);
   const staff = await listUsers(context);
-  const assignedUser = staff.find((entry) => entry.userId === input.assignedUserId);
-  if (!assignedUser || !["owner", "manager", "server"].includes(assignedUser.role)) {
+  const assignedUser = staff.find(
+    (entry) => entry.userId === input.assignedUserId,
+  );
+  if (
+    !assignedUser ||
+    !["owner", "manager", "server"].includes(assignedUser.role)
+  ) {
     throw new Error("Orders must be assigned to an owner, manager, or server.");
   }
   const customers = await listCustomers(context);
-  const customer = customers.find((entry) => entry.customerId === input.customerId);
-  if (!customer) throw new Error(`Customer "${input.customerId}" was not found.`);
+  const customer = customers.find(
+    (entry) => entry.customerId === input.customerId,
+  );
+  if (!customer)
+    throw new Error(`Customer "${input.customerId}" was not found.`);
   const lines = await createOrderLines(orderId, input.items, context);
   const order: Order = {
     orderId,
@@ -662,8 +829,21 @@ export async function createOrder(
   };
 
   await d1
-    .prepare("INSERT INTO orders (order_id, table_name, table_id, customer_id, assigned_user_id, service_type, party_size, status, created_at, closed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(order.orderId, order.tableName, order.tableId, order.customerId, order.assignedUserId, order.serviceType, order.partySize, order.status, order.createdAt, order.closedAt)
+    .prepare(
+      "INSERT INTO orders (order_id, table_name, table_id, customer_id, assigned_user_id, service_type, party_size, status, created_at, closed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(
+      order.orderId,
+      order.tableName,
+      order.tableId,
+      order.customerId,
+      order.assignedUserId,
+      order.serviceType,
+      order.partySize,
+      order.status,
+      order.createdAt,
+      order.closedAt,
+    )
     .run();
   for (const line of lines) {
     await insertOrderLine(d1, line);
@@ -1017,8 +1197,16 @@ async function ensureD1(db: D1Database): Promise<void> {
   if ((customerCount?.count ?? 0) === 0) {
     for (const customer of seedCustomers) {
       await db
-        .prepare("INSERT INTO customers (customer_id, name, email, loyalty_tier, created_at) VALUES (?, ?, ?, ?, ?)")
-        .bind(customer.customerId, customer.name, customer.email, customer.loyaltyTier, customer.createdAt)
+        .prepare(
+          "INSERT INTO customers (customer_id, name, email, loyalty_tier, created_at) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(
+          customer.customerId,
+          customer.name,
+          customer.email,
+          customer.loyaltyTier,
+          customer.createdAt,
+        )
         .run();
     }
   }
@@ -1029,8 +1217,16 @@ async function ensureD1(db: D1Database): Promise<void> {
   if ((tableCount?.count ?? 0) === 0) {
     for (const table of seedTables) {
       await db
-        .prepare("INSERT INTO restaurant_tables (table_id, name, section, seats, active) VALUES (?, ?, ?, ?, ?)")
-        .bind(table.tableId, table.name, table.section, table.seats, table.active ? 1 : 0)
+        .prepare(
+          "INSERT INTO restaurant_tables (table_id, name, section, seats, active) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(
+          table.tableId,
+          table.name,
+          table.section,
+          table.seats,
+          table.active ? 1 : 0,
+        )
         .run();
     }
   }
@@ -1041,8 +1237,21 @@ async function ensureD1(db: D1Database): Promise<void> {
   if ((orderCount?.count ?? 0) === 0) {
     for (const order of seedOrders) {
       await db
-        .prepare("INSERT INTO orders (order_id, table_name, table_id, customer_id, assigned_user_id, service_type, party_size, status, created_at, closed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(order.orderId, order.tableName, order.tableId, order.customerId, order.assignedUserId, order.serviceType, order.partySize, order.status, order.createdAt, order.closedAt)
+        .prepare(
+          "INSERT INTO orders (order_id, table_name, table_id, customer_id, assigned_user_id, service_type, party_size, status, created_at, closed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          order.orderId,
+          order.tableName,
+          order.tableId,
+          order.customerId,
+          order.assignedUserId,
+          order.serviceType,
+          order.partySize,
+          order.status,
+          order.createdAt,
+          order.closedAt,
+        )
         .run();
       for (const line of order.lines) await insertOrderLine(db, line);
     }
@@ -1100,7 +1309,10 @@ function createMemoryStore() {
     seedItems.map((item) => [item.itemId, { ...item, tags: [...item.tags] }]),
   );
   const customers = new Map(
-    seedCustomers.map((customer) => [customer.customerId, copyCustomer(customer)]),
+    seedCustomers.map((customer) => [
+      customer.customerId,
+      copyCustomer(customer),
+    ]),
   );
   const orders = new Map(
     seedOrders.map((order) => [order.orderId, copyOrder(order)]),
@@ -1151,17 +1363,24 @@ function createMemoryStore() {
         readonly quantity: number;
       }[];
     }): Order {
-      if (input.items.length === 0) throw new Error("An order needs at least one item.");
+      if (input.items.length === 0)
+        throw new Error("An order needs at least one item.");
       const orderId = nextMemoryId(orders.keys(), "order");
       const table = input.tableId
         ? seedTables.find((entry) => entry.tableId === input.tableId)
         : undefined;
       validateOrderLocation(input.serviceType, table, input.partySize);
       const assignedUser = users.get(input.assignedUserId);
-      if (!assignedUser || !["owner", "manager", "server"].includes(assignedUser.role))
-        throw new Error("Orders must be assigned to an owner, manager, or server.");
+      if (
+        !assignedUser ||
+        !["owner", "manager", "server"].includes(assignedUser.role)
+      )
+        throw new Error(
+          "Orders must be assigned to an owner, manager, or server.",
+        );
       const customer = customers.get(input.customerId);
-      if (!customer) throw new Error(`Customer "${input.customerId}" was not found.`);
+      if (!customer)
+        throw new Error(`Customer "${input.customerId}" was not found.`);
       const lines = input.items.map((entry, index): OrderLine => {
         const item = items.get(entry.itemId);
         if (!item || item.menuId !== entry.menuId)
@@ -1358,8 +1577,18 @@ async function createOrderLines(
 
 async function insertOrderLine(db: D1Database, line: OrderLine): Promise<void> {
   await db
-    .prepare("INSERT INTO order_lines (line_id, order_id, menu_id, item_id, item_name, unit_price, quantity) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(line.lineId, line.orderId, line.menuId, line.itemId, line.itemName, line.unitPrice, line.quantity)
+    .prepare(
+      "INSERT INTO order_lines (line_id, order_id, menu_id, item_id, item_name, unit_price, quantity) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(
+      line.lineId,
+      line.orderId,
+      line.menuId,
+      line.itemId,
+      line.itemName,
+      line.unitPrice,
+      line.quantity,
+    )
     .run();
 }
 
