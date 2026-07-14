@@ -85,13 +85,13 @@
   <header
     class="flex flex-col justify-between gap-3 py-1 sm:flex-row sm:items-center"
   >
-    <div class="flex items-center gap-3">
+    <div class="flex min-w-0 items-center gap-3">
       <ClipboardList
         class="shrink-0 text-primary-600"
         size={23}
         strokeWidth={2.2}
       />
-      <div>
+      <div class="min-w-0">
         <h1 class="text-xl font-semibold tracking-tight text-slate-950">
           Orders
         </h1>
@@ -147,7 +147,7 @@
     <div class="grid gap-3 lg:grid-cols-2">
       {#each visibleOrders as order}
         <article
-          class={`border bg-white p-4 shadow-sm ${changedOrderIds.has(order.orderId) ? "border-emerald-500 ring-2 ring-emerald-100" : "border-neutral-200"}`}
+          class={`min-w-0 border bg-white p-4 shadow-sm ${changedOrderIds.has(order.orderId) ? "border-emerald-500 ring-2 ring-emerald-100" : "border-neutral-200"}`}
         >
           <div
             class="flex items-start justify-between gap-4 border-b border-neutral-100 pb-3"
@@ -162,7 +162,7 @@
                   >{order.status}</span
                 >
               </div>
-              <p class="mt-1 text-xs text-neutral-500">
+              <p class="mt-1 break-words text-xs text-neutral-500">
                 {order.orderId} · {order.serviceType} · {new Date(
                   order.createdAt,
                 ).toLocaleString()}
@@ -206,8 +206,10 @@
             class="space-y-1 border-t border-neutral-100 pt-3 text-xs text-neutral-600"
           >
             {#each order.lines as line}
-              <li class="flex justify-between gap-4">
-                <span>{line.quantity}× {line.itemName}</span><span
+              <li class="flex min-w-0 justify-between gap-4">
+                <span class="min-w-0 break-words"
+                  >{line.quantity}× {line.itemName}</span
+                ><span
                   class="tabular-nums"
                   >${(line.unitPrice * line.quantity).toFixed(2)}</span
                 >

@@ -63,6 +63,21 @@ test("createUiComponent supports delegated SVG events and closure rerendering", 
   );
 });
 
+test("compileUiTemplate supports mixed quoted attribute interpolation", () => {
+  const html = createUiTemplateTag();
+  const width = 720;
+  const height = 280;
+  const period = "this week";
+
+  const compiled = compileUiTemplate(
+    html`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Sales ${period}"></svg>`,
+  ).unwrap();
+
+  expect(compiled.html).toBe(
+    '<svg viewBox="0 0 720 280" role="img" aria-label="Sales this week"></svg>',
+  );
+});
+
 test("compileUiTemplate supports boolean attribute interpolation", () => {
   const html = createUiTemplateTag();
 
@@ -280,6 +295,20 @@ test("compileUiTemplate rejects interpolation that changes tag structure", () =>
   const html = createUiTemplateTag();
 
   const compiled = compileUiTemplate(html`<bu${"tton"}>Bad</button>`);
+
+  expect(Result.isError(compiled)).toBe(true);
+  expect(compiled.unwrapError()).toEqual({
+    code: "unsafe_interpolation",
+    message: "Interpolations cannot change tag or attribute structure.",
+  });
+});
+
+test("compileUiTemplate rejects mixed event-handler attributes", () => {
+  const html = createUiTemplateTag();
+
+  const compiled = compileUiTemplate(
+    html`<button onclick="prefix-${() => undefined}">Bad</button>`,
+  );
 
   expect(Result.isError(compiled)).toBe(true);
   expect(compiled.unwrapError()).toEqual({

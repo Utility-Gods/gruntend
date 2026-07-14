@@ -503,7 +503,7 @@
   <section
     class="overflow-hidden border border-neutral-200 border-t-4 border-t-primary-600 bg-white shadow-sm"
   >
-    <div class="flex flex-col gap-5 px-6 py-6 md:px-8">
+    <div class="flex min-w-0 flex-col gap-5 px-4 py-5 sm:px-6 sm:py-6 md:px-8">
       <div
         class="flex flex-col justify-between gap-5 md:flex-row md:items-start"
       >
@@ -513,32 +513,34 @@
           >
             Restaurant operations
           </p>
-          <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+          <h1
+            class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl"
+          >
             What do you want to do?
           </h1>
         </div>
         <dl
-          class="flex divide-x divide-neutral-200 border border-neutral-200 bg-[#faf9f6]"
+          class="grid w-full grid-cols-2 border-l border-t border-neutral-200 bg-[#faf9f6] sm:grid-cols-4 md:w-auto"
         >
-          <div class="min-w-24 px-4 py-2.5">
+          <div class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4">
             <dt class="text-[11px] text-neutral-500">Menus</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
               {menuCount ?? "…"}
             </dd>
           </div>
-          <div class="min-w-24 px-4 py-2.5">
+          <div class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4">
             <dt class="text-[11px] text-neutral-500">Items</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
               {itemCount ?? "…"}
             </dd>
           </div>
-          <div class="min-w-24 px-4 py-2.5">
+          <div class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4">
             <dt class="text-[11px] text-neutral-500">Orders</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
               {orderCount ?? "…"}
             </dd>
           </div>
-          <div class="min-w-24 px-4 py-2.5">
+          <div class="min-w-0 border-b border-r border-neutral-200 px-3 py-2.5 sm:px-4">
             <dt class="text-[11px] text-neutral-500">Staff</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
               {teamCount ?? "…"}
@@ -566,11 +568,11 @@
             placeholder="Move selected dinner items to a new seasonal menu..."
           ></textarea>
           <div
-            class="flex flex-wrap items-center justify-end gap-2 border-t border-neutral-200 bg-[#faf9f6] px-2.5 py-2"
+            class="flex flex-col gap-2 border-t border-neutral-200 bg-[#faf9f6] px-2.5 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
           >
             <button
               type="button"
-              class="inline-flex h-10 items-center gap-2 border border-neutral-300 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:border-primary-500 hover:text-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-wait disabled:opacity-60"
+              class="inline-flex h-10 w-full items-center justify-center gap-2 border border-neutral-300 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:border-primary-500 hover:text-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
               disabled={suggestionLoading ||
                 state === "planning" ||
                 state === "running"}
@@ -585,7 +587,7 @@
             </button>
             <button
               type="submit"
-              class="h-10 min-w-24 bg-primary-600 px-5 text-sm font-semibold text-white transition hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-wait disabled:opacity-60"
+              class="h-10 w-full bg-primary-600 px-5 text-sm font-semibold text-white transition hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:min-w-24"
               disabled={state === "planning" || state === "running"}
             >
               {state === "planning"
@@ -644,7 +646,7 @@
       <div class="border-t border-neutral-200 bg-white" aria-live="polite">
         {#if !suggestionLoading && (state === "done" || state === "error")}
           <header
-            class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-[#faf9f6] px-6 py-3 md:px-8"
+            class="flex flex-col items-start gap-2 border-b border-neutral-200 bg-[#faf9f6] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6 md:px-8"
           >
             <h2 class="text-base font-semibold text-slate-950">
               {resultTitle}
@@ -661,7 +663,7 @@
           </header>
         {/if}
 
-        <div class="p-5 md:p-6">
+        <div class="min-w-0 p-4 sm:p-5 md:p-6">
           {#if suggestionLoading || state === "planning" || state === "running"}
             <div class="mx-auto flex max-w-2xl items-start gap-4 py-5">
               <Activity
@@ -670,7 +672,9 @@
                 strokeWidth={2.3}
               />
               <div class="min-w-0 flex-1">
-                <div class="flex items-center justify-between gap-4">
+                <div
+                  class="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                >
                   <p class="text-sm font-semibold text-slate-900">
                     {#if suggestionLoading}
                       Generating a task suggestion
@@ -851,6 +855,9 @@
       opacity: 0.65;
     }
   }
+  :global(.generated-workspace) {
+    min-width: 0;
+  }
   :global(.generated-workspace .surface-card) {
     display: grid;
     gap: 1rem;
@@ -940,7 +947,9 @@
     cursor: pointer;
   }
   :global(.generated-workspace .surface-table) {
+    display: block;
     width: 100%;
+    overflow-x: auto;
     border-collapse: collapse;
     font-size: 0.88rem;
   }
@@ -965,5 +974,18 @@
     color: #b91c1c;
     font-size: 0.85rem;
     font-weight: 600;
+  }
+  @media (max-width: 639px) {
+    :global(.generated-workspace .surface-item) {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    :global(.generated-workspace button),
+    :global(.generated-workspace a.surface-action) {
+      width: 100%;
+      justify-content: center;
+      text-align: center;
+    }
   }
 </style>
