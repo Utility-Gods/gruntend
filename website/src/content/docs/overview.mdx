@@ -3,6 +3,8 @@ title: How Gruntend works
 description: Gruntend interprets JavaScript plans against a small set of application-owned capabilities.
 ---
 
+import { Aside, Steps } from "@astrojs/starlight/components";
+
 <p class="doc-lead">
   Gruntend runs JavaScript plans without giving those plans direct access to
   your application.
@@ -10,29 +12,51 @@ description: Gruntend interprets JavaScript plans against a small set of applica
 
 ## The idea in four parts
 
-- **Tool contract** — describes one operation and validates its input and output.
-- **Handler** — application code that performs the operation with your permissions and services.
-- **Plan** — JavaScript that composes tool calls and returns data or UI.
-- **Interpreter** — evaluates the plan and routes each call through its matching handler.
+| Part              | Responsibility                                                        |
+| ----------------- | --------------------------------------------------------------------- |
+| **Tool contract** | Describes one operation and validates its input and output.           |
+| **Handler**       | Performs the operation with application permissions and services.     |
+| **Plan**          | Composes tool calls with JavaScript and returns data or UI.           |
+| **Executor**      | Evaluates the plan and routes each call through its matching handler. |
 
 In a conventional tool-calling loop, the host repeatedly asks a model what to call next. Gruntend instead lets a model produce one small program. That program can transform results, branch on runtime values, and coordinate several calls while the application retains control of every operation.
 
-## The interpreter is the boundary
+## Plans receive capabilities, not your app
 
-A plan runs inside a code-plan executor. The default executor uses JailJS, an AST interpreter. The plan receives only the values Gruntend supplies:
+A plan runs inside an explicitly selected code-plan executor. The plan receives a small runtime surface:
 
-- `input` — task data supplied when the plan runs
-- `tools` — the application capabilities registered with Gruntend
-- `console` — safe diagnostic logging through the lifecycle stream
-- `html` — the tagged-template function, only when generated UI is enabled
+| Runtime value | Available capability                             |
+| ------------- | ------------------------------------------------ |
+| `input`       | Task data supplied when the plan starts.         |
+| `tools`       | Registered application capabilities.             |
+| `console`     | Diagnostic logging through the lifecycle stream. |
+| `html`        | Tagged templates when generated UI is enabled.   |
 
-With the default JailJS executor, standard built-ins such as `Promise` are available for async orchestration. The plan does not receive imports, `fetch`, `window`, `document`, storage, or your application services.
+The plan does not receive imports, `fetch`, `window`, `document`, storage, or application services. Standard JavaScript built-ins such as `Promise` remain available for orchestration.
 
-This is the central idea: the plan has the expressiveness of JavaScript, but its useful authority comes only from registered `tools`.
+<Aside type="note" title="Authority comes from tools">
+  JavaScript gives the plan composition. Only registered `tools` give it useful
+  application authority. Permissions, persistence, secrets, and effects stay in
+  handlers.
+</Aside>
 
-JailJS is the default executor, not a permanent lock-in. Applications may provide a custom executor backed by a worker, isolate, remote service, or another interpreter.
+<Aside type="note" title="Choose the execution boundary">
+  Applications explicitly select a browser executor. JailJS is lightweight
+  controlled execution; QuickJS/WASM provides a separate JavaScript realm and
+  heap. One executor owns the complete plan, with no automatic fallback or
+  replay. See [Code-plan executors](/reference/executors/) for the detailed
+  comparison, limits, and lifecycle rules.
+</Aside>
 
-The default executor applies an operation budget with `maxOps`, but JailJS should be treated as scope isolation for controlled generated code, not as a complete security sandbox for adversarial code. Keep privileged work inside handlers, validate tool inputs and outputs, and use a stronger executor boundary when your threat model requires it.
+<Aside type="caution" title="Public beta — not production-ready">
+  Gruntend is not ready for production use with sensitive capabilities or
+  untrusted plans. Treat generated plans as untrusted input. Executor isolation
+  does not replace least-privilege tools, runtime schema validation,
+  authorization, and mutation checks in application handlers. Gruntend's
+  execution boundaries are actively hardened as the project evolves; review
+  release notes and evaluate each executor against your threat model before
+  exposing sensitive capabilities.
+</Aside>
 
 ## Plans compose; handlers perform
 
@@ -48,11 +72,15 @@ return items.filter((item) => item.price < 10);
 
 When the plan calls `menu.items.list`, Gruntend:
 
-1. finds the registered tool contract
-2. validates the supplied input
-3. calls `handlers["menu.items.list"]`
-4. validates the successful output
-5. returns that output to the plan
+<Steps>
+
+1. Finds the registered tool contract.
+2. Validates the supplied input.
+3. Calls `handlers["menu.items.list"]`.
+4. Validates the successful output.
+5. Returns that output to the plan.
+
+</Steps>
 
 The application handler owns permissions, persistence, network access, and business rules. The plan never receives those dependencies.
 

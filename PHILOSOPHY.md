@@ -107,7 +107,7 @@ Applications own model choice, prompts, examples, evaluation, and whether genera
 
 A code plan is not passed to `eval` or `Function`. Gruntend executes it through a `CodePlanExecutor` with only explicit globals: `input`, registered `tools`, safe `console`, and optional `html`.
 
-JailJS is the pinned dependency and default executor. It provides the current AST interpreter and scope boundary. It is not the product's authority boundary, and Gruntend does not describe it as a security sandbox. Applications may supply another `CodePlanExecutor`; the tool registry, validation, handlers, results, and lifecycle events remain unchanged.
+Executor selection is explicit. JailJS is the pinned lightweight `controlled` executor and is not a security sandbox. The QuickJS/WASM browser executor runs plans in a separate JavaScript realm and heap and reports `isolated`. Neither executor is the product's authority boundary: the tool registry, validation, and application-owned handlers remain responsible for effects. Each plan and its closures stay pinned to one selected executor, with no fallback or whole-plan replay.
 
 ## Core belief
 

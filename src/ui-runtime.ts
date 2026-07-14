@@ -13,6 +13,7 @@ export type UiTemplateTag = (
 
 export interface UiInterpretedFunction {
   call(thisArg: unknown, ...args: readonly unknown[]): unknown;
+  destroy?(): void;
 }
 
 export type UiCallable =
@@ -45,6 +46,7 @@ export type UiTemplateCompileOutcome = BetterResult<
 export interface UiComponent {
   render(): UiTemplateCompileOutcome;
   dispatch(handlerId: string, ...args: readonly unknown[]): unknown;
+  destroy(): void;
 }
 
 export interface UiComponentCreateError {
@@ -254,6 +256,10 @@ export function createUiComponent(value: unknown): UiComponentCreateOutcome {
       }
 
       return callUiFunction(handler, ...args);
+    },
+    destroy() {
+      handlers = {};
+      if (isUiInterpretedFunction(render)) render.destroy?.();
     },
   });
 }

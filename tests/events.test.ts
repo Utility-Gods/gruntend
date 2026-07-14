@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { createGruntendClient } from "../src/client.ts";
+import { createJailJsCodePlanExecutor } from "../src/executors/jailjs.ts";
 import type { RuntimeEvent } from "../src/runtime.ts";
 import { defineTools } from "../src/tool.ts";
 import * as v from "valibot";
@@ -15,7 +16,10 @@ test("runCodePlan emits plan and tool lifecycle events through onEvent", async (
       },
     },
   });
-  const client = createGruntendClient({ tools });
+  const client = createGruntendClient({
+    tools,
+    executor: createJailJsCodePlanExecutor(),
+  });
 
   await client.runCodePlan(
     `return await tools.menu.create({ name: "Dinner" });`,
@@ -34,7 +38,11 @@ test("runCodePlan emits plan and tool lifecycle events through onEvent", async (
     "tool.completed",
     "plan.completed",
   ]);
-  expect(events[0]).toEqual({ type: "plan.started", planId: "create-menu" });
+  expect(events[0]).toEqual({
+    type: "plan.started",
+    planId: "create-menu",
+    executorId: "jailjs",
+  });
   expect(events[1]).toEqual({
     type: "tool.started",
     planId: "create-menu",
@@ -55,6 +63,7 @@ test("runCodePlan emits plan and tool lifecycle events through onEvent", async (
   expect(events[3]).toEqual({
     type: "plan.completed",
     planId: "create-menu",
+    executorId: "jailjs",
     result: { menuId: "menu:Dinner" },
   });
 });
@@ -70,7 +79,10 @@ test("runCodePlan emits retry events when a retryable tool error will be retried
       },
     },
   });
-  const client = createGruntendClient({ tools });
+  const client = createGruntendClient({
+    tools,
+    executor: createJailJsCodePlanExecutor(),
+  });
 
   await client.runCodePlan(
     `return await tools.menu.create({ name: "Dinner" });`,

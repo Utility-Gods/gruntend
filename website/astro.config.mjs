@@ -50,7 +50,11 @@ export default defineConfig({
         },
         {
           label: "Reference",
-          items: [{ label: "API", slug: "reference/api" }],
+          items: [
+            { label: "API", slug: "reference/api" },
+            { label: "Executors", slug: "reference/executors" },
+            { label: "Changes", slug: "changes" },
+          ],
         },
       ],
     }),

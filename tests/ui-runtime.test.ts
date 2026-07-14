@@ -1,6 +1,7 @@
 import { Result } from "better-result";
 import { expect, test } from "vitest";
 import { runCodePlan } from "../src/code-plan.ts";
+import { createJailJsCodePlanExecutor } from "../src/executors/jailjs.ts";
 import { createToolRegistry } from "../src/registry.ts";
 import { defineTools } from "../src/tool.ts";
 import {
@@ -370,6 +371,7 @@ test("compileUiTemplate rejects duplicated delegated handler targets", () => {
 
 test("runCodePlan can return an interpreted render function with local state", async () => {
   const result = await runCodePlan({
+    executor: createJailJsCodePlanExecutor(),
     code: `
       var count = 0;
 
@@ -406,6 +408,7 @@ function compactMarkup(markup: string): string {
 
 test("runCodePlan can return a tagged-template menu page with local selection state", async () => {
   const result = await runCodePlan({
+    executor: createJailJsCodePlanExecutor(),
     code: `
       var selected = [];
 

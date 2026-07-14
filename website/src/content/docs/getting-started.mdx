@@ -3,6 +3,7 @@ title: Run your first task
 description: Define one typed capability, implement its handler, run a JavaScript plan, and inspect the exact result.
 ---
 
+import { Aside, Steps } from "@astrojs/starlight/components";
 import { sdkVersion } from "../../data/sdk";
 
 <p class="doc-lead">
@@ -20,6 +21,8 @@ This example uses a handwritten plan, so it does not require a model or API key.
 ```bash
 pnpm add gruntend-sdk valibot
 ```
+
+This guide uses Valibot, but Gruntend is not tied to one schema library. You can use Zod or any other validator that implements [Standard Schema](https://standardschema.dev/) for tool inputs and outputs.
 
 ## Define the capability
 
@@ -133,6 +136,7 @@ Create `run.ts`. A plan calls the tool through the namespace implied by its regi
 
 ```ts
 import { createGruntendClient } from "gruntend-sdk/client";
+import { createJailJsCodePlanExecutor } from "gruntend-sdk/executor/jailjs";
 import { handlers } from "./handlers.ts";
 import { tools } from "./tools.ts";
 
@@ -153,7 +157,10 @@ The runtime unwraps the successful handler result before returning it to the pla
 ## Run the plan
 
 ```ts
-const gruntend = createGruntendClient({ tools });
+const gruntend = createGruntendClient({
+  tools,
+  executor: createJailJsCodePlanExecutor(),
+});
 
 const result = await gruntend.runCodePlan(plan, {
   input: { itemId: "item_1" },
@@ -178,6 +185,8 @@ For an existing item, `result` has this exact shape:
 
 The runtime validates both sides of the handler:
 
+<Steps>
+
 1. The plan passes `{ itemId }`.
 2. The runtime validates that value with the tool input schema.
 3. Only valid input reaches `handlers["menu.item.get"]`.
@@ -185,6 +194,12 @@ The runtime validates both sides of the handler:
 5. The runtime validates `{ item }` with the output schema.
 6. Only valid output returns to the plan.
 
-If input validation fails, the handler is never called. If output validation fails, the plan fails instead of receiving data that violates the contract.
+</Steps>
+
+<Aside type="note" title="Validation invariant">
+  Invalid input never reaches the handler. Invalid successful output never
+  returns to the plan. Expected failures use `err(...)`; throws remain the
+  fallback for unexpected faults.
+</Aside>
 
 Next: [Code plans](/code-plan-format/), [Generated UI](/guides/generated-ui/), or the [API reference](/reference/api/).

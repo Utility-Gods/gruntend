@@ -14,7 +14,7 @@ export interface GruntendClientOptions<
 > {
   readonly tools?: TTools;
   readonly registry?: ToolRegistry<TTools[number]>;
-  readonly executor?: CodePlanExecutor;
+  readonly executor: CodePlanExecutor;
   readonly maxOps?: number;
   readonly console?: CodePlanConsole;
 }

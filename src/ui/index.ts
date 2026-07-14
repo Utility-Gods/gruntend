@@ -22,6 +22,7 @@ export type GeneratedUiRenderOutcome = UiTemplateCompileOutcome;
 export interface GeneratedUi {
   render(): GeneratedUiRenderOutcome;
   runHandler(handlerId: string, ...args: readonly unknown[]): unknown;
+  destroy(): void;
 }
 
 export interface GeneratedUiCreateError {
@@ -59,6 +60,9 @@ export function createGeneratedUi(value: unknown): GeneratedUiCreateOutcome {
     },
     runHandler(handlerId, ...args) {
       return component.value.dispatch(handlerId, ...args);
+    },
+    destroy() {
+      component.value.destroy();
     },
   });
 }

@@ -1,0 +1,421 @@
+---
+import {
+  commitUrl,
+  pendingChanges,
+  releasedChanges,
+} from "../data/changes";
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+  year: "numeric",
+});
+
+function formatDate(value: string): string {
+  const calendarDate = value.slice(0, 10);
+  return dateFormatter.format(new Date(`${calendarDate}T00:00:00Z`));
+}
+
+function inlineParts(value: string) {
+  return value.split(/(`[^`]+`)/g).filter(Boolean).map((part) => ({
+    code: part.startsWith("`") && part.endsWith("`"),
+    value: part.startsWith("`") && part.endsWith("`") ? part.slice(1, -1) : part,
+  }));
+}
+---
+
+<div class="changes-feed not-content">
+  <section class="change-section" aria-labelledby="upcoming-heading">
+    <header class="section-heading">
+      <div>
+        <p class="section-kicker">Next release</p>
+        <h2 id="upcoming-heading">Upcoming</h2>
+      </div>
+      <span class="count">{pendingChanges.length} pending</span>
+    </header>
+
+    {pendingChanges.length > 0 ? (
+      <div class="pending-list">
+        {pendingChanges.map((change) => (
+          <article class="pending-change">
+            <div class="change-meta">
+              {change.packages.map((item) => (
+                <>
+                  <span class="package">{item.name}</span>
+                  <span class:list={["change-type", item.type]}>{item.type}</span>
+                </>
+              ))}
+              {change.date && (
+                <time datetime={change.date}>{formatDate(change.date)}</time>
+              )}
+            </div>
+            <div class="pending-body">
+              {change.groups.map((group) => (
+                <section aria-label={group.label}>
+                  {group.label !== "Release notes" && <h3>{group.label}</h3>}
+                  {group.label === "Release notes" ? (
+                    group.changes.map((entry) => (
+                      <p class="change-copy">
+                        {inlineParts(entry.text).map((part) =>
+                          part.code ? <code>{part.value}</code> : part.value
+                        )}
+                      </p>
+                    ))
+                  ) : (
+                    <ul>
+                      {group.changes.map((entry) => (
+                        <li>
+                          {inlineParts(entry.text).map((part) =>
+                            part.code ? <code>{part.value}</code> : part.value
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              ))}
+            </div>
+            <a class="source-link" href={change.sourceUrl}>View changeset <span aria-hidden="true">→</span></a>
+          </article>
+        ))}
+      </div>
+    ) : (
+      <p class="empty-state">There are no changes queued for the next release.</p>
+    )}
+  </section>
+
+  <section class="change-section releases" aria-labelledby="released-heading">
+    <header class="section-heading">
+      <div>
+        <p class="section-kicker">Published</p>
+        <h2 id="released-heading">Released</h2>
+      </div>
+    </header>
+
+    <div class="release-list">
+      {releasedChanges.map((release) => (
+        <article class="release">
+          <header class="release-heading">
+            <div>
+              <h3>v{release.version}</h3>
+              {release.date && (
+                <time datetime={release.date}>{formatDate(release.date)}</time>
+              )}
+            </div>
+            <a href={release.sourceUrl}>Git tag <span aria-hidden="true">↗</span></a>
+          </header>
+
+          <div class="release-body">
+            {release.groups.map((group) => (
+              <section aria-label={group.label}>
+                <h4>{group.label}</h4>
+                <ul>
+                  {group.changes.map((change) => (
+                    <li>
+                      <span>
+                        {inlineParts(change.text).map((part) =>
+                          part.code ? <code>{part.value}</code> : part.value
+                        )}
+                      </span>
+                      {change.commit && (
+                        <a class="commit" href={commitUrl(change.commit)} aria-label={`View commit ${change.commit}`}>
+                          {change.commit}
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+</div>
+
+<style>
+  .changes-feed {
+    margin-top: 2.25rem;
+  }
+
+  .change-section {
+    border-top: 1px solid #cbd5e1;
+    padding-block: 1.5rem 2.75rem;
+  }
+
+  .section-heading,
+  .release-heading,
+  .change-meta,
+  .release-heading > div {
+    display: flex;
+    align-items: center;
+  }
+
+  .section-heading {
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .section-heading h2,
+  .release-heading h3,
+  .release-body h4,
+  .section-heading p,
+  .change-copy,
+  .empty-state {
+    margin: 0;
+  }
+
+  .section-heading h2 {
+    color: #0f172a;
+    font-size: 1.45rem;
+    letter-spacing: -.025em;
+  }
+
+  .section-kicker {
+    margin-bottom: .25rem !important;
+  }
+
+  .count,
+  .change-type {
+    border: 1px solid #cbd5e1;
+    padding: .25rem .45rem;
+    color: #475569;
+    font-size: .61rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .pending-list {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+  }
+
+  .pending-change {
+    padding: 1.15rem 1.25rem;
+  }
+
+  .pending-change + .pending-change {
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .change-meta {
+    flex-wrap: wrap;
+    gap: .45rem;
+  }
+
+  .change-meta time,
+  .release-heading time {
+    color: #64748b;
+    font-size: .65rem;
+    font-weight: 550;
+  }
+
+  .change-meta time::before {
+    content: "·";
+    margin-right: .45rem;
+    color: #cbd5e1;
+  }
+
+  .package {
+    color: #0f172a;
+    font-family: var(--__sl-font-mono);
+    font-size: .66rem;
+    font-weight: 650;
+  }
+
+  .change-type.patch {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #047857;
+  }
+
+  .change-type.minor {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #c2410c;
+  }
+
+  .change-type.major {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  .pending-body {
+    display: grid;
+    max-width: 52rem;
+    gap: 1rem;
+    margin-top: .8rem;
+  }
+
+  .pending-body section + section {
+    border-top: 1px solid #e2e8f0;
+    padding-top: .9rem;
+  }
+
+  .pending-body h3 {
+    margin: 0 0 .45rem;
+    color: #0f172a;
+    font-size: .78rem;
+    letter-spacing: -.01em;
+  }
+
+  .pending-body ul {
+    display: grid;
+    gap: .35rem;
+    margin: 0;
+    padding-left: 1.1rem;
+    color: #475569;
+    font-size: .76rem;
+    line-height: 1.65;
+  }
+
+  .change-copy {
+    max-width: 48rem;
+    margin: 0;
+    color: #334155;
+    font-size: .84rem;
+    line-height: 1.7;
+  }
+
+  code {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    padding: .08rem .25rem;
+    color: #334155;
+    font-size: .88em;
+  }
+
+  .source-link,
+  .release-heading a,
+  .commit {
+    color: #c2410c;
+    font-size: .66rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .source-link {
+    display: inline-block;
+    margin-top: .75rem;
+  }
+
+  .source-link:hover,
+  .release-heading a:hover,
+  .commit:hover {
+    text-decoration: underline;
+    text-underline-offset: .2rem;
+  }
+
+  .source-link:focus-visible,
+  .release-heading a:focus-visible,
+  .commit:focus-visible {
+    outline: 2px solid #f54a00;
+    outline-offset: 3px;
+  }
+
+  .empty-state {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    padding: 1rem 1.15rem;
+    color: #64748b;
+    font-size: .78rem;
+  }
+
+  .releases {
+    padding-bottom: 0;
+  }
+
+  .release-list {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .release {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+  }
+
+  .release-heading {
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    padding: .85rem 1rem;
+    background: #f8fafc;
+  }
+
+  .release-heading > div {
+    gap: .65rem;
+  }
+
+  .release-heading h3 {
+    color: #0f172a;
+    font-size: .88rem;
+  }
+
+  .release-body {
+    display: grid;
+    gap: 1.1rem;
+    padding: 1rem;
+  }
+
+  .release-body h4 {
+    color: #64748b;
+    font-size: .61rem;
+    font-weight: 750;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .release-body ul {
+    display: grid;
+    gap: .65rem;
+    margin: .65rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .release-body li {
+    display: flex;
+    gap: .75rem;
+    align-items: baseline;
+    justify-content: space-between;
+    color: #334155;
+    font-size: .76rem;
+    line-height: 1.65;
+  }
+
+  .release-body li::before {
+    content: "";
+    width: .32rem;
+    height: .32rem;
+    flex: none;
+    margin-top: .45rem;
+    background: #f54a00;
+  }
+
+  .release-body li > span:first-of-type {
+    flex: 1;
+  }
+
+  .commit {
+    flex: none;
+    font-family: var(--__sl-font-mono);
+  }
+
+  @media (max-width: 35rem) {
+    .release-body li {
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
+
+    .commit {
+      margin-left: 1.05rem;
+    }
+  }
+</style>

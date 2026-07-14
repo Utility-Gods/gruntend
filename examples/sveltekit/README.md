@@ -10,6 +10,7 @@ This example has:
 - a Gruntend tool namespace over app-owned remote handlers
 - a chat-style agent route with a mocked code-plan generator
 - tagged-template message islands rendered through `gruntend-sdk/ui` and `gruntend-sdk/ui/svelte`
+- a per-run browser executor selector: JailJS by default or lazily initialized QuickJS/WASM
 
 ## Run
 
@@ -34,7 +35,8 @@ Then route `https://gruntend.com/example` to this app through your host or rever
 ```env
 GRUNTEND_AGENT_MODE=openai
 OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-5.5
+OPENAI_MODEL=gpt-5.1
+OPENAI_SUGGESTION_MODEL=gpt-5-nano
 ```
 
 For a public demo, set an LLM provider spend cap and consider Cloudflare rate limiting or Turnstile before allowing planning requests.
@@ -59,6 +61,8 @@ Summarize the restaurant data
 ```
 
 The agent route is mocked on purpose and returns deterministic Gruntend code plans without requiring `OPENAI_API_KEY`. The browser still executes those plans through the real Gruntend runtime, registered app tools, and app-owned handlers.
+
+On the overview route, choose **JailJS · controlled** or **QuickJS · isolated** before running a task. The selection applies to the complete plan and its generated UI closures. QuickJS is loaded only when first selected.
 
 The chat transcript renders generated UI returned from code plans as native JavaScript plus the Gruntend `html` tagged template. Event handlers use function interpolation, for example `onclick=${handler}`. The UI compiler rewrites those handlers to inert delegated attributes such as `data-gr-click="h0"`, so the browser never receives real inline JavaScript. The selectable menu prompt demonstrates local generated component state plus app tool calls for duplicated items.
 

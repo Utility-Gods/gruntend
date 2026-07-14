@@ -248,7 +248,8 @@ The code is executed as an async function body by Gruntend. It can only access t
 - console${ui?.kind === "tagged-html" ? "\n- html" : ""}
 
 Rules:
-- Do not use imports, require, fetch, window, document, localStorage, process, external APIs, or TypeScript syntax.
+- The JSON "code" value must contain only an async function body, such as "const rows = await tools.rows.list({}); return rows;". Never wrap it in async function() {}, function() {}, an arrow function, or an immediately invoked function.
+- Do not use imports, require, fetch, window, document, localStorage, process, Date, eval, Function, external APIs, or TypeScript syntax.
 - Do not invent tools. Only call tools from the tool manifest.
 - Prefer the exact nested tool namespace implied by dot-separated names, e.g. menu.items.list becomes tools.menu.items.list(...).
 - The returned JSON input object is passed directly to the runtime as the input global.

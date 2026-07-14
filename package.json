@@ -34,6 +34,18 @@
     "LICENSE"
   ],
   "exports": {
+    "./executor": {
+      "types": "./dist/executor.d.ts",
+      "import": "./dist/executor.js"
+    },
+    "./executor/jailjs": {
+      "types": "./dist/executors/jailjs.d.ts",
+      "import": "./dist/executors/jailjs.js"
+    },
+    "./executor/quickjs-browser": {
+      "types": "./dist/executors/quickjs-browser.d.ts",
+      "import": "./dist/executors/quickjs-browser.js"
+    },
     "./client": {
       "types": "./dist/client.d.ts",
       "import": "./dist/client.js"
@@ -100,9 +112,11 @@
     "fmt:check": "prettier --check ."
   },
   "dependencies": {
+    "@jitl/quickjs-singlefile-browser-release-sync": "0.32.0",
     "@mariozechner/jailjs": "0.1.1",
     "@earendil-works/pi-ai": "0.74.0",
     "better-result": "2.7.0",
+    "quickjs-emscripten-core": "0.32.0",
     "valibot": "1.4.0"
   },
   "peerDependencies": {

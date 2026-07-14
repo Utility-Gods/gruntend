@@ -131,11 +131,14 @@ export function mountGeneratedUi(
     render,
     runHandler,
     update(nextUi) {
+      if (currentUi !== nextUi) currentUi.destroy();
       currentUi = nextUi;
       render();
     },
     destroy() {
+      if (destroyed) return;
       destroyed = true;
+      currentUi.destroy();
 
       for (const eventName of Object.keys(eventAttributes)) {
         element.removeEventListener(eventName, onEvent);

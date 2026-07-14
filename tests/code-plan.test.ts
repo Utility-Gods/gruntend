@@ -1,13 +1,13 @@
 import { expect, test } from "vitest";
-import {
-  createJailJsCodePlanExecutor,
-  runCodePlan,
-  type CodePlanExecutor,
-} from "../src/code-plan.ts";
+import { runCodePlan } from "../src/code-plan.ts";
+import type { CodePlanExecutor } from "../src/executor.ts";
+import { createJailJsCodePlanExecutor } from "../src/executors/jailjs.ts";
 import { createGruntendClient } from "../src/client.ts";
 import { createToolRegistry } from "../src/registry.ts";
 import { defineTools, type ToolHandlerMap } from "../src/tool.ts";
 import * as v from "valibot";
+
+const jailJsExecutor = createJailJsCodePlanExecutor();
 
 test("runCodePlan executes LLM-generated code against registered tool handlers", async () => {
   const menuTools = defineTools({
@@ -89,6 +89,7 @@ test("runCodePlan executes LLM-generated code against registered tool handlers",
 
   const result = await runCodePlan({
     code,
+    executor: jailJsExecutor,
     input: {
       sourceMenuId: "menu:source",
       targetMenuName: "Lunch Menu",
@@ -126,6 +127,7 @@ test("runCodePlan exposes bracket tool aliases for dot-named tool calls", async 
   } satisfies ToolHandlerMap<typeof menuTools>;
 
   const flatResult = await runCodePlan({
+    executor: jailJsExecutor,
     code: `
       const result = await tools["menu.items.list"]({ menuId: input.menuId });
       return result.items.map(function (item) { return item.name; });
@@ -142,6 +144,7 @@ test("runCodePlan exposes bracket tool aliases for dot-named tool calls", async 
   });
 
   const namespaceResult = await runCodePlan({
+    executor: jailJsExecutor,
     code: `
       const result = await tools["menu.items"].list({ menuId: input.menuId });
       return result.items.map(function (item) { return item.name; });
@@ -208,6 +211,7 @@ test("runCodePlan branches on prior tool output", async () => {
 
   const reused = await runCodePlan({
     code,
+    executor: jailJsExecutor,
     input: { name: "Dinner" },
     registry,
     handlers,
@@ -222,6 +226,7 @@ test("runCodePlan branches on prior tool output", async () => {
 
   const created = await runCodePlan({
     code,
+    executor: jailJsExecutor,
     input: { name: "Lunch" },
     registry,
     handlers,
@@ -246,7 +251,7 @@ test("Gruntend client runs a code plan with the registered tool handlers", async
     },
   });
 
-  const client = createGruntendClient({ tools });
+  const client = createGruntendClient({ tools, executor: jailJsExecutor });
 
   const result = await client.runCodePlan(
     "return await tools.math.double({ value: input.value });",
@@ -269,15 +274,22 @@ test("runCodePlan can use a custom executor", async () => {
   const tools = defineTools({});
   const registry = createToolRegistry(tools);
   const controller = new AbortController();
-  const executor: CodePlanExecutor = ({ code, globals, signal }) => {
-    expect(code).toContain("return input.value");
-    return {
-      input: globals.input,
-      hasTools: typeof globals.tools === "object",
-      hasSignal: signal === controller.signal,
-      hasPromiseGlobal: "Promise" in globals,
-      usesHostConsole: globals.console === console,
-    };
+  const executor: CodePlanExecutor = {
+    profile: {
+      id: "test-executor",
+      trust: "controlled",
+      supportsGeneratedUi: false,
+    },
+    execute({ code, globals, signal }) {
+      expect(code).toContain("return input.value");
+      return {
+        input: globals.input,
+        hasTools: typeof globals.tools === "object",
+        hasSignal: signal === controller.signal,
+        hasPromiseGlobal: "Promise" in globals,
+        usesHostConsole: globals.console === console,
+      };
+    },
   };
 
   const result = await runCodePlan({
@@ -308,6 +320,7 @@ test("runCodePlan emits console calls through the lifecycle stream", async () =>
   const events: unknown[] = [];
 
   const result = await runCodePlan({
+    executor: jailJsExecutor,
     code: `
       console.log("hello", input.value);
       return "done";
@@ -340,9 +353,16 @@ test("runCodePlan does not execute when the signal is already aborted", async ()
     registry,
     handlers: {},
     signal: controller.signal,
-    executor: () => {
-      executed = true;
-      return 1;
+    executor: {
+      profile: {
+        id: "never-runs",
+        trust: "controlled",
+        supportsGeneratedUi: false,
+      },
+      execute() {
+        executed = true;
+        return 1;
+      },
     },
     onEvent: (event) => events.push(event),
   });
@@ -352,6 +372,8 @@ test("runCodePlan does not execute when the signal is already aborted", async ()
     {
       type: "plan.failed",
       planId: "code-plan",
+      executorId: "never-runs",
+      errorCode: "executor_aborted",
       error: "Code plan execution aborted.",
       errors: {},
     },
@@ -360,6 +382,8 @@ test("runCodePlan does not execute when the signal is already aborted", async ()
     status: "failed",
     errors: {},
     error: "Code plan execution aborted.",
+    errorCode: "executor_aborted",
+    executorId: "never-runs",
   });
 });
 
