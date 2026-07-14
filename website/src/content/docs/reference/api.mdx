@@ -428,6 +428,11 @@ function createHtmlTag(): HtmlTag;
 function createGeneratedUi(value: unknown): GeneratedUiCreateOutcome;
 function compileHtmlTemplate(template: HtmlTemplate): GeneratedUiRenderOutcome;
 
+interface GeneratedUiFrame {
+  readonly html: string;
+  readonly handlers: Record<string, GeneratedUiEventHandler>;
+}
+
 interface GeneratedUi {
   render(): GeneratedUiRenderOutcome;
   runHandler(handlerId: string, ...args: readonly unknown[]): unknown;
@@ -444,6 +449,15 @@ function mountGeneratedUi(
   ui: GeneratedUi,
   options?: GeneratedUiMountOptions,
 ): GeneratedUiMountHandle;
+
+interface GeneratedUiMountElement {
+  innerHTML: string;
+  addEventListener(type: string, listener: (event: unknown) => unknown): void;
+  removeEventListener(
+    type: string,
+    listener: (event: unknown) => unknown,
+  ): void;
+}
 
 interface GeneratedUiMountHandle {
   render(): void;

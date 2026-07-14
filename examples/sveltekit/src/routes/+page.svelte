@@ -3,16 +3,29 @@
   import { base } from "$app/paths";
   import {
     Activity,
+    BarChart3,
+    ChartNoAxesCombined,
+    BadgeDollarSign,
     CheckCircle2,
     Copy,
+    CreditCard,
+    MousePointerClick,
     Salad,
+    Sparkles,
     Tags,
     TrendingUp,
-  } from "lucide-svelte";
+  } from "@lucide/svelte";
   import { gruntend } from "$lib/agent/client";
   import { createBrowserHandlers } from "$lib/agent/handlers";
-  import { generateAgentPlan } from "$lib/remote/agent.remote";
-  import { getMenusWithItems, getUsers } from "$lib/remote/example.remote";
+  import {
+    generateAgentPlan,
+    suggestAgentTask,
+  } from "$lib/remote/agent.remote";
+  import {
+    getMenusWithItems,
+    getOrders,
+    getUsers,
+  } from "$lib/remote/example.remote";
   import type { GeneratedCodePlan } from "gruntend-sdk/generate";
   import type { RuntimeEvent } from "gruntend-sdk/runtime";
   import {
@@ -21,14 +34,23 @@
     type GeneratedUi as GeneratedUiModel,
   } from "gruntend-sdk/ui";
   import GeneratedUi from "gruntend-sdk/ui/svelte";
+  import { toast } from "svelte-sonner";
 
   type RunState = "idle" | "planning" | "running" | "done" | "error";
-  type ShowcaseTaskKind = "price" | "menu" | "tags" | "copy";
+  type ShowcaseTaskKind =
+    | "price"
+    | "menu"
+    | "tags"
+    | "copy"
+    | "svg-chart"
+    | "interactive-chart"
+    | "line-chart"
+    | "payment-chart"
+    | "loyalty-chart";
   type ShowcaseTask = {
     readonly id: string;
     readonly kind: ShowcaseTaskKind;
     readonly label: string;
-    readonly outcome: string;
     readonly prompt: string;
     readonly requiresAction: boolean;
   };
@@ -37,6 +59,7 @@
     readonly tools: readonly string[];
     readonly itemIds: readonly string[];
     readonly menuIds: readonly string[];
+    readonly orderIds: readonly string[];
   };
   type AgentGenerationEnvelope = {
     readonly generator: "mock" | "pi-ai";
@@ -49,7 +72,6 @@
       id: "price-review",
       kind: "price",
       label: "Review low-price increases",
-      outcome: "Preview each price, then confirm the update.",
       prompt:
         "Find every item under $10, preview a 20% price increase, and let me confirm before applying it",
       requiresAction: true,
@@ -58,7 +80,6 @@
       id: "vegetarian-menu",
       kind: "menu",
       label: "Build a vegetarian menu",
-      outcome: "Review matching items before creating the menu.",
       prompt:
         "Create a Vegetarian Specials menu by copying existing vegetarian items, and let me confirm before creating it",
       requiresAction: true,
@@ -67,7 +88,6 @@
       id: "seasonal-tags",
       kind: "tags",
       label: "Tag seasonal drinks",
-      outcome: "Review drinks under $7 before changing their tags.",
       prompt:
         "Find drinks under $7, preview adding a seasonal tag, and let me confirm before applying it",
       requiresAction: true,
@@ -76,10 +96,71 @@
       id: "copy-popular",
       kind: "copy",
       label: "Copy popular dinner items",
-      outcome: "Choose what moves into Brunch, then confirm.",
       prompt:
         "Copy popular Dinner items into the Brunch menu after I review and confirm the items",
       requiresAction: true,
+    },
+    {
+      id: "weekly-revenue",
+      kind: "svg-chart",
+      label: "Review weekly revenue",
+      prompt: "Show paid revenue by day for the past week in a bar chart",
+      requiresAction: false,
+    },
+    {
+      id: "popular-items",
+      kind: "interactive-chart",
+      label: "Explore popular dishes",
+      prompt:
+        "Show the best-selling dishes by quantity and let me select a bar to inspect sales details",
+      requiresAction: false,
+    },
+    {
+      id: "order-status-mix",
+      kind: "svg-chart",
+      label: "See order status mix",
+      prompt:
+        "Show a compact chart comparing the number of open, preparing, served, and cancelled orders",
+      requiresAction: false,
+    },
+    {
+      id: "average-ticket-line",
+      kind: "line-chart",
+      label: "Track average ticket",
+      prompt: "Show the average paid order value by day in a line chart",
+      requiresAction: false,
+    },
+    {
+      id: "floor-performance",
+      kind: "interactive-chart",
+      label: "Compare floor performance",
+      prompt:
+        "Compare paid sales, tips, and completed orders for each assigned manager or server in an interactive bar chart",
+      requiresAction: false,
+    },
+    {
+      id: "reservation-outcomes",
+      kind: "svg-chart",
+      label: "Review reservation outcomes",
+      prompt:
+        "Show reservation outcomes in a bar chart and identify which reservations converted into orders",
+      requiresAction: false,
+    },
+    {
+      id: "payment-methods",
+      kind: "payment-chart",
+      label: "Compare payment methods",
+      prompt:
+        "Compare paid revenue and tips by payment method in a grouped bar chart",
+      requiresAction: false,
+    },
+    {
+      id: "loyalty-revenue",
+      kind: "loyalty-chart",
+      label: "Explore loyalty revenue",
+      prompt:
+        "Show paid revenue by customer loyalty tier in an interactive bar chart with order count and average ticket details",
+      requiresAction: false,
     },
   ] as const satisfies readonly ShowcaseTask[];
 
@@ -90,18 +171,23 @@
     "menu.item.update",
     "menu.item.delete",
     "users.create",
+    "orders.create",
+    "orders.status.update",
   ]);
 
   const taggedHtml = createHtmlTag();
   const menusResponse = $derived(getMenusWithItems().current);
+  const ordersResponse = $derived(getOrders().current);
   const usersResponse = $derived(getUsers().current);
   const menuCount = $derived(menusResponse?.menus.length);
   const itemCount = $derived(
     menusResponse?.menus.reduce((total, menu) => total + menu.items.length, 0),
   );
+  const orderCount = $derived(ordersResponse?.orders.length);
   const teamCount = $derived(usersResponse?.users.length);
 
   let prompt = $state("");
+  let suggestionLoading = $state(false);
   let state = $state<RunState>("idle");
   let resultUi = $state<GeneratedUiModel>();
   let resultTitle = $state("");
@@ -112,29 +198,73 @@
   let runtimeActivity = $state(
     "Waiting for the model to return a JavaScript plan",
   );
-  let notice = $state("");
   let generatedActionError = $state("");
   let generatedActionRunning = $state(false);
   let actionMutationCount = $state(0);
   let actionTools = $state<string[]>([]);
   let actionItemIds = $state<string[]>([]);
   let actionMenuIds = $state<string[]>([]);
+  let actionOrderIds = $state<string[]>([]);
   let lastAction = $state<AppliedAction>();
   let promptInput: HTMLTextAreaElement;
 
+  function loadingProgressLabel() {
+    if (suggestionLoading) return "Generating a task suggestion";
+    if (state === "planning") return "Generating the code plan";
+    return runtimeActivity;
+  }
+
   function chooseSuggestion(suggestion: string) {
     prompt = suggestion;
-    notice = "";
+    toast.dismiss();
     promptInput.focus();
+  }
+
+  async function generateTaskSuggestion() {
+    if (suggestionLoading || state === "planning" || state === "running") {
+      return;
+    }
+
+    const startingPrompt = prompt;
+    suggestionLoading = true;
+    toast.dismiss();
+    try {
+      const suggestion = await suggestAgentTask({
+        draft: startingPrompt.trim(),
+      });
+      if ("error" in suggestion) {
+        toast.error(suggestion.error);
+        return;
+      }
+      if (prompt !== startingPrompt) {
+        toast.info(
+          "Your request changed, so the AI suggestion was not applied.",
+        );
+        return;
+      }
+      prompt = suggestion.prompt;
+      toast.success("AI suggestion ready", {
+        description: "Review or edit it before running.",
+      });
+      promptInput.focus();
+    } catch (caught) {
+      toast.error("AI suggestion failed", {
+        description: readErrorMessage(caught),
+      });
+    } finally {
+      suggestionLoading = false;
+    }
   }
 
   function submitTask() {
     const task = prompt.trim();
     if (!task) {
-      notice = "Describe an operation first, or choose one of the suggestions.";
+      toast.error("Describe an operation first", {
+        description: "Enter a request or choose one of the suggestions.",
+      });
       return;
     }
-    notice = "";
+    toast.dismiss();
     void runTask(task);
   }
 
@@ -261,6 +391,7 @@
     const output = event.output.value as {
       readonly item?: { readonly itemId?: string; readonly menuId?: string };
       readonly menu?: { readonly menuId?: string };
+      readonly order?: { readonly orderId?: string };
     };
     if (output.item?.itemId) {
       actionItemIds = unique([...actionItemIds, output.item.itemId]);
@@ -271,6 +402,9 @@
     if (output.menu?.menuId) {
       actionMenuIds = unique([...actionMenuIds, output.menu.menuId]);
     }
+    if (output.order?.orderId) {
+      actionOrderIds = unique([...actionOrderIds, output.order.orderId]);
+    }
   }
 
   function beginGeneratedAction() {
@@ -280,7 +414,8 @@
     actionTools = [];
     actionItemIds = [];
     actionMenuIds = [];
-    notice = "";
+    actionOrderIds = [];
+    toast.dismiss();
   }
 
   function finishGeneratedAction(
@@ -291,8 +426,9 @@
 
     if (status === "error") {
       generatedActionError = readErrorMessage(error);
-      notice =
-        "The generated action failed. Review the error below and try again.";
+      toast.error("The generated action failed", {
+        description: "Review the error below and try again.",
+      });
       return;
     }
 
@@ -303,16 +439,29 @@
       tools: actionTools,
       itemIds: actionItemIds,
       menuIds: actionMenuIds,
+      orderIds: actionOrderIds,
     };
-    notice = `${actionMutationCount} confirmed ${actionMutationCount === 1 ? "change is" : "changes are"} now visible in the application.`;
+    toast.success(
+      `${actionMutationCount} confirmed ${actionMutationCount === 1 ? "change" : "changes"} saved`,
+      {
+        description: "The updated records are now visible in the application.",
+      },
+    );
     void refreshDashboardData();
   }
 
   async function refreshDashboardData() {
-    await Promise.all([getMenusWithItems().refresh(), getUsers().refresh()]);
+    await Promise.all([
+      getMenusWithItems().refresh(),
+      getOrders().refresh(),
+      getUsers().refresh(),
+    ]);
   }
 
-  function changedMenusHref() {
+  function changedRecordsHref() {
+    if (lastAction?.orderIds.length) {
+      return `${base}/orders?changed=${lastAction.orderIds.join(",")}`;
+    }
     if (!lastAction) return `${base}/menus`;
 
     const parameters = new URLSearchParams();
@@ -365,12 +514,8 @@
             Restaurant operations
           </p>
           <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-            What needs to happen today?
+            What do you want to do?
           </h1>
-          <p class="mt-2 text-sm leading-6 text-neutral-600">
-            Describe an outcome. Gruntend prepares a task-specific review before
-            any change.
-          </p>
         </div>
         <dl
           class="flex divide-x divide-neutral-200 border border-neutral-200 bg-[#faf9f6]"
@@ -385,6 +530,12 @@
             <dt class="text-[11px] text-neutral-500">Items</dt>
             <dd class="mt-0.5 text-lg font-semibold text-slate-950">
               {itemCount ?? "…"}
+            </dd>
+          </div>
+          <div class="min-w-24 px-4 py-2.5">
+            <dt class="text-[11px] text-neutral-500">Orders</dt>
+            <dd class="mt-0.5 text-lg font-semibold text-slate-950">
+              {orderCount ?? "…"}
             </dd>
           </div>
           <div class="min-w-24 px-4 py-2.5">
@@ -403,32 +554,54 @@
           submitTask();
         }}
       >
-        <div class="flex flex-col gap-2 sm:flex-row">
+        <div
+          class="border border-neutral-300 bg-white transition focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-100"
+        >
           <textarea
             bind:this={promptInput}
             bind:value={prompt}
-            rows="1"
-            class="min-h-12 flex-1 resize-none border border-neutral-300 bg-white px-3.5 py-3 text-sm leading-6 text-slate-950 outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+            rows="4"
+            aria-label="Describe the restaurant operation"
+            class="block min-h-28 w-full resize-y bg-transparent px-4 py-3.5 text-sm leading-6 text-slate-950 outline-none placeholder:text-neutral-400"
             placeholder="Move selected dinner items to a new seasonal menu..."
           ></textarea>
-          <button
-            type="submit"
-            class="h-12 bg-primary-600 px-5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-wait disabled:opacity-60"
-            disabled={state === "planning" || state === "running"}
+          <div
+            class="flex flex-wrap items-center justify-end gap-2 border-t border-neutral-200 bg-[#faf9f6] px-2.5 py-2"
           >
-            {state === "planning"
-              ? "Working..."
-              : state === "running"
-                ? "Preparing..."
-                : "Run"}
-          </button>
+            <button
+              type="button"
+              class="inline-flex h-10 items-center gap-2 border border-neutral-300 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:border-primary-500 hover:text-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-wait disabled:opacity-60"
+              disabled={suggestionLoading ||
+                state === "planning" ||
+                state === "running"}
+              onclick={generateTaskSuggestion}
+            >
+              <Sparkles
+                class={suggestionLoading ? "motion-safe:animate-pulse" : ""}
+                size={17}
+                strokeWidth={2.1}
+              />
+              {suggestionLoading ? "Thinking..." : "Suggest with AI"}
+            </button>
+            <button
+              type="submit"
+              class="h-10 min-w-24 bg-primary-600 px-5 text-sm font-semibold text-white transition hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-wait disabled:opacity-60"
+              disabled={state === "planning" || state === "running"}
+            >
+              {state === "planning"
+                ? "Working..."
+                : state === "running"
+                  ? "Preparing..."
+                  : "Run"}
+            </button>
+          </div>
         </div>
-        <div class="mt-3 grid gap-2 lg:grid-cols-2">
+        <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {#each showcaseTasks as task (task.id)}
             <button
               type="button"
               aria-pressed={prompt === task.prompt}
-              class={`group flex w-full items-center gap-3 border px-3 py-3 text-left transition ${
+              class={`group flex min-h-11 w-full items-center gap-2.5 border px-3 py-2 text-left transition ${
                 prompt === task.prompt
                   ? "border-primary-600 bg-white"
                   : "border-neutral-200 bg-[#faf9f6] hover:border-primary-600 hover:bg-white"
@@ -442,33 +615,34 @@
                   <Salad size={19} strokeWidth={2.1} />
                 {:else if task.kind === "tags"}
                   <Tags size={19} strokeWidth={2.1} />
-                {:else}
+                {:else if task.kind === "copy"}
                   <Copy size={19} strokeWidth={2.1} />
+                {:else if task.kind === "svg-chart"}
+                  <BarChart3 size={19} strokeWidth={2.1} />
+                {:else if task.kind === "interactive-chart"}
+                  <MousePointerClick size={19} strokeWidth={2.1} />
+                {:else if task.kind === "payment-chart"}
+                  <CreditCard size={19} strokeWidth={2.1} />
+                {:else if task.kind === "loyalty-chart"}
+                  <BadgeDollarSign size={19} strokeWidth={2.1} />
+                {:else}
+                  <ChartNoAxesCombined size={19} strokeWidth={2.1} />
                 {/if}
               </span>
-              <span class="min-w-0 flex-1">
-                <strong
-                  class="block text-xs font-semibold leading-5 text-slate-900 group-hover:text-primary-600"
-                >
-                  {task.label}
-                </strong>
-                <span class="block text-[11px] leading-4 text-neutral-500">
-                  {task.outcome}
-                </span>
-              </span>
-              <span
-                class="text-[10px] font-semibold uppercase tracking-wide text-neutral-400 group-hover:text-primary-600"
-                >Select</span
+              <strong
+                class="min-w-0 flex-1 text-xs font-semibold leading-5 text-slate-900 group-hover:text-primary-600"
               >
+                {task.label}
+              </strong>
             </button>
           {/each}
         </div>
       </form>
     </div>
 
-    {#if state !== "idle"}
+    {#if state !== "idle" || suggestionLoading}
       <div class="border-t border-neutral-200 bg-white" aria-live="polite">
-        {#if state === "done" || state === "error"}
+        {#if !suggestionLoading && (state === "done" || state === "error")}
           <header
             class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-[#faf9f6] px-6 py-3 md:px-8"
           >
@@ -488,7 +662,7 @@
         {/if}
 
         <div class="p-5 md:p-6">
-          {#if state === "planning" || state === "running"}
+          {#if suggestionLoading || state === "planning" || state === "running"}
             <div class="mx-auto flex max-w-2xl items-start gap-4 py-5">
               <Activity
                 class="mt-0.5 shrink-0 text-primary-600"
@@ -498,16 +672,22 @@
               <div class="min-w-0 flex-1">
                 <div class="flex items-center justify-between gap-4">
                   <p class="text-sm font-semibold text-slate-900">
-                    {state === "planning"
-                      ? "Generating a JavaScript plan"
-                      : "Interpreting the plan"}
+                    {#if suggestionLoading}
+                      Generating a task suggestion
+                    {:else if state === "planning"}
+                      Generating a JavaScript plan
+                    {:else}
+                      Interpreting the plan
+                    {/if}
                   </p>
                   <span
                     class="text-xs font-medium tabular-nums text-neutral-500"
                   >
-                    {state === "planning"
-                      ? "Model generation"
-                      : `${completedToolCallCount}/${toolCallCount} tool calls`}
+                    {#if suggestionLoading || state === "planning"}
+                      Model generation
+                    {:else}
+                      {completedToolCallCount}/{toolCallCount} tool calls
+                    {/if}
                   </span>
                 </div>
                 {#key runtimeActivity}
@@ -515,15 +695,17 @@
                     class="live-event mt-1 font-mono text-[11px] leading-5 text-neutral-500"
                     aria-live="polite"
                   >
-                    {runtimeActivity}
+                    {#if suggestionLoading}
+                      Waiting for the model to return a task suggestion
+                    {:else}
+                      {runtimeActivity}
+                    {/if}
                   </p>
                 {/key}
                 <div
                   class="mt-2 h-1.5 overflow-hidden bg-neutral-100"
                   role="progressbar"
-                  aria-label={state === "planning"
-                    ? "Generating the code plan"
-                    : runtimeActivity}
+                  aria-label={loadingProgressLabel()}
                 >
                   <div
                     class="live-progress-indicator h-full bg-primary-600"
@@ -564,8 +746,9 @@
                 onError={(error) => {
                   console.error("Generated UI failed", error);
                   generatedActionError = readErrorMessage(error);
-                  notice =
-                    "The generated action failed. Review the error below and try again.";
+                  toast.error("The generated action failed", {
+                    description: "Review the error below and try again.",
+                  });
                 }}
               />
               {#if generatedActionError}
@@ -611,9 +794,9 @@
                   </div>
                   <a
                     class="shrink-0 border border-emerald-700 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-                    href={changedMenusHref()}
+                    href={changedRecordsHref()}
                   >
-                    View updated menus →
+                    View updated records →
                   </a>
                 </aside>
               {/if}
@@ -635,20 +818,6 @@
     {/if}
   </section>
 </div>
-
-{#if notice}
-  <div
-    class="fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,34rem)] -translate-x-1/2 items-center justify-between gap-4 border border-primary-200 bg-white px-4 py-3 shadow-lg"
-    role="status"
-  >
-    <p class="text-sm font-medium text-slate-800">{notice}</p>
-    <button
-      type="button"
-      class="shrink-0 text-xs font-semibold text-primary-700 hover:text-primary-900"
-      onclick={() => (notice = "")}>Dismiss</button
-    >
-  </div>
-{/if}
 
 <style>
   .live-event {
@@ -754,6 +923,21 @@
   :global(.generated-workspace a.surface-action:hover) {
     background: #c2410c;
     border-color: #c2410c;
+  }
+  :global(.generated-workspace .surface-chart) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  :global(.generated-workspace .surface-chart text) {
+    fill: #475569;
+    font-family: Montserrat, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  :global(.generated-workspace .surface-chart g[role="button"]),
+  :global(.generated-workspace .surface-chart g[data-gr-click]) {
+    cursor: pointer;
   }
   :global(.generated-workspace .surface-table) {
     width: 100%;

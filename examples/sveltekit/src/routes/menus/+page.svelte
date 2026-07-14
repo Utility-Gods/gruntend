@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import LoadingSurface from "$lib/components/photoship/LoadingSurface.svelte";
-  import { BookOpen, CheckCircle2, Search, Trash2 } from "lucide-svelte";
+  import { BookOpen, CheckCircle2, Search, Trash2 } from "@lucide/svelte";
   import {
     deleteMenuItemCommand,
     getMenusWithItems,

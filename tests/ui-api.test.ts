@@ -27,7 +27,7 @@ test("compileHtmlTemplate supports quoted attribute interpolation values", () =>
   ).unwrap();
 
   expect(frame.html).toBe(
-    '<input type="text" value="summer &quot;special&quot;">',
+    '<input type="text" value="summer &quot;special&quot;" />',
   );
 });
 

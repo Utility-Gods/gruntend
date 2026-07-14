@@ -1,4 +1,3 @@
-import { dev } from "$app/environment";
 import { env } from "$env/dynamic/private";
 
 export interface RateLimitContext {
@@ -40,24 +39,36 @@ type MemoryCounter = {
 };
 
 const WINDOW_SECONDS = 10 * 60;
-const LIMIT = 5;
+const PLAN_LIMIT = 5;
+const SUGGESTION_LIMIT = 3;
 const memoryCounters = new Map<string, MemoryCounter>();
 
-export async function checkAgentPlanRateLimit(input: {
+export function checkAgentPlanRateLimit(input: {
   readonly ip: string;
   readonly context?: RateLimitContext;
 }): Promise<RateLimitResult> {
-  if (dev) {
-    return {
-      allowed: true,
-      count: 0,
-      limit: LIMIT,
-      resetAt: new Date(),
-    };
-  }
+  return checkRateLimit({ ...input, scope: "agent-plan", limit: PLAN_LIMIT });
+}
 
+export function checkAgentSuggestionRateLimit(input: {
+  readonly ip: string;
+  readonly context?: RateLimitContext;
+}): Promise<RateLimitResult> {
+  return checkRateLimit({
+    ...input,
+    scope: "agent-suggestion",
+    limit: SUGGESTION_LIMIT,
+  });
+}
+
+async function checkRateLimit(input: {
+  readonly ip: string;
+  readonly context?: RateLimitContext;
+  readonly scope: "agent-plan" | "agent-suggestion";
+  readonly limit: number;
+}): Promise<RateLimitResult> {
   const windowStart = currentWindowStart();
-  const key = await hashRateLimitKey(input.ip);
+  const key = await hashRateLimitKey(input.scope, input.ip);
   const d1 = input.context?.platform?.env?.GRUNTEND_DB;
 
   const count = d1
@@ -65,9 +76,9 @@ export async function checkAgentPlanRateLimit(input: {
     : incrementMemoryCounter(key, windowStart);
 
   return {
-    allowed: count <= LIMIT,
+    allowed: count <= input.limit,
     count,
-    limit: LIMIT,
+    limit: input.limit,
     resetAt: new Date((windowStart + WINDOW_SECONDS) * 1000),
   };
 }
@@ -139,14 +150,17 @@ function currentWindowStart(): number {
   return now - (now % WINDOW_SECONDS);
 }
 
-async function hashRateLimitKey(ip: string): Promise<string> {
+async function hashRateLimitKey(
+  scope: "agent-plan" | "agent-suggestion",
+  ip: string,
+): Promise<string> {
   const secret =
     env.GRUNTEND_RATE_LIMIT_SECRET || env.OPENAI_API_KEY || "local";
-  const bytes = new TextEncoder().encode(`agent-plan:${secret}:${ip}`);
+  const bytes = new TextEncoder().encode(`${scope}:${secret}:${ip}`);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   const hex = [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 
-  return `agent-plan:${hex}`;
+  return `${scope}:${hex}`;
 }
