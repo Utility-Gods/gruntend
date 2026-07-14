@@ -1,9 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
+const repositoryRoot = findRepositoryRoot(process.cwd());
 const repositoryUrl = "https://github.com/Utility-Gods/gruntend";
 
 export interface ChangeReference {
@@ -33,6 +32,31 @@ export interface ReleasedChange {
   }>;
   sourceUrl: string;
   version: string;
+}
+
+function findRepositoryRoot(startDirectory: string): string {
+  let directory = path.resolve(startDirectory);
+
+  while (true) {
+    const changelogPath = path.join(directory, "CHANGELOG.md");
+    const changesetConfigPath = path.join(
+      directory,
+      ".changeset",
+      "config.json",
+    );
+
+    if (existsSync(changelogPath) && existsSync(changesetConfigPath)) {
+      return directory;
+    }
+
+    const parent = path.dirname(directory);
+    if (parent === directory) {
+      throw new Error(
+        `Unable to find the Gruntend repository root from ${startDirectory}.`,
+      );
+    }
+    directory = parent;
+  }
 }
 
 function gitDate(args: string[]): string | undefined {
@@ -151,11 +175,13 @@ function releaseDate(
 
 function readReleasedChanges(): ReleasedChange[] {
   const changelogPath = path.join(repositoryRoot, "CHANGELOG.md");
-  if (!existsSync(changelogPath)) return [];
-
   const source = readFileSync(changelogPath, "utf8");
   const headingPattern = /^##\s+([^\s(]+)(?:\s+\(([^)]+)\))?\s*$/gm;
   const headings = [...source.matchAll(headingPattern)];
+
+  if (headings.length === 0) {
+    throw new Error(`No releases found in ${changelogPath}.`);
+  }
 
   return headings.map((heading, index) => {
     const version = heading[1];
