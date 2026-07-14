@@ -459,6 +459,40 @@ interface GeneratedUi {
 }
 ```
 
+## `gruntend-sdk/renderer`
+
+```ts
+interface GeneratedUiRenderer<TTarget> {
+  readonly id: string;
+  mount(
+    target: TTarget,
+    ui: GeneratedUi,
+    options?: GeneratedUiRenderOptions,
+  ): GeneratedUiRenderSession;
+}
+
+interface GeneratedUiRenderSession {
+  readonly rendererId: string;
+  render(): void;
+  runHandler(
+    handlerId: string,
+    event?: unknown,
+    eventName?: GeneratedUiEventName,
+  ): Promise<void>;
+  update(nextUi: GeneratedUi): void;
+  destroy(): void;
+}
+
+interface GeneratedUiRenderOptions {
+  readonly onError?: (error: unknown) => void;
+  readonly onRender?: (frame: GeneratedUiFrame) => void;
+  readonly onActionStart?: (event: GeneratedUiActionEvent) => void;
+  readonly onActionEnd?: (event: GeneratedUiActionEndEvent) => void;
+}
+```
+
+`createDomPurifyGeneratedUiRenderer()` is exported from `gruntend-sdk/renderer/dom-purify` and is the recommended browser renderer. `createDomGeneratedUiRenderer()` is exported from `gruntend-sdk/renderer/dom` for controlled integrations.
+
 ## `gruntend-sdk/ui/dom`
 
 ```ts

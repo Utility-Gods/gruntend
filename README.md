@@ -287,9 +287,10 @@ See [docs/RELEASE.md](docs/RELEASE.md) for the full release checklist.
 
 ```ts
 import { createGeneratedUi, createHtmlTag } from "gruntend-sdk/ui";
-import { mountGeneratedUi } from "gruntend-sdk/ui/dom";
+import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
 
 const html = createHtmlTag();
+const renderer = createDomPurifyGeneratedUiRenderer();
 
 const result = await gruntend.runCodePlan(plan.code, {
   input: plan.input,
@@ -298,29 +299,37 @@ const result = await gruntend.runCodePlan(plan.code, {
 });
 
 const ui = createGeneratedUi(result.result).unwrap();
-const frame = ui.render().unwrap();
-
-// frame.html is safe compiled HTML.
-// frame.handlers maps delegated handler ids to generated functions.
-
-mountGeneratedUi(rootElement, ui);
+const session = renderer.mount(rootElement, ui, {
+  onError: console.error,
+});
 ```
 
-Framework adapters are thin wrappers over the same DOM primitive. They do not own Gruntend state; pass the `GeneratedUi` returned by `createGeneratedUi()`.
+`GeneratedUiRenderer` is a first-class object strategy. A renderer is selected when a UI session mounts and remains fixed for that session; `session.update(nextUi)` changes only the generated UI value, and `session.destroy()` tears down the mounted UI. The model does not select renderers.
+
+The DOMPurify renderer is the recommended browser renderer. It uses an exact DOMPurify dependency, a Gruntend-specific tag and attribute allowlist, disables arbitrary `data-*` attributes and unknown protocols, fails closed when DOMPurify is unavailable, and commits the sanitized `DocumentFragment` directly with `replaceChildren()`.
+
+Renderer sanitization and plan-code isolation are separate boundaries. DOMPurify hardens generated markup; it does not sandbox generated JavaScript or reduce the authority of registered tool handlers. Select an isolated executor independently when the plan code is not trusted.
+
+For controlled integrations that need the existing compiled-HTML sink, `createDomGeneratedUiRenderer()` is available from `gruntend-sdk/renderer/dom`. The compatibility helper `mountGeneratedUi()` remains available from `gruntend-sdk/ui/dom`.
+
+Framework adapters are thin wrappers over the selected renderer. They do not own Gruntend state; pass both the renderer and the `GeneratedUi` returned by `createGeneratedUi()`.
 
 ### Svelte
 
 ```svelte
 <script lang="ts">
   import type { GeneratedUi as GeneratedUiModel } from "gruntend-sdk/ui";
+  import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
   import GeneratedUi from "gruntend-sdk/ui/svelte";
 
   let { ui }: { ui: GeneratedUiModel } = $props();
+  const renderer = createDomPurifyGeneratedUiRenderer();
 </script>
 
 <GeneratedUi
   class="agent-generated-ui"
   {ui}
+  {renderer}
   onError={(error) => console.error(error)}
 />
 ```
@@ -329,13 +338,17 @@ Framework adapters are thin wrappers over the same DOM primitive. They do not ow
 
 ```tsx
 import type { GeneratedUi as GeneratedUiModel } from "gruntend-sdk/ui";
+import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
 import { GeneratedUi } from "gruntend-sdk/ui/react";
+
+const renderer = createDomPurifyGeneratedUiRenderer();
 
 export function AgentResult({ ui }: { ui: GeneratedUiModel }) {
   return (
     <GeneratedUi
       className="agent-generated-ui"
       ui={ui}
+      renderer={renderer}
       onError={console.error}
     />
   );
@@ -346,13 +359,17 @@ export function AgentResult({ ui }: { ui: GeneratedUiModel }) {
 
 ```tsx
 import type { GeneratedUi as GeneratedUiModel } from "gruntend-sdk/ui";
+import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
 import { GeneratedUi } from "gruntend-sdk/ui/solid";
+
+const renderer = createDomPurifyGeneratedUiRenderer();
 
 export function AgentResult(props: { ui: GeneratedUiModel }) {
   return (
     <GeneratedUi
       class="agent-generated-ui"
       ui={props.ui}
+      renderer={renderer}
       onError={console.error}
     />
   );
@@ -364,9 +381,11 @@ export function AgentResult(props: { ui: GeneratedUiModel }) {
 ```vue
 <script setup lang="ts">
 import type { GeneratedUi as GeneratedUiModel } from "gruntend-sdk/ui";
+import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
 import GeneratedUi from "gruntend-sdk/ui/vue";
 
 defineProps<{ ui: GeneratedUiModel }>();
+const renderer = createDomPurifyGeneratedUiRenderer();
 
 function reportError(error: unknown) {
   console.error(error);
@@ -374,11 +393,16 @@ function reportError(error: unknown) {
 </script>
 
 <template>
-  <GeneratedUi class="agent-generated-ui" :ui="ui" @error="reportError" />
+  <GeneratedUi
+    class="agent-generated-ui"
+    :ui="ui"
+    :renderer="renderer"
+    @error="reportError"
+  />
 </template>
 ```
 
-The Svelte, React, and Solid adapters accept `onError`, `onRender`, `onActionStart`, and `onActionEnd` callbacks. The Vue adapter emits `error`, `render`, `action-start`, and `action-end` events. The consuming app supplies its framework dependency; Gruntend keeps these adapters as optional subpath exports.
+The Svelte, React, and Solid adapters require a `renderer` and accept `onError`, `onRender`, `onActionStart`, and `onActionEnd` callbacks. The Vue adapter requires `renderer` and emits `error`, `render`, `action-start`, and `action-end` events. Treat the renderer prop as immutable for the mounted component lifetime. The consuming app supplies its framework dependency; Gruntend keeps these adapters as optional subpath exports.
 
 Framework adapter exports are source-backed through explicit `types` and `import` export conditions for now, so each host app can compile its own framework format. Core runtime exports such as `gruntend-sdk/client`, `gruntend-sdk/code-plan`, `gruntend-sdk/tool`, and `gruntend-sdk/ui` are published from `dist`.
 

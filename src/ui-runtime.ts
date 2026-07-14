@@ -1,5 +1,11 @@
 import { Result, type Result as BetterResult } from "better-result";
 import * as v from "valibot";
+import {
+  generatedUiAllowedAttributes,
+  generatedUiAllowedTags,
+  generatedUiForbiddenAttributes,
+  generatedUiRuntimeAttributes,
+} from "./ui-policy.ts";
 
 export interface UiTemplate {
   readonly strings: readonly string[];
@@ -65,145 +71,18 @@ const uiTemplateSchema = v.object({
   strings: v.array(v.string()),
   values: v.array(v.unknown()),
 });
-const allowedTags = new Set([
-  "a",
-  "article",
-  "aside",
-  "br",
-  "button",
-  "caption",
-  "code",
-  "dd",
-  "details",
-  "div",
-  "dl",
-  "dt",
-  "em",
-  "fieldset",
-  "figcaption",
-  "figure",
-  "form",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "header",
-  "hr",
-  "input",
-  "label",
-  "legend",
-  "li",
-  "main",
-  "nav",
-  "ol",
-  "option",
-  "p",
-  "pre",
-  "section",
-  "select",
-  "small",
-  "span",
-  "strong",
-  "summary",
-  "table",
-  "tbody",
-  "td",
-  "text",
-  "textarea",
-  "tfoot",
-  "th",
-  "thead",
-  "tr",
-  "ul",
-  "svg",
-  "g",
-  "path",
-  "rect",
-  "circle",
-  "ellipse",
-  "line",
-  "polyline",
-  "polygon",
-  "tspan",
-  "title",
-  "desc",
-]);
+const allowedTags = new Set<string>(generatedUiAllowedTags);
 const eventAttributes = new Set(["onclick", "onsubmit", "oninput", "onchange"]);
 const booleanAttributes = new Set(["checked", "disabled", "selected"]);
-const allowedAttributes = new Set([
-  "class",
-  "id",
-  "role",
-  "name",
-  "value",
-  "type",
-  "checked",
-  "disabled",
-  "selected",
-  "placeholder",
-  "href",
-  "tabindex",
-  "viewbox",
-  "preserveaspectratio",
-  "x",
-  "y",
-  "x1",
-  "y1",
-  "x2",
-  "y2",
-  "dx",
-  "dy",
-  "cx",
-  "cy",
-  "r",
-  "rx",
-  "ry",
-  "width",
-  "height",
-  "d",
-  "points",
-  "pathlength",
-  "fill",
-  "fill-opacity",
-  "stroke",
-  "stroke-width",
-  "stroke-opacity",
-  "stroke-linecap",
-  "stroke-linejoin",
-  "stroke-dasharray",
-  "stroke-dashoffset",
-  "opacity",
-  "transform",
-  "vector-effect",
-  "text-anchor",
-  "dominant-baseline",
-  "font-size",
-  "font-weight",
-]);
+const allowedAttributes = new Set<string>(generatedUiAllowedAttributes);
 const svgAttributeNames: Readonly<Record<string, string>> = {
   viewbox: "viewBox",
   preserveaspectratio: "preserveAspectRatio",
   pathlength: "pathLength",
 };
 const paintAttributes = new Set(["fill", "stroke"]);
-const rejectedAttributes = new Set([
-  "action",
-  "formaction",
-  "ping",
-  "src",
-  "srcdoc",
-  "style",
-  "xlink:href",
-  "xmlns",
-]);
-const runtimeAttributes = new Set([
-  "data-gr-click",
-  "data-gr-submit",
-  "data-gr-input",
-  "data-gr-change",
-]);
+const rejectedAttributes = new Set<string>(generatedUiForbiddenAttributes);
+const runtimeAttributes = new Set<string>(generatedUiRuntimeAttributes);
 const attributePattern =
   /([:@A-Za-z0-9_-]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g;
 
@@ -737,12 +616,13 @@ function isKnownRuntimeAttribute(
 function decodeBasicEntities(value: string): string {
   const entities: Readonly<Record<string, string>> = {
     amp: "&",
+    apos: "'",
     gt: ">",
     lt: "<",
     quot: '"',
   };
   return value.replace(
-    /&(amp|gt|lt|quot);/g,
+    /&(amp|apos|gt|lt|quot);/g,
     (_, name: string) => entities[name] ?? "",
   );
 }
@@ -791,7 +671,8 @@ function escapeHtml(value: string): string {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 function outcomeOk(value: UiTemplateCompileResult): UiTemplateCompileOutcome {

@@ -17,6 +17,20 @@ test("findGeneratedHandler reads delegated handler ids from event targets", () =
   });
 });
 
+test("findGeneratedHandler rejects delegated targets outside the mounted root", () => {
+  const target = fakeTarget({ "data-gr-click": "h0" });
+  const root = {
+    innerHTML: "",
+    addEventListener() {},
+    removeEventListener() {},
+    contains() {
+      return false;
+    },
+  };
+
+  expect(findGeneratedHandler({ type: "click", target }, root)).toBeUndefined();
+});
+
 test("createGeneratedEventPayload exposes only safe event fields", () => {
   let prevented = false;
   const payload = createGeneratedEventPayload({

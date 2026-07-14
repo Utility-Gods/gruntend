@@ -36,6 +36,16 @@ test("compileUiTemplate escapes text and attribute interpolation values", () => 
   );
 });
 
+test("compileUiTemplate cannot break out of single-quoted attributes", () => {
+  const html = createUiTemplateTag();
+
+  const compiled = compileUiTemplate(
+    html`<a class="${"link' href='/admin"}">Open</a>`,
+  ).unwrap();
+
+  expect(compiled.html).toBe(`<a class="link' href='/admin">Open</a>`);
+});
+
 test("createUiComponent supports delegated SVG events and closure rerendering", () => {
   const html = createUiTemplateTag();
   let selected = false;

@@ -9,6 +9,7 @@
     getAgentPlannerInfo,
   } from "$lib/remote/agent.remote";
   import type { GeneratedCodePlan } from "gruntend-sdk/generate";
+  import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
   import type { RuntimeEvent } from "gruntend-sdk/runtime";
   import {
     createGeneratedUi,
@@ -37,6 +38,7 @@
   };
 
   const taggedHtml = createHtmlTag();
+  const generatedUiRenderer = createDomPurifyGeneratedUiRenderer();
   let prompt = "";
   let state: RunState = "idle";
   let messages: ChatMessage[] = [
@@ -48,6 +50,7 @@
   ];
   let toolCallCount = 0;
   let plannerInfo: AgentPlannerInfo | undefined;
+  let generatedActionRunning = false;
 
   onMount(() => {
     void loadPlannerInfo();
@@ -89,7 +92,9 @@
         id: "sveltekit-agent-chat-plan",
         input: plan.input,
         retry: { maxAttempts: 2 },
-        handlers: createBrowserHandlers(),
+        handlers: createBrowserHandlers({
+          canMutate: () => generatedActionRunning,
+        }),
         ui: { html: taggedHtml },
         onEvent: recordEvent,
       });
@@ -298,7 +303,14 @@
               <GeneratedUi
                 class="agent-generated-ui"
                 ui={message.uiComponent}
+                renderer={generatedUiRenderer}
                 onError={reportUiError}
+                onActionStart={() => {
+                  generatedActionRunning = true;
+                }}
+                onActionEnd={() => {
+                  generatedActionRunning = false;
+                }}
               />
             </div>
           {/if}

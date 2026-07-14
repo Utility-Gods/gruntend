@@ -8,20 +8,21 @@ import {
   watch,
 } from "vue";
 import type {
+  GeneratedUiActionEndEvent,
+  GeneratedUiActionEvent,
+  GeneratedUiRenderer,
+  GeneratedUiRenderSession,
+} from "../../renderer.ts";
+import type {
   GeneratedUi as GeneratedUiController,
   GeneratedUiFrame,
 } from "../index.ts";
-import {
-  mountGeneratedUi,
-  type GeneratedUiActionEndEvent,
-  type GeneratedUiActionEvent,
-  type GeneratedUiMountHandle,
-} from "../dom.ts";
 
 defineOptions({ inheritAttrs: false });
 
 const props = defineProps<{
   readonly ui: GeneratedUiController;
+  readonly renderer: GeneratedUiRenderer<HTMLDivElement>;
   readonly className?: string;
 }>();
 
@@ -36,7 +37,7 @@ const attrs = useAttrs();
 const root = ref<HTMLDivElement | null>(null);
 const running = ref(false);
 const surfaceError = ref("");
-let mounted: GeneratedUiMountHandle | undefined;
+let mounted: GeneratedUiRenderSession | undefined;
 
 const rootClass = computed(() => [
   "generated-ui-shell",
@@ -47,7 +48,7 @@ const rootClass = computed(() => [
 onMounted(() => {
   if (!root.value) return;
 
-  mounted = mountGeneratedUi(root.value, props.ui, {
+  mounted = props.renderer.mount(root.value, props.ui, {
     onError(error) {
       surfaceError.value = errorText(error);
       emit("error", error);

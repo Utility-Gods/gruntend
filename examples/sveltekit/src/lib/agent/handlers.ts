@@ -35,16 +35,13 @@ import type { appTools } from "./tools";
 type MenusOutput = { readonly menus: Menu[] };
 type MenuOutput = { readonly menu: Menu };
 type MenuItemsOutput = { readonly items: MenuItem[] };
-type MenuItemOutput = { readonly item: MenuItem };
 type CustomersOutput = { readonly customers: Customer[] };
 type OrdersOutput = { readonly orders: Order[] };
-type OrderOutput = { readonly order: Order };
 type PaymentsOutput = { readonly payments: Payment[] };
 type ReservationsOutput = { readonly reservations: Reservation[] };
 type TablesOutput = { readonly tables: RestaurantTable[] };
 type ShiftsOutput = { readonly shifts: Shift[] };
 type UsersOutput = { readonly users: User[] };
-type UserOutput = { readonly user: User };
 
 type BrowserHandlerOptions = {
   readonly canMutate: () => boolean;
@@ -67,7 +64,7 @@ export function createBrowserHandlers(
     "menus.create": async ({ input, ok, err }) =>
       runMutation(
         options,
-        () => createMenuCommand(toPlainInput(input)) as Promise<MenuOutput>,
+        async () => await createMenuCommand(toPlainInput(input)),
         ok,
         err,
       ),
@@ -83,8 +80,7 @@ export function createBrowserHandlers(
     "menu.item.create": async ({ input, ok, err }) =>
       runMutation(
         options,
-        () =>
-          createMenuItemCommand(toPlainInput(input)) as Promise<MenuItemOutput>,
+        async () => await createMenuItemCommand(toPlainInput(input)),
         ok,
         err,
       ),
@@ -92,10 +88,7 @@ export function createBrowserHandlers(
     "menu.item.duplicate": async ({ input, ok, err }) =>
       runMutation(
         options,
-        () =>
-          duplicateMenuItemCommand(
-            toPlainInput(input),
-          ) as Promise<MenuItemOutput>,
+        async () => await duplicateMenuItemCommand(toPlainInput(input)),
         ok,
         err,
       ),
@@ -103,8 +96,7 @@ export function createBrowserHandlers(
     "menu.item.update": async ({ input, ok, err }) =>
       runMutation(
         options,
-        () =>
-          updateMenuItemCommand(toPlainInput(input)) as Promise<MenuItemOutput>,
+        async () => await updateMenuItemCommand(toPlainInput(input)),
         ok,
         err,
       ),
@@ -112,8 +104,7 @@ export function createBrowserHandlers(
     "menu.item.delete": async ({ input, ok, err }) =>
       runMutation(
         options,
-        () =>
-          deleteMenuItemCommand(toPlainInput(input)) as Promise<MenuItemOutput>,
+        async () => await deleteMenuItemCommand(toPlainInput(input)),
         ok,
         err,
       ),
@@ -127,7 +118,7 @@ export function createBrowserHandlers(
     "orders.create": async ({ input, ok, err }) =>
       runMutation(
         options,
-        () => createOrderCommand(toPlainInput(input)) as Promise<OrderOutput>,
+        async () => await createOrderCommand(toPlainInput(input)),
         ok,
         err,
       ),
@@ -135,8 +126,7 @@ export function createBrowserHandlers(
     "orders.status.update": async ({ input, ok, err }) =>
       runMutation(
         options,
-        () =>
-          updateOrderStatusCommand(toPlainInput(input)) as Promise<OrderOutput>,
+        async () => await updateOrderStatusCommand(toPlainInput(input)),
         ok,
         err,
       ),
@@ -167,7 +157,7 @@ export function createBrowserHandlers(
     "users.create": async ({ input, ok, err }) =>
       runMutation(
         options,
-        () => createUserCommand(toPlainInput(input)) as Promise<UserOutput>,
+        async () => await createUserCommand(toPlainInput(input)),
         ok,
         err,
       ),

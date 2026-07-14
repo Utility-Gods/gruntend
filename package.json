@@ -58,6 +58,18 @@
       "types": "./dist/generate.d.ts",
       "import": "./dist/generate.js"
     },
+    "./renderer": {
+      "types": "./dist/renderer.d.ts",
+      "import": "./dist/renderer.js"
+    },
+    "./renderer/dom": {
+      "types": "./dist/renderers/dom.d.ts",
+      "import": "./dist/renderers/dom.js"
+    },
+    "./renderer/dom-purify": {
+      "types": "./dist/renderers/dom-purify.d.ts",
+      "import": "./dist/renderers/dom-purify.js"
+    },
     "./ui": {
       "types": "./dist/ui/index.d.ts",
       "import": "./dist/ui/index.js"
@@ -116,6 +128,7 @@
     "@mariozechner/jailjs": "0.1.1",
     "@earendil-works/pi-ai": "0.74.0",
     "better-result": "2.7.0",
+    "dompurify": "3.4.12",
     "quickjs-emscripten-core": "0.32.0",
     "valibot": "1.4.0"
   },

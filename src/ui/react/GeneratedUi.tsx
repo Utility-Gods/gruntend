@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import type {
+  GeneratedUiActionEndEvent,
+  GeneratedUiActionEvent,
+  GeneratedUiRenderer,
+  GeneratedUiRenderSession,
+} from "../../renderer.ts";
+import type {
   GeneratedUi as GeneratedUiController,
   GeneratedUiFrame,
 } from "../index.ts";
-import {
-  mountGeneratedUi,
-  type GeneratedUiActionEndEvent,
-  type GeneratedUiActionEvent,
-  type GeneratedUiMountHandle,
-} from "../dom.ts";
 
 export interface GeneratedUiProps {
   readonly ui: GeneratedUiController;
+  readonly renderer: GeneratedUiRenderer<HTMLDivElement>;
   readonly class?: string;
   readonly className?: string;
   readonly onError?: (error: unknown) => void;
@@ -31,6 +32,7 @@ interface GeneratedUiCallbacks {
 
 export function GeneratedUi({
   ui,
+  renderer,
   class: classProp,
   className,
   onError,
@@ -39,7 +41,7 @@ export function GeneratedUi({
   onActionEnd,
 }: GeneratedUiProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const mountedRef = useRef<GeneratedUiMountHandle | null>(null);
+  const mountedRef = useRef<GeneratedUiRenderSession | null>(null);
   const mountedUiRef = useRef<GeneratedUiController | null>(null);
   const callbacksRef = useRef<GeneratedUiCallbacks>({});
   const [running, setRunning] = useState(false);
@@ -51,7 +53,7 @@ export function GeneratedUi({
     if (!rootRef.current) return undefined;
 
     mountedUiRef.current = ui;
-    mountedRef.current = mountGeneratedUi(rootRef.current, ui, {
+    mountedRef.current = renderer.mount(rootRef.current, ui, {
       onError(error) {
         setSurfaceError(errorText(error));
         callbacksRef.current.onError?.(error);

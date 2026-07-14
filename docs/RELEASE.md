@@ -49,7 +49,7 @@ cd "$tmp_dir"
 npm init -y
 npm install ./gruntend-sdk-0.1.0.tgz
 node --input-type=module -e 'import { createGruntendClient } from "gruntend-sdk/client"; import { createJailJsCodePlanExecutor } from "gruntend-sdk/executor/jailjs"; import { defineTools } from "gruntend-sdk/tool"; console.log(Boolean(createGruntendClient({ tools: defineTools({}), executor: createJailJsCodePlanExecutor() }).registry));'
-node --input-type=module -e 'await Promise.all(["gruntend-sdk/client","gruntend-sdk/code-plan","gruntend-sdk/generate","gruntend-sdk/registry","gruntend-sdk/runtime","gruntend-sdk/tool","gruntend-sdk/ui","gruntend-sdk/ui/dom","gruntend-sdk/ui-runtime"].map((id) => import(id))); console.log("core subpath imports ok");'
+node --input-type=module -e 'await Promise.all(["gruntend-sdk/client","gruntend-sdk/code-plan","gruntend-sdk/generate","gruntend-sdk/registry","gruntend-sdk/renderer","gruntend-sdk/renderer/dom","gruntend-sdk/renderer/dom-purify","gruntend-sdk/runtime","gruntend-sdk/tool","gruntend-sdk/ui","gruntend-sdk/ui/dom","gruntend-sdk/ui-runtime"].map((id) => import(id))); console.log("core subpath imports ok");'
 ```
 
 Framework adapter exports (`gruntend-sdk/ui/react`, `gruntend-sdk/ui/solid`, `gruntend-sdk/ui/svelte`, and `gruntend-sdk/ui/vue`) are source-backed and should be verified by the consuming framework build.

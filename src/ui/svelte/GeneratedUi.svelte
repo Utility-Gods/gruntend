@@ -1,18 +1,19 @@
 <script lang="ts">
   import type { Attachment } from "svelte/attachments";
   import type {
+    GeneratedUiActionEndEvent,
+    GeneratedUiActionEvent,
+    GeneratedUiRenderer,
+    GeneratedUiRenderSession,
+  } from "../../renderer.ts";
+  import type {
     GeneratedUi as GeneratedUiController,
     GeneratedUiFrame,
   } from "../index.ts";
-  import {
-    mountGeneratedUi,
-    type GeneratedUiActionEndEvent,
-    type GeneratedUiActionEvent,
-    type GeneratedUiMountHandle,
-  } from "../dom.ts";
 
   type Props = {
     readonly ui: GeneratedUiController;
+    readonly renderer: GeneratedUiRenderer<HTMLDivElement>;
     readonly class?: string;
     readonly onError?: (error: unknown) => void;
     readonly onRender?: (frame: GeneratedUiFrame) => void;
@@ -22,6 +23,7 @@
 
   let {
     ui,
+    renderer,
     class: className = "",
     onError,
     onRender,
@@ -31,12 +33,12 @@
 
   let running = $state(false);
   let surfaceError = $state("");
-  let mounted: GeneratedUiMountHandle | undefined;
+  let mounted: GeneratedUiRenderSession | undefined;
   let mountedUi: GeneratedUiController | undefined;
 
   const attachGeneratedUi: Attachment<HTMLDivElement> = (node) => {
     mountedUi = ui;
-    mounted = mountGeneratedUi(node, ui, {
+    mounted = renderer.mount(node, ui, {
       onError(error) {
         surfaceError = errorText(error);
         onError?.(error);
