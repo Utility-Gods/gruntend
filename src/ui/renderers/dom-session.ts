@@ -1,7 +1,13 @@
 import { Result } from "better-result";
-import type { GeneratedUi, GeneratedUiFrame } from "./index.ts";
-
-export type GeneratedUiEventName = "click" | "submit" | "input" | "change";
+import type {
+  GeneratedUiActionEndEvent,
+  GeneratedUiActionEvent,
+  GeneratedUiEventName,
+  GeneratedUiRenderer,
+  GeneratedUiRenderOptions,
+  GeneratedUiRenderSession,
+} from "../renderer.ts";
+import type { GeneratedUi, GeneratedUiFrame } from "../index.ts";
 
 export interface GeneratedUiHandlerMatch {
   readonly eventName: GeneratedUiEventName;
@@ -19,41 +25,18 @@ export interface GeneratedUiEventPayload {
   preventDefault(): void;
 }
 
-export interface GeneratedUiActionEvent {
-  readonly handlerId: string;
-  readonly eventName?: GeneratedUiEventName;
-}
-
-export interface GeneratedUiActionEndEvent extends GeneratedUiActionEvent {
-  readonly status: "done" | "error";
-  readonly error?: unknown;
-}
-
-export interface GeneratedUiMountOptions {
-  readonly onError?: (error: unknown) => void;
-  readonly onRender?: (frame: GeneratedUiFrame) => void;
-  readonly onActionStart?: (event: GeneratedUiActionEvent) => void;
-  readonly onActionEnd?: (event: GeneratedUiActionEndEvent) => void;
-}
-
-export interface GeneratedUiMountElement {
-  innerHTML: string;
+export interface GeneratedUiDomTarget {
   addEventListener(type: string, listener: (event: unknown) => unknown): void;
   removeEventListener(
     type: string,
     listener: (event: unknown) => unknown,
   ): void;
+  contains(value: Node | null): boolean;
 }
 
-export interface GeneratedUiMountHandle {
-  render(): void;
-  runHandler(
-    handlerId: string,
-    event?: unknown,
-    eventName?: GeneratedUiEventName,
-  ): Promise<void>;
-  update(nextUi: GeneratedUi): void;
-  destroy(): void;
+export interface GeneratedUiDomCommitter<TTarget extends GeneratedUiDomTarget> {
+  commit(target: TTarget, frame: GeneratedUiFrame): void;
+  clear(target: TTarget): void;
 }
 
 const eventAttributes: Record<GeneratedUiEventName, string> = {
@@ -63,25 +46,64 @@ const eventAttributes: Record<GeneratedUiEventName, string> = {
   change: "data-gr-change",
 };
 
-export function mountGeneratedUi(
-  element: GeneratedUiMountElement,
+const eventNames = Object.keys(eventAttributes) as GeneratedUiEventName[];
+
+export function createGeneratedUiDomRenderer<
+  TTarget extends GeneratedUiDomTarget,
+>(
+  id: string,
+  committer: GeneratedUiDomCommitter<TTarget>,
+): GeneratedUiRenderer<TTarget> {
+  return Object.freeze({
+    id,
+    mount(
+      target: TTarget,
+      ui: GeneratedUi,
+      options: GeneratedUiRenderOptions = {},
+    ) {
+      return mountGeneratedUiDomSession(id, target, ui, options, committer);
+    },
+  });
+}
+
+export function mountGeneratedUiDomSession<
+  TTarget extends GeneratedUiDomTarget,
+>(
+  rendererId: string,
+  target: TTarget,
   ui: GeneratedUi,
-  options: GeneratedUiMountOptions = {},
-): GeneratedUiMountHandle {
+  options: GeneratedUiRenderOptions,
+  committer: GeneratedUiDomCommitter<TTarget>,
+): GeneratedUiRenderSession {
   let currentUi = ui;
+  let revision = 0;
   let destroyed = false;
+
+  function failRender(error: unknown) {
+    try {
+      committer.clear(target);
+    } catch (clearError) {
+      options.onError?.(clearError);
+      return;
+    }
+    options.onError?.(error);
+  }
 
   function render() {
     if (destroyed) return;
 
     const frame = currentUi.render();
     if (Result.isError(frame)) {
-      options.onError?.(frame.unwrapError());
+      failRender(frame.unwrapError());
       return;
     }
 
-    element.innerHTML = frame.value.html;
-    options.onRender?.(frame.value);
+    try {
+      committer.commit(target, frame.value);
+      options.onRender?.(frame.value);
+    } catch (error) {
+      failRender(error);
+    }
   }
 
   async function runHandler(
@@ -91,27 +113,43 @@ export function mountGeneratedUi(
   ): Promise<void> {
     if (destroyed) return;
 
-    options.onActionStart?.({ handlerId, eventName });
+    const actionRevision = revision;
+    const actionUi = currentUi;
+    const action: GeneratedUiActionEvent = { handlerId, eventName };
+    options.onActionStart?.(action);
 
     try {
       if (event === undefined) {
-        await currentUi.runHandler(handlerId);
+        await actionUi.runHandler(handlerId);
       } else {
-        await currentUi.runHandler(
+        await actionUi.runHandler(
           handlerId,
           createGeneratedEventPayload(event),
         );
       }
-      render();
-      options.onActionEnd?.({ handlerId, eventName, status: "done" });
+      if (!destroyed && actionRevision === revision && actionUi === currentUi) {
+        render();
+      }
+      if (destroyed) return;
+      const completed: GeneratedUiActionEndEvent = {
+        ...action,
+        status: "done",
+      };
+      options.onActionEnd?.(completed);
     } catch (error) {
+      if (destroyed) return;
       options.onError?.(error);
-      options.onActionEnd?.({ handlerId, eventName, status: "error", error });
+      const failed: GeneratedUiActionEndEvent = {
+        ...action,
+        status: "error",
+        error,
+      };
+      options.onActionEnd?.(failed);
     }
   }
 
   const onEvent = (event: unknown) => {
-    const match = findGeneratedHandler(event);
+    const match = findGeneratedHandler(event, target);
     if (!match) return;
 
     if (match.eventName === "click" || match.eventName === "submit") {
@@ -123,38 +161,48 @@ export function mountGeneratedUi(
 
   render();
 
-  for (const eventName of Object.keys(eventAttributes)) {
-    element.addEventListener(eventName, onEvent);
+  for (const eventName of eventNames) {
+    target.addEventListener(eventName, onEvent);
   }
 
   return {
+    rendererId,
     render,
     runHandler,
     update(nextUi) {
-      if (currentUi !== nextUi) currentUi.destroy();
+      if (destroyed || currentUi === nextUi) return;
+      revision += 1;
+      currentUi.destroy();
       currentUi = nextUi;
       render();
     },
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      revision += 1;
       currentUi.destroy();
 
-      for (const eventName of Object.keys(eventAttributes)) {
-        element.removeEventListener(eventName, onEvent);
+      for (const eventName of eventNames) {
+        target.removeEventListener(eventName, onEvent);
       }
+
+      committer.clear(target);
     },
   };
 }
 
 export function findGeneratedHandler(
   event: unknown,
+  root?: GeneratedUiDomTarget,
 ): GeneratedUiHandlerMatch | undefined {
   const eventName = readEventName(event);
   if (!eventName) return undefined;
 
   const attribute = eventAttributes[eventName];
-  const handlerId = readHandlerId(event, attribute);
+  const control = readHandlerTarget(event, attribute);
+  if (!control || !belongsToRoot(control, root)) return undefined;
+
+  const handlerId = control.getAttribute(attribute)?.trim();
   if (!handlerId) return undefined;
 
   return { eventName, attribute, handlerId };
@@ -181,13 +229,26 @@ export function createGeneratedEventPayload(
   };
 }
 
-function readHandlerId(event: unknown, attribute: string): string | undefined {
+interface HandlerTarget {
+  getAttribute(attribute: string): string | null | undefined;
+}
+
+function readHandlerTarget(
+  event: unknown,
+  attribute: string,
+): HandlerTarget | undefined {
   const target = readEventTarget(event);
   if (!isClosestTarget(target)) return undefined;
+  return target.closest(`[${attribute}]`) ?? undefined;
+}
 
-  const control = target.closest(`[${attribute}]`);
-  const handlerId = control?.getAttribute(attribute)?.trim();
-  return handlerId || undefined;
+function belongsToRoot(
+  target: HandlerTarget,
+  root?: GeneratedUiDomTarget,
+): boolean {
+  if (!root) return true;
+  if ((target as unknown) === root) return false;
+  return root.contains(target as unknown as Node);
 }
 
 function readEventName(event: unknown): GeneratedUiEventName | undefined {
@@ -210,12 +271,7 @@ function preventDefault(event: unknown): void {
 }
 
 function isClosestTarget(value: unknown): value is {
-  closest(
-    selector: string,
-  ):
-    | { getAttribute(attribute: string): string | null | undefined }
-    | null
-    | undefined;
+  closest(selector: string): HandlerTarget | null | undefined;
 } {
   return isRecord(value) && typeof value.closest === "function";
 }

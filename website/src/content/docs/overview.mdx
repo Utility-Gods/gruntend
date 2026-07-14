@@ -120,6 +120,10 @@ A plan normally returns data. When the application enables the `html` runtime va
 
 Generated UI uses the same tool boundary. Browser interactions do not bypass app-owned handlers.
 
+For UI plans, the application also selects a renderer. The UI compiler produces an inert frame containing markup and delegated handler identifiers; the renderer owns the mounted session and commits that frame to its target. Gruntend provides DOMPurify as its only built-in browser renderer while keeping `GeneratedUiRenderer<TTarget>` available for application-defined targets.
+
+Renderer typing, markup sanitization, code execution, and tool authorization are separate boundaries. See [Generated UI](/guides/generated-ui/) for the compiler flow and [Renderers](/guides/renderers/) for mounting and browser commit behavior.
+
 ## What to read next
 
 [Run your first task](/getting-started/) for the complete API in one example. Then read [Code plans](/code-plan-format/) for the interpreted JavaScript contract.

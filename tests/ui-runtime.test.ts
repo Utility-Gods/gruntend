@@ -8,7 +8,7 @@ import {
   compileUiTemplate,
   createUiComponent,
   createUiTemplateTag,
-} from "../src/ui-runtime.ts";
+} from "../src/ui/compiler.ts";
 
 test("compileUiTemplate rewrites function event slots to delegated handler attributes", () => {
   const html = createUiTemplateTag();
@@ -34,6 +34,16 @@ test("compileUiTemplate escapes text and attribute interpolation values", () => 
   expect(compiled.html).toBe(
     '<p class="&lt;tag&gt;">&lt;img src=x onerror=&quot;alert(1)&quot;&gt;</p>',
   );
+});
+
+test("compileUiTemplate cannot break out of single-quoted attributes", () => {
+  const html = createUiTemplateTag();
+
+  const compiled = compileUiTemplate(
+    html`<a class="${"link' href='/admin"}">Open</a>`,
+  ).unwrap();
+
+  expect(compiled.html).toBe(`<a class="link' href='/admin">Open</a>`);
 });
 
 test("createUiComponent supports delegated SVG events and closure rerendering", () => {

@@ -10,7 +10,7 @@ import {
   type UiTemplateCompileOutcome,
   type UiTemplateCompileResult,
   type UiTemplateTag,
-} from "../ui-runtime.ts";
+} from "./compiler.ts";
 
 export type HtmlTemplate = UiTemplate;
 export type HtmlTag = UiTemplateTag;

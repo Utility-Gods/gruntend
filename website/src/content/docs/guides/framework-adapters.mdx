@@ -4,17 +4,19 @@ description: Mount the same GeneratedUi controller in Svelte, React, Vue, or Sol
 ---
 
 <p class="doc-lead">
-  Each adapter is a thin wrapper around <code>mountGeneratedUi()</code>.
-  Generated plans never contain framework syntax.
+  Each adapter is a thin wrapper around the renderer selected by the host
+  application. Generated plans never contain framework syntax.
 </p>
 
-Create the controller once from a successful UI plan result:
+Create the controller and renderer once from a successful UI plan result:
 
 ```ts
+import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
 import { createGeneratedUi } from "gruntend-sdk/ui";
 
 if (result.status !== "done") throw new Error(result.error);
 const ui = createGeneratedUi(result.result).unwrap();
+const renderer = createDomPurifyGeneratedUiRenderer();
 ```
 
 ## Svelte
@@ -26,7 +28,7 @@ const ui = createGeneratedUi(result.result).unwrap();
   let { ui } = $props();
 </script>
 
-<GeneratedUi {ui} onError={console.error} />
+<GeneratedUi {ui} {renderer} onError={console.error} />
 ```
 
 ## React
@@ -35,7 +37,7 @@ const ui = createGeneratedUi(result.result).unwrap();
 import GeneratedUi from "gruntend-sdk/ui/react";
 
 export function TaskSurface({ ui }) {
-  return <GeneratedUi ui={ui} onError={console.error} />;
+  return <GeneratedUi ui={ui} renderer={renderer} onError={console.error} />;
 }
 ```
 
@@ -51,7 +53,7 @@ function onError(error) {
 </script>
 
 <template>
-  <GeneratedUi :ui="ui" @error="onError" />
+  <GeneratedUi :ui="ui" :renderer="renderer" @error="onError" />
 </template>
 ```
 
@@ -61,7 +63,9 @@ function onError(error) {
 import GeneratedUi from "gruntend-sdk/ui/solid";
 
 export function TaskSurface(props) {
-  return <GeneratedUi ui={props.ui} onError={console.error} />;
+  return (
+    <GeneratedUi ui={props.ui} renderer={renderer} onError={console.error} />
+  );
 }
 ```
 
@@ -79,6 +83,6 @@ Vue emits the matching events:
 error · render · action-start · action-end
 ```
 
-Changing `ui` updates the existing mount. Unmounting the component removes delegated listeners. All adapters expose `generated-ui-shell`, `generated-ui`, `generated-ui-status`, and `generated-ui-error` classes for host styling.
+Changing `ui` updates the existing session. Treat `renderer` as immutable for the mounted component lifetime. Unmounting the component removes delegated listeners. All adapters expose `generated-ui-shell`, `generated-ui`, `generated-ui-status`, and `generated-ui-error` classes for host styling.
 
 The framework adapter exports are source-backed through explicit `types` and `import` export conditions for now, so each host app can compile its own framework format. The core runtime exports (`gruntend-sdk/client`, `gruntend-sdk/code-plan`, `gruntend-sdk/tool`, and `gruntend-sdk/ui`) are published from `dist`.

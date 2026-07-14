@@ -1,0 +1,95 @@
+---
+title: Renderers
+description: Select how compiled generated UI is committed to an application-owned target.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<p class="doc-lead">
+  A renderer is an application-selected strategy that mounts a compiled
+  generated UI and owns its render session.
+</p>
+
+## Select a renderer explicitly
+
+Gruntend provides one browser renderer:
+
+```ts
+import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
+
+const renderer = createDomPurifyGeneratedUiRenderer();
+const session = renderer.mount(element, ui, {
+  onError: console.error,
+});
+```
+
+The model and generated plan cannot choose or replace the renderer. The application selects it when the UI mounts, and that renderer remains fixed for the session.
+
+## Renderer contract
+
+The extension point is exported from `gruntend-sdk/renderer`:
+
+```ts
+interface GeneratedUiRenderer<TTarget> {
+  readonly id: string;
+  mount(
+    target: TTarget,
+    ui: GeneratedUi,
+    options?: GeneratedUiRenderOptions,
+  ): GeneratedUiRenderSession;
+}
+```
+
+`TTarget` describes the host accepted by that implementation. The built-in renderer accepts a browser target that supports delegated event listeners, containment checks, and `replaceChildren()`.
+
+Applications can implement this interface for another target or commit strategy. Gruntend does not provide a direct-`innerHTML` renderer.
+
+## Render session
+
+Mounting returns a session:
+
+```ts
+interface GeneratedUiRenderSession {
+  readonly rendererId: string;
+  render(): void;
+  runHandler(
+    handlerId: string,
+    event?: unknown,
+    eventName?: GeneratedUiEventName,
+  ): Promise<void>;
+  update(nextUi: GeneratedUi): void;
+  destroy(): void;
+}
+```
+
+- `render()` compiles the current UI and commits its frame again.
+- `runHandler()` invokes one generated closure and rerenders after it completes.
+- `update()` destroys the previous generated UI before mounting the next value through the same renderer.
+- `destroy()` removes delegated listeners, invalidates pending actions, destroys the UI controller, and clears the target.
+
+Pending handlers are revision-checked. If an application updates or destroys the session while an asynchronous handler is running, the stale handler cannot overwrite the newer UI.
+
+## DOMPurify commit
+
+The built-in browser renderer:
+
+1. receives the compiled `GeneratedUiFrame`
+2. applies the generated-UI tag and attribute policy through DOMPurify
+3. requests a `DocumentFragment`
+4. commits it with `replaceChildren()`
+5. delegates `click`, `submit`, `input`, and `change` events from the mounted root
+
+DOMPurify fails closed when it is unavailable. Arbitrary `data-*` attributes, unknown protocols, inline event attributes, scripts, styles, templates, and unsupported markup are not part of the renderer policy.
+
+<Aside type="caution" title="Separate security boundaries">
+  DOMPurify sanitizes generated markup. It does not isolate generated JavaScript
+  or reduce the authority of registered tool handlers. Select the executor trust
+  boundary independently and always authorize operations inside
+  application-owned handlers.
+</Aside>
+
+## Framework adapters
+
+Svelte, React, Solid, and Vue adapters require a renderer. Create it once for the mounted component lifetime and pass it beside the `GeneratedUi` value.
+
+See [Framework adapters](/guides/framework-adapters/) for component examples and [Generated UI](/guides/generated-ui/) for the complete plan-to-interface flow.

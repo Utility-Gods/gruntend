@@ -31,6 +31,7 @@
     getUsers,
   } from "$lib/remote/example.remote";
   import type { GeneratedCodePlan } from "gruntend-sdk/generate";
+  import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
   import type { RuntimeEvent } from "gruntend-sdk/runtime";
   import {
     createGeneratedUi,
@@ -183,6 +184,7 @@
   ]);
 
   const taggedHtml = createHtmlTag();
+  const generatedUiRenderer = createDomPurifyGeneratedUiRenderer();
   const menusResponse = $derived(getMenusWithItems().current);
   const ordersResponse = $derived(getOrders().current);
   const usersResponse = $derived(getUsers().current);
@@ -197,7 +199,7 @@
   let executorChoice = $state<ExecutorChoice>("jailjs");
   let activeExecutorId = $state("");
   let suggestionLoading = $state(false);
-  let state = $state<RunState>("idle");
+  let runState = $state<RunState>("idle");
   let resultUi = $state<GeneratedUiModel>();
   let resultTitle = $state("");
   let errorMessage = $state("");
@@ -220,7 +222,7 @@
 
   function loadingProgressLabel() {
     if (suggestionLoading) return "Generating a task suggestion";
-    if (state === "planning") return "Generating the code plan";
+    if (runState === "planning") return "Generating the code plan";
     return runtimeActivity;
   }
 
@@ -231,7 +233,11 @@
   }
 
   async function generateTaskSuggestion() {
-    if (suggestionLoading || state === "planning" || state === "running") {
+    if (
+      suggestionLoading ||
+      runState === "planning" ||
+      runState === "running"
+    ) {
       return;
     }
 
@@ -243,7 +249,7 @@
         draft: startingPrompt.trim(),
       });
       if ("error" in suggestion) {
-        toast.error(suggestion.error);
+        toast.error(suggestion.error ?? "Task suggestion failed");
         return;
       }
       if (prompt !== startingPrompt) {
@@ -279,7 +285,7 @@
   }
 
   async function runTask(task: string) {
-    if (state === "planning" || state === "running") return;
+    if (runState === "planning" || runState === "running") return;
 
     prompt = task;
     const selectedExecutorChoice = executorChoice;
@@ -287,7 +293,7 @@
       selectedExecutorChoice === "quickjs-browser"
         ? getQuickJsBrowserExecutor()
         : Promise.resolve(jailJsExecutor);
-    state = "planning";
+    runState = "planning";
     resultUi = undefined;
     resultTitle = "Understanding your request";
     errorMessage = "";
@@ -320,7 +326,7 @@
         2,
       );
 
-      state = "running";
+      runState = "running";
       runtimeActivity =
         selectedExecutorChoice === "quickjs-browser"
           ? "Initializing the QuickJS/WASM executor"
@@ -366,9 +372,9 @@
       }
 
       resultUi = ui.value;
-      state = "done";
+      runState = "done";
     } catch (caught) {
-      state = "error";
+      runState = "error";
       errorMessage = readErrorMessage(caught);
       debugDetails = [
         debugDetails,
@@ -606,15 +612,17 @@
           >
             <label
               class="flex h-10 w-full items-center justify-between gap-2 border border-neutral-300 bg-white px-3 text-xs font-semibold text-slate-700 transition sm:mr-auto sm:w-auto"
-              class:cursor-wait={state === "planning" || state === "running"}
-              class:opacity-60={state === "planning" || state === "running"}
+              class:cursor-wait={runState === "planning" ||
+                runState === "running"}
+              class:opacity-60={runState === "planning" ||
+                runState === "running"}
               title="Select one executor for the complete JavaScript plan"
             >
               <span>Executor</span>
               <select
                 bind:value={executorChoice}
                 class="min-w-32 bg-transparent text-xs font-semibold text-slate-950 outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                disabled={state === "planning" || state === "running"}
+                disabled={runState === "planning" || runState === "running"}
                 aria-label="Code-plan executor"
               >
                 <option value="jailjs">JailJS · controlled</option>
@@ -625,8 +633,8 @@
               type="button"
               class="inline-flex h-10 w-full items-center justify-center gap-2 border border-neutral-300 bg-white px-3.5 text-sm font-semibold text-slate-700 transition hover:border-primary-500 hover:text-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
               disabled={suggestionLoading ||
-                state === "planning" ||
-                state === "running"}
+                runState === "planning" ||
+                runState === "running"}
               onclick={generateTaskSuggestion}
             >
               <Sparkles
@@ -639,11 +647,11 @@
             <button
               type="submit"
               class="h-10 w-full bg-primary-600 px-5 text-sm font-semibold text-white transition hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:min-w-24"
-              disabled={state === "planning" || state === "running"}
+              disabled={runState === "planning" || runState === "running"}
             >
-              {state === "planning"
+              {runState === "planning"
                 ? "Working..."
-                : state === "running"
+                : runState === "running"
                   ? "Preparing..."
                   : "Run"}
             </button>
@@ -693,16 +701,16 @@
       </form>
     </div>
 
-    {#if state !== "idle" || suggestionLoading}
+    {#if runState !== "idle" || suggestionLoading}
       <div class="border-t border-neutral-200 bg-white" aria-live="polite">
-        {#if !suggestionLoading && (state === "done" || state === "error")}
+        {#if !suggestionLoading && (runState === "done" || runState === "error")}
           <header
             class="flex flex-col items-start gap-2 border-b border-neutral-200 bg-[#faf9f6] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6 md:px-8"
           >
             <h2 class="text-base font-semibold text-slate-950">
               {resultTitle}
             </h2>
-            {#if state === "done"}
+            {#if runState === "done"}
               <span
                 class="bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
               >
@@ -714,7 +722,7 @@
         {/if}
 
         <div class="min-w-0 p-4 sm:p-5 md:p-6">
-          {#if suggestionLoading || state === "planning" || state === "running"}
+          {#if suggestionLoading || runState === "planning" || runState === "running"}
             <div class="mx-auto flex max-w-2xl items-start gap-4 py-5">
               <Activity
                 class="mt-0.5 shrink-0 text-primary-600"
@@ -728,7 +736,7 @@
                   <p class="text-sm font-semibold text-slate-900">
                     {#if suggestionLoading}
                       Generating a task suggestion
-                    {:else if state === "planning"}
+                    {:else if runState === "planning"}
                       Generating a JavaScript plan
                     {:else}
                       Interpreting the plan
@@ -737,7 +745,7 @@
                   <span
                     class="text-xs font-medium tabular-nums text-neutral-500"
                   >
-                    {#if suggestionLoading || state === "planning"}
+                    {#if suggestionLoading || runState === "planning"}
                       Model generation
                     {:else}
                       {completedToolCallCount}/{toolCallCount} tool calls
@@ -767,7 +775,7 @@
                 </div>
               </div>
             </div>
-          {:else if state === "error"}
+          {:else if runState === "error"}
             <div class="border-l-4 border-red-500 bg-red-50 p-4">
               <h3 class="font-semibold text-red-900">
                 This task could not be prepared
@@ -794,6 +802,7 @@
             >
               <GeneratedUi
                 ui={resultUi}
+                renderer={generatedUiRenderer}
                 onActionStart={beginGeneratedAction}
                 onActionEnd={(event) =>
                   finishGeneratedAction(event.status, event.error)}

@@ -9,7 +9,7 @@ This example has:
 - normal app routes for browsing that data
 - a Gruntend tool namespace over app-owned remote handlers
 - a chat-style agent route with a mocked code-plan generator
-- tagged-template message islands rendered through `gruntend-sdk/ui` and `gruntend-sdk/ui/svelte`
+- tagged-template message islands mounted through an explicitly selected strict DOMPurify renderer and `gruntend-sdk/ui/svelte`
 - a per-run browser executor selector: JailJS by default or lazily initialized QuickJS/WASM
 
 ## Run
@@ -64,7 +64,7 @@ The agent route is mocked on purpose and returns deterministic Gruntend code pla
 
 On the overview route, choose **JailJS · controlled** or **QuickJS · isolated** before running a task. The selection applies to the complete plan and its generated UI closures. QuickJS is loaded only when first selected.
 
-The chat transcript renders generated UI returned from code plans as native JavaScript plus the Gruntend `html` tagged template. Event handlers use function interpolation, for example `onclick=${handler}`. The UI compiler rewrites those handlers to inert delegated attributes such as `data-gr-click="h0"`, so the browser never receives real inline JavaScript. The selectable menu prompt demonstrates local generated component state plus app tool calls for duplicated items.
+The chat transcript renders generated UI returned from code plans as native JavaScript plus the Gruntend `html` tagged template. Event handlers use function interpolation, for example `onclick=${handler}`. The UI compiler rewrites those handlers to inert delegated attributes such as `data-gr-click="h0"`, and the page selects `createDomPurifyGeneratedUiRenderer()` once for each mounted UI session. The renderer applies the Gruntend allowlist through DOMPurify and inserts the returned fragment directly, so the browser receives neither real inline JavaScript nor unsanitized generated markup. The selectable menu prompt demonstrates local generated component state plus app tool calls for duplicated items.
 
 ## Switching back to a real LLM later
 

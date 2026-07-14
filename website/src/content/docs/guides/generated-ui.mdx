@@ -115,7 +115,7 @@ return html`<svg viewBox="0 0 640 240" role="img" aria-label="Revenue by day">
 </svg>`;
 ```
 
-The template compiler reconstructs markup through explicit element and attribute allowlists before the DOM runtime assigns `innerHTML`. The SVG profile permits static geometry and text (`svg`, `g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, `text`, `tspan`, `title`, and `desc`). Text and attribute interpolations are escaped.
+The template compiler reconstructs markup through explicit element and attribute allowlists. The SVG profile permits static geometry and text (`svg`, `g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, `text`, `tspan`, `title`, and `desc`). Text and attribute interpolations are escaped. The selected renderer decides how that compiled frame is committed to its target.
 
 The compiler rejects scripts, styles, inline event strings, namespace attributes, `foreignObject`, images, `use`, animation, filter elements, unknown elements, malformed tags, external links, external paint URLs, and forged runtime or delegated-handler targets. Only root-relative or fragment `href` values are accepted.
 
@@ -131,11 +131,11 @@ Choose a normal DOM element where the generated interface should appear:
 <div id="generated-ui"></div>
 ```
 
-Then create and mount the generated UI:
+Then create a renderer and mount the generated UI:
 
 ```ts
+import { createDomPurifyGeneratedUiRenderer } from "gruntend-sdk/renderer/dom-purify";
 import { createGeneratedUi } from "gruntend-sdk/ui";
-import { mountGeneratedUi } from "gruntend-sdk/ui/dom";
 
 if (result.status !== "done") throw new Error(result.error);
 
@@ -145,13 +145,20 @@ if (!(element instanceof HTMLElement)) {
 }
 
 const ui = createGeneratedUi(result.result).unwrap();
-const mount = mountGeneratedUi(element, ui);
+const renderer = createDomPurifyGeneratedUiRenderer();
+const session = renderer.mount(element, ui, {
+  onError: console.error,
+});
 
 // when the host is removed
-mount.destroy();
+session.destroy();
 ```
 
-`createGeneratedUi()` turns the plan result into a small interface with `render()` and `runHandler()`. `mountGeneratedUi()` then:
+`createGeneratedUi()` turns the plan result into a small interface with `render()` and `runHandler()`. `GeneratedUiRenderer` is a first-class object strategy selected by the application, not by the model. The renderer remains fixed for the mounted session.
+
+The DOMPurify renderer is Gruntend's built-in browser renderer. It applies Gruntend's explicit markup policy, sanitizes into a `DocumentFragment`, and commits it with `replaceChildren()`. Applications with a different target or commit strategy can implement `GeneratedUiRenderer<TTarget>` directly.
+
+The renderer session:
 
 1. renders the template into `element`
 2. listens for `click`, `submit`, `input`, and `change` events on that element
@@ -159,14 +166,18 @@ mount.destroy();
 4. runs the original closure handler with a restricted event payload
 5. renders again after the handler finishes, so closure state appears in the DOM
 
-The returned `mount` handle controls that connection:
+The returned `session` controls that connection:
 
-- `mount.render()` renders the current state again
-- `mount.update(nextUi)` replaces the generated UI and renders it
-- `mount.runHandler(id)` invokes a generated handler programmatically
-- `mount.destroy()` removes event listeners and stops future rendering
+- `session.render()` renders the current state again
+- `session.update(nextUi)` replaces the generated UI and renders it
+- `session.runHandler(id)` invokes a generated handler programmatically
+- `session.destroy()` removes event listeners and stops future rendering
 
-Framework adapters perform this same mounting and cleanup through their component lifecycle. See [Framework adapters](/guides/framework-adapters/).
+Framework adapters perform this same mounting and cleanup through their component lifecycle. See [Renderers](/guides/renderers/) for the renderer contract and [Framework adapters](/guides/framework-adapters/) for component integration.
+
+:::caution[Two separate security boundaries]
+DOMPurify hardens generated markup. It does not sandbox generated JavaScript or reduce the authority of registered tool handlers. Choose an isolated executor independently when plan code is not trusted.
+:::
 
 ## Event safety
 

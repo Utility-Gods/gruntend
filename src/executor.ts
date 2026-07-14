@@ -1,5 +1,5 @@
 import type { RuntimeConsoleLevel } from "./runtime.ts";
-import type { UiTemplateTag } from "./ui-runtime.ts";
+import type { UiTemplateTag } from "./ui/compiler.ts";
 
 export type CodePlanExecutorTrust = "controlled" | "isolated";
 

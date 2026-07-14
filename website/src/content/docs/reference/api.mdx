@@ -459,27 +459,20 @@ interface GeneratedUi {
 }
 ```
 
-## `gruntend-sdk/ui/dom`
+## `gruntend-sdk/renderer`
 
 ```ts
-type GeneratedUiEventName = "click" | "submit" | "input" | "change";
-
-function mountGeneratedUi(
-  element: GeneratedUiMountElement,
-  ui: GeneratedUi,
-  options?: GeneratedUiMountOptions,
-): GeneratedUiMountHandle;
-
-interface GeneratedUiMountElement {
-  innerHTML: string;
-  addEventListener(type: string, listener: (event: unknown) => unknown): void;
-  removeEventListener(
-    type: string,
-    listener: (event: unknown) => unknown,
-  ): void;
+interface GeneratedUiRenderer<TTarget> {
+  readonly id: string;
+  mount(
+    target: TTarget,
+    ui: GeneratedUi,
+    options?: GeneratedUiRenderOptions,
+  ): GeneratedUiRenderSession;
 }
 
-interface GeneratedUiMountHandle {
+interface GeneratedUiRenderSession {
+  readonly rendererId: string;
   render(): void;
   runHandler(
     handlerId: string,
@@ -489,7 +482,16 @@ interface GeneratedUiMountHandle {
   update(nextUi: GeneratedUi): void;
   destroy(): void;
 }
+
+interface GeneratedUiRenderOptions {
+  readonly onError?: (error: unknown) => void;
+  readonly onRender?: (frame: GeneratedUiFrame) => void;
+  readonly onActionStart?: (event: GeneratedUiActionEvent) => void;
+  readonly onActionEnd?: (event: GeneratedUiActionEndEvent) => void;
+}
 ```
+
+`createDomPurifyGeneratedUiRenderer()` is exported from `gruntend-sdk/renderer/dom-purify` and is the built-in browser renderer. Applications can implement `GeneratedUiRenderer<TTarget>` for other targets or commit strategies.
 
 Adapters are exported from `gruntend-sdk/ui/svelte`, `gruntend-sdk/ui/react`, `gruntend-sdk/ui/vue`, and `gruntend-sdk/ui/solid`.
 

@@ -11,7 +11,7 @@ import {
   createUiComponent,
   createUiTemplateTag,
   type UiComponent,
-} from "../src/ui-runtime.ts";
+} from "../src/ui/compiler.ts";
 import * as v from "valibot";
 
 interface ConformanceRunOptions {

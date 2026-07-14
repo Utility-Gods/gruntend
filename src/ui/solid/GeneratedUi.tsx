@@ -1,18 +1,19 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import type { JSX } from "solid-js";
 import type {
+  GeneratedUiActionEndEvent,
+  GeneratedUiActionEvent,
+  GeneratedUiRenderer,
+  GeneratedUiRenderSession,
+} from "../renderer.ts";
+import type {
   GeneratedUi as GeneratedUiController,
   GeneratedUiFrame,
 } from "../index.ts";
-import {
-  mountGeneratedUi,
-  type GeneratedUiActionEndEvent,
-  type GeneratedUiActionEvent,
-  type GeneratedUiMountHandle,
-} from "../dom.ts";
 
 export interface GeneratedUiProps {
   readonly ui: GeneratedUiController;
+  readonly renderer: GeneratedUiRenderer<HTMLDivElement>;
   readonly class?: string;
   readonly className?: string;
   readonly onError?: (error: unknown) => void;
@@ -23,7 +24,7 @@ export interface GeneratedUiProps {
 
 export function GeneratedUi(props: GeneratedUiProps): JSX.Element {
   let root: HTMLDivElement | undefined;
-  let mounted: GeneratedUiMountHandle | undefined;
+  let mounted: GeneratedUiRenderSession | undefined;
   let mountedUi: GeneratedUiController | undefined;
   const [running, setRunning] = createSignal(false);
   const [surfaceError, setSurfaceError] = createSignal("");
@@ -32,7 +33,7 @@ export function GeneratedUi(props: GeneratedUiProps): JSX.Element {
     if (!root) return;
 
     mountedUi = props.ui;
-    mounted = mountGeneratedUi(root, props.ui, {
+    mounted = props.renderer.mount(root, props.ui, {
       onError(error) {
         setSurfaceError(errorText(error));
         props.onError?.(error);

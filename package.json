@@ -58,13 +58,17 @@
       "types": "./dist/generate.d.ts",
       "import": "./dist/generate.js"
     },
+    "./renderer": {
+      "types": "./dist/ui/renderer.d.ts",
+      "import": "./dist/ui/renderer.js"
+    },
+    "./renderer/dom-purify": {
+      "types": "./dist/ui/renderers/dom-purify.d.ts",
+      "import": "./dist/ui/renderers/dom-purify.js"
+    },
     "./ui": {
       "types": "./dist/ui/index.d.ts",
       "import": "./dist/ui/index.js"
-    },
-    "./ui/dom": {
-      "types": "./dist/ui/dom.d.ts",
-      "import": "./dist/ui/dom.js"
     },
     "./ui/react": {
       "types": "./src/ui/react/GeneratedUi.tsx",
@@ -83,8 +87,8 @@
       "import": "./src/ui/vue/GeneratedUi.vue"
     },
     "./ui-runtime": {
-      "types": "./dist/ui-runtime.d.ts",
-      "import": "./dist/ui-runtime.js"
+      "types": "./dist/ui/compiler.d.ts",
+      "import": "./dist/ui/compiler.js"
     },
     "./registry": {
       "types": "./dist/registry.d.ts",
@@ -116,6 +120,7 @@
     "@mariozechner/jailjs": "0.1.1",
     "@earendil-works/pi-ai": "0.74.0",
     "better-result": "2.7.0",
+    "dompurify": "3.4.12",
     "quickjs-emscripten-core": "0.32.0",
     "valibot": "1.4.0"
   },

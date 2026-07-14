@@ -9,7 +9,7 @@ import {
   type CodePlanExecutorContext,
 } from "./executor.ts";
 import type { ToolRegistry } from "./registry.ts";
-import type { UiTemplateTag } from "./ui-runtime.ts";
+import type { UiTemplateTag } from "./ui/compiler.ts";
 import type {
   RuntimeConsoleLevel,
   RetryPolicy,
