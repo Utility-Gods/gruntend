@@ -413,28 +413,24 @@ function interpolationContext(
   before: string,
   after: string,
 ): TemplateInterpolationContext {
-  const lastOpen = before.lastIndexOf("<");
-  const lastClose = before.lastIndexOf(">");
-  const inTag = lastOpen > lastClose;
+  if (!endsInsideTag(before)) return { kind: "text" };
 
-  if (!inTag) return { kind: "text" };
-
-  const quotedAttr = before.match(/([:@A-Za-z0-9_-]+)\s*=\s*(["'])$/);
+  const quotedAttr = before.match(/([:@A-Za-z0-9_-]+)\s*=\s*(["'])([^"']*)$/);
   if (quotedAttr) {
     const attr = quotedAttr[1];
     const quote = quotedAttr[2];
-
-    if (after[0] !== quote) return { kind: "structure" };
-
+    const prefix = quotedAttr[3];
     const next = after[1];
-    if (next && next !== ">" && next !== "/" && !/\s/.test(next)) {
-      return { kind: "structure" };
-    }
-
+    const fillsWholeAttribute =
+      prefix.length === 0 &&
+      after[0] === quote &&
+      (!next || next === ">" || next === "/" || /\s/.test(next));
     const lower = attr.toLowerCase();
+
     if (booleanAttributes.has(lower)) return { kind: "structure" };
 
     if (eventAttributes.has(lower)) {
+      if (!fillsWholeAttribute) return { kind: "structure" };
       return {
         kind: "event",
         attribute: attr,
@@ -465,6 +461,29 @@ function interpolationContext(
   }
 
   return { kind: "attribute", attribute: attr, quoted: false };
+}
+
+function endsInsideTag(value: string): boolean {
+  let inTag = false;
+  let quote = "";
+
+  for (const character of value) {
+    if (!inTag) {
+      if (character === "<") inTag = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = "";
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === ">") {
+      inTag = false;
+    }
+  }
+
+  return inTag;
 }
 
 function escapeRegExp(value: string): string {

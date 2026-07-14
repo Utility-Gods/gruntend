@@ -35,9 +35,9 @@
 </script>
 
 <section class="space-y-5">
-  <header class="flex items-center gap-3 py-1">
+  <header class="flex min-w-0 items-center gap-3 py-1">
     <UsersRound class="shrink-0 text-primary-600" size={23} strokeWidth={2.2} />
-    <div>
+    <div class="min-w-0">
       <h1 class="text-xl font-semibold tracking-tight text-slate-950">
         Restaurant staff
       </h1>
@@ -65,21 +65,41 @@
       </div>
       {#each users as user}
         <article
-          class="grid gap-2 border-b border-neutral-100 px-5 py-4 last:border-b-0 md:grid-cols-[1.3fr_120px_100px_120px_120px] md:items-center"
+          class="grid gap-3 border-b border-neutral-100 px-4 py-4 last:border-b-0 md:grid-cols-[1.3fr_120px_100px_120px_120px] md:items-center md:px-5"
         >
           <h2 class="text-sm font-semibold text-slate-950">{user.name}</h2>
-          <span class="text-sm font-medium capitalize text-primary-700"
-            >{user.role}</span
-          >
-          <span class="text-sm tabular-nums text-neutral-700"
-            >{assignedOrders(user.userId).length}</span
-          >
-          <span class="text-sm tabular-nums text-neutral-700"
-            >${paidSales(user.userId).toFixed(2)}</span
-          >
-          <span class="text-sm tabular-nums text-neutral-700"
-            >{scheduledHours(user.userId).toFixed(1)}h</span
-          >
+          <div class="flex items-center justify-between md:block">
+            <span class="text-xs font-medium text-neutral-500 md:hidden"
+              >Role</span
+            >
+            <span class="text-sm font-medium capitalize text-primary-700"
+              >{user.role}</span
+            >
+          </div>
+          <div class="flex items-center justify-between md:block">
+            <span class="text-xs font-medium text-neutral-500 md:hidden"
+              >Orders</span
+            >
+            <span class="text-sm tabular-nums text-neutral-700"
+              >{assignedOrders(user.userId).length}</span
+            >
+          </div>
+          <div class="flex items-center justify-between md:block">
+            <span class="text-xs font-medium text-neutral-500 md:hidden"
+              >Paid sales</span
+            >
+            <span class="text-sm tabular-nums text-neutral-700"
+              >${paidSales(user.userId).toFixed(2)}</span
+            >
+          </div>
+          <div class="flex items-center justify-between md:block">
+            <span class="text-xs font-medium text-neutral-500 md:hidden"
+              >Shift hours</span
+            >
+            <span class="text-sm tabular-nums text-neutral-700"
+              >{scheduledHours(user.userId).toFixed(1)}h</span
+            >
+          </div>
         </article>
       {/each}
     </section>

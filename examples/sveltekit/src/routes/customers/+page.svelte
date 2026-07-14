@@ -48,13 +48,13 @@
   <header
     class="flex flex-col justify-between gap-3 py-1 sm:flex-row sm:items-center"
   >
-    <div class="flex items-center gap-3">
+    <div class="flex min-w-0 items-center gap-3">
       <ContactRound
         class="shrink-0 text-primary-600"
         size={23}
         strokeWidth={2.2}
       />
-      <div>
+      <div class="min-w-0">
         <h1 class="text-xl font-semibold tracking-tight text-slate-950">
           Customers
         </h1>
@@ -98,30 +98,50 @@
       </div>
       {#each visibleCustomers as customer}
         <article
-          class="grid gap-3 border-b border-neutral-100 px-5 py-4 last:border-b-0 sm:grid-cols-[1.3fr_110px_90px_110px_130px] sm:items-center"
+          class="grid gap-3 border-b border-neutral-100 px-4 py-4 last:border-b-0 sm:grid-cols-[1.3fr_110px_90px_110px_130px] sm:items-center sm:px-5"
         >
           <div>
             <h2 class="text-sm font-semibold text-slate-950">
               {customer.name}
             </h2>
-            <p class="mt-0.5 text-xs text-neutral-500">
+            <p class="mt-0.5 break-words text-xs text-neutral-500">
               {customer.email} · since {new Date(
                 customer.createdAt,
               ).toLocaleDateString()}
             </p>
           </div>
-          <span class="text-xs font-semibold capitalize text-primary-700"
-            >{customer.loyaltyTier}</span
-          >
-          <span class="text-sm tabular-nums text-neutral-700"
-            >{customerOrders(customer.customerId).length}</span
-          >
-          <span class="text-sm tabular-nums text-neutral-700"
-            >{reservationCount(customer.customerId)}</span
-          >
-          <strong class="text-sm tabular-nums text-slate-950"
-            >${paidSpend(customer.customerId).toFixed(2)}</strong
-          >
+          <div class="flex items-center justify-between sm:block">
+            <span class="text-xs font-medium text-neutral-500 sm:hidden"
+              >Loyalty</span
+            >
+            <span class="text-xs font-semibold capitalize text-primary-700"
+              >{customer.loyaltyTier}</span
+            >
+          </div>
+          <div class="flex items-center justify-between sm:block">
+            <span class="text-xs font-medium text-neutral-500 sm:hidden"
+              >Orders</span
+            >
+            <span class="text-sm tabular-nums text-neutral-700"
+              >{customerOrders(customer.customerId).length}</span
+            >
+          </div>
+          <div class="flex items-center justify-between sm:block">
+            <span class="text-xs font-medium text-neutral-500 sm:hidden"
+              >Reservations</span
+            >
+            <span class="text-sm tabular-nums text-neutral-700"
+              >{reservationCount(customer.customerId)}</span
+            >
+          </div>
+          <div class="flex items-center justify-between sm:block">
+            <span class="text-xs font-medium text-neutral-500 sm:hidden"
+              >Paid spend</span
+            >
+            <strong class="text-sm tabular-nums text-slate-950"
+              >${paidSpend(customer.customerId).toFixed(2)}</strong
+            >
+          </div>
         </article>
       {:else}
         <p class="p-6 text-sm text-neutral-500">

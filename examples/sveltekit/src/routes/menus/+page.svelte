@@ -62,9 +62,9 @@
   <header
     class="flex flex-col justify-between gap-3 py-1 sm:flex-row sm:items-center"
   >
-    <div class="flex items-center gap-3">
+    <div class="flex min-w-0 items-center gap-3">
       <BookOpen class="shrink-0 text-primary-600" size={23} strokeWidth={2.2} />
-      <div>
+      <div class="min-w-0">
         <h1 class="text-xl font-semibold tracking-tight text-slate-950">
           Menus and pricing
         </h1>
@@ -125,7 +125,7 @@
       {/each}
     </div>
 
-    <section class="border border-neutral-200 bg-white p-6 shadow-sm">
+    <section class="border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
       <div class="space-y-2 border-b border-neutral-100 pb-5">
         <h2 class="text-xl font-semibold tracking-tight text-neutral-950">
           {selectedMenu.name}
@@ -140,7 +140,7 @@
 
         {#each visibleItems as item}
           <article
-            class={`flex items-center justify-between gap-4 py-4 ${
+            class={`flex flex-col items-stretch gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
               changedItemIds.has(item.itemId)
                 ? "-mx-3 border-l-4 border-l-emerald-600 bg-emerald-50 px-3"
                 : ""
@@ -164,7 +164,9 @@
                 {item.tags.join(" · ") || "No tags"}
               </p>
             </div>
-            <div class="flex shrink-0 items-center gap-3">
+            <div
+              class="flex shrink-0 items-center justify-between gap-3 sm:justify-end"
+            >
               <strong class="text-sm font-semibold text-primary-700"
                 >${item.price.toFixed(2)}</strong
               >

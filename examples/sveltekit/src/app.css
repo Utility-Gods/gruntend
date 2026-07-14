@@ -117,13 +117,19 @@
   html,
   body {
     width: 100%;
+    min-width: 0;
     height: 100%;
     margin: 0;
     padding: 0;
   }
 
+  html {
+    overflow-x: clip;
+  }
+
   body {
-    overflow: auto;
+    overflow-x: clip;
+    overflow-y: auto;
     background: var(--color-surface);
     color: var(--color-text-primary);
     font-family: var(--font-sans);
@@ -136,6 +142,12 @@
 
   * {
     box-sizing: border-box;
+  }
+
+  img,
+  svg,
+  video {
+    max-width: 100%;
   }
 
   a {
@@ -885,10 +897,6 @@
   }
 
   @media (max-width: 1000px) {
-    body {
-      overflow: auto;
-    }
-
     .ps-app-shell {
       min-height: 100vh;
       height: auto;

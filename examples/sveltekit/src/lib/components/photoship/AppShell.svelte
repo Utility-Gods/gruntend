@@ -58,15 +58,17 @@
   }
 </script>
 
-<div class="flex min-h-screen flex-col bg-[#f7f6f3] text-neutral-900">
+<div
+  class="flex min-h-screen min-w-0 flex-col overflow-x-hidden bg-[#f7f6f3] text-neutral-900"
+>
   <header
     class="border-b border-primary-200 bg-white shadow-[0_1px_0_rgba(245,74,0,0.05)]"
   >
     <div
-      class="mx-auto flex h-16 max-w-6xl items-stretch justify-between px-4 md:px-5"
+      class="mx-auto flex max-w-6xl flex-col px-4 md:h-16 md:flex-row md:items-stretch md:justify-between md:px-5"
     >
       <a
-        class="flex items-center gap-3"
+        class="flex h-14 shrink-0 items-center gap-3 md:h-auto"
         href={`${base}/`}
         aria-label="Juniper home"
       >
@@ -87,10 +89,13 @@
         </span>
       </a>
 
-      <nav class="flex items-stretch gap-2" aria-label="Application navigation">
+      <nav
+        class="grid w-full grid-cols-5 items-stretch border-t border-neutral-100 md:flex md:w-auto md:border-t-0"
+        aria-label="Application navigation"
+      >
         {#each navItems as item}
           <a
-            class={`flex items-center border-b-[3px] px-3 pt-0.5 text-sm font-semibold transition ${
+            class={`flex min-w-0 items-center justify-center border-b-[3px] px-1 py-3 text-[11px] font-semibold transition md:px-3 md:py-0 md:pt-0.5 md:text-sm ${
               isActive(item.href)
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-neutral-500 hover:border-primary-600 hover:text-primary-600"
@@ -100,7 +105,7 @@
             {item.label}
             {#if item.count !== undefined}
               <span
-                class="ml-1.5 hidden min-w-5 bg-neutral-100 px-1.5 py-0.5 text-center text-[10px] tabular-nums text-neutral-600 sm:inline-block"
+                class="ml-1.5 hidden min-w-5 bg-neutral-100 px-1.5 py-0.5 text-center text-[10px] tabular-nums text-neutral-600 lg:inline-block"
               >
                 {item.count}
               </span>
@@ -111,7 +116,7 @@
     </div>
   </header>
 
-  <main class="flex-1 px-4 py-5 md:px-5 md:py-6">
+  <main class="min-w-0 flex-1 px-3 py-4 sm:px-4 sm:py-5 md:px-5 md:py-6">
     <div class="mx-auto max-w-6xl">
       {@render children?.()}
     </div>
