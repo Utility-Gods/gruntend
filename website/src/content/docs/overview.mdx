@@ -12,12 +12,12 @@ import { Aside, Steps } from "@astrojs/starlight/components";
 
 ## The idea in four parts
 
-| Part | Responsibility |
-| --- | --- |
-| **Tool contract** | Describes one operation and validates its input and output. |
-| **Handler** | Performs the operation with application permissions and services. |
-| **Plan** | Composes tool calls with JavaScript and returns data or UI. |
-| **Executor** | Evaluates the plan and routes each call through its matching handler. |
+| Part              | Responsibility                                                        |
+| ----------------- | --------------------------------------------------------------------- |
+| **Tool contract** | Describes one operation and validates its input and output.           |
+| **Handler**       | Performs the operation with application permissions and services.     |
+| **Plan**          | Composes tool calls with JavaScript and returns data or UI.           |
+| **Executor**      | Evaluates the plan and routes each call through its matching handler. |
 
 In a conventional tool-calling loop, the host repeatedly asks a model what to call next. Gruntend instead lets a model produce one small program. That program can transform results, branch on runtime values, and coordinate several calls while the application retains control of every operation.
 
@@ -25,12 +25,12 @@ In a conventional tool-calling loop, the host repeatedly asks a model what to ca
 
 A plan runs inside an explicitly selected code-plan executor. The plan receives a small runtime surface:
 
-| Runtime value | Available capability |
-| --- | --- |
-| `input` | Task data supplied when the plan starts. |
-| `tools` | Registered application capabilities. |
-| `console` | Diagnostic logging through the lifecycle stream. |
-| `html` | Tagged templates when generated UI is enabled. |
+| Runtime value | Available capability                             |
+| ------------- | ------------------------------------------------ |
+| `input`       | Task data supplied when the plan starts.         |
+| `tools`       | Registered application capabilities.             |
+| `console`     | Diagnostic logging through the lifecycle stream. |
+| `html`        | Tagged templates when generated UI is enabled.   |
 
 The plan does not receive imports, `fetch`, `window`, `document`, storage, or application services. Standard JavaScript built-ins such as `Promise` remain available for orchestration.
 
@@ -50,11 +50,12 @@ The plan does not receive imports, `fetch`, `window`, `document`, storage, or ap
 
 <Aside type="caution" title="Public beta — not production-ready">
   Gruntend is not ready for production use with sensitive capabilities or
-  untrusted plans. Treat generated plans as untrusted input. Executor isolation does not replace
-  least-privilege tools, runtime schema validation, authorization, and mutation
-  checks in application handlers. Gruntend's execution boundaries are actively
-  hardened as the project evolves; review release notes and evaluate each
-  executor against your threat model before exposing sensitive capabilities.
+  untrusted plans. Treat generated plans as untrusted input. Executor isolation
+  does not replace least-privilege tools, runtime schema validation,
+  authorization, and mutation checks in application handlers. Gruntend's
+  execution boundaries are actively hardened as the project evolves; review
+  release notes and evaluate each executor against your threat model before
+  exposing sensitive capabilities.
 </Aside>
 
 ## Plans compose; handlers perform

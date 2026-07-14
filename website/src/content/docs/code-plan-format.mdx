@@ -20,12 +20,12 @@ return items.filter((item) => item.price < input.maximumPrice);
 
 The selected executor receives this runtime surface:
 
-| Value | Purpose |
-| --- | --- |
-| `input` | Task data supplied by the application. |
-| `tools` | Registered application capabilities. |
-| `console` | Diagnostic logging through runtime events. |
-| `html` | Tagged templates when generated UI is enabled. |
+| Value     | Purpose                                        |
+| --------- | ---------------------------------------------- |
+| `input`   | Task data supplied by the application.         |
+| `tools`   | Registered application capabilities.           |
+| `console` | Diagnostic logging through runtime events.     |
+| `html`    | Tagged templates when generated UI is enabled. |
 
 The built-in browser executors provide standard JavaScript values such as `Promise` for asynchronous calls. A plan does not receive imports, `fetch`, `window`, `document`, storage, or application services.
 
@@ -70,11 +70,11 @@ A model-generated plan uses a small JSON envelope:
 }
 ```
 
-| Field | Contract |
-| --- | --- |
-| `summary` | Non-empty human-readable description. |
-| `input` | Becomes the runtime `input` value. |
-| `code` | JavaScript async function body, without a wrapper or IIFE. |
+| Field     | Contract                                                   |
+| --------- | ---------------------------------------------------------- |
+| `summary` | Non-empty human-readable description.                      |
+| `input`   | Becomes the runtime `input` value.                         |
+| `code`    | JavaScript async function body, without a wrapper or IIFE. |
 
 ## Generate with Gruntend
 

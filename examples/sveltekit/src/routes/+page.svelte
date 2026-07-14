@@ -706,10 +706,8 @@
               <span
                 class="bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
               >
-                Ready · {activeExecutorId || executorChoice} · {toolCallCount} tool call{toolCallCount ===
-                1
-                  ? ""
-                  : "s"}
+                Ready · {activeExecutorId || executorChoice} · {toolCallCount} tool
+                call{toolCallCount === 1 ? "" : "s"}
               </span>
             {/if}
           </header>
