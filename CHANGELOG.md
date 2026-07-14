@@ -1,5 +1,11 @@
 # gruntend
 
+## 0.3.1
+
+### Patch Changes
+
+- e675749: safely escaped values can be combined inside quoted attributes while event handlers and tag
+
 ## 0.3.0
 
 ### Minor Changes
